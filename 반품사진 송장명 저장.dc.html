@@ -47,10 +47,15 @@ input:focus-visible,button:focus-visible,label:focus-visible{outline:2px solid #
           <span style="font-size:12px;color:#1f6f5c">{{ dbLabel }}</span>
           <span style="display:flex;gap:6px;align-items:center">
             <label for="prefix">앞에 붙일 말</label>
-            <input id="prefix" value="{{ prefix }}" onChange="{{ onPrefix }}" placeholder="예: 목우촌_" style="font:inherit;font-size:12px;padding:6px 8px;border:1px solid #d6d3cc;border-radius:6px;width:130px">
+            <input id="prefix" value="{{ prefix }}" onChange="{{ onPrefix }}" placeholder="자동: 목우촌_" style="font:inherit;font-size:12px;padding:6px 8px;border:1px solid #d6d3cc;border-radius:6px;width:130px">
           </span>
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#16181a;cursor:pointer;padding:0 4px">
+            <input type="checkbox" checked="{{ allChecked }}" onChange="{{ toggleAll }}" style="width:16px;height:16px;accent-color:#1f6f5c;cursor:pointer">
+            전체선택 <span style="color:#6e7379">{{ selLabel }}</span>
+          </label>
+          <button type="button" onClick="{{ saveSel }}" disabled="{{ selDisabled }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #1f6f5c;background:#fff;color:#1f6f5c;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ selOpacity }}" style-hover="background:#e6f0ec">{{ selSaveLabel }}</button>
           <button type="button" onClick="{{ clearAll }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #d6d3cc;background:#fff;color:#16181a;border-radius:8px;padding:8px 14px;cursor:pointer" style-hover="background:#f4f3ef">비우기</button>
           <button type="button" onClick="{{ saveZip }}" disabled="{{ zipDisabled }}" style="font:inherit;font-size:13px;font-weight:700;border:1px solid #1f6f5c;background:#1f6f5c;color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ zipOpacity }}" style-hover="background:#16503f">{{ zipLabel }}</button>
         </div>
@@ -72,8 +77,9 @@ input:focus-visible,button:focus-visible,label:focus-visible{outline:2px solid #
           </div>
         </sc-if>
         <sc-for list="{{ rows }}" as="r" hint-placeholder-count="0">
-          <div style="display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 16px;border-top:{{ r.border }}">
-            <img src="{{ r.url }}" alt="" style="width:72px;height:72px;border-radius:8px;object-fit:cover;background:#e3e1dc;display:block">
+          <div style="display:grid;grid-template-columns:20px 72px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 16px;border-top:{{ r.border }}">
+            <input type="checkbox" aria-label="선택" checked="{{ r.checked }}" onChange="{{ r.toggle }}" style="width:16px;height:16px;accent-color:#1f6f5c;cursor:pointer;margin:0">
+            <img src="{{ r.url }}" alt="사진 크게 보기" onClick="{{ r.view }}" style="{{ r.thumbStyle }}" style-hover="opacity:.85">
             <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
               <div style="font-size:12px;color:#6e7379;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -90,9 +96,27 @@ input:focus-visible,button:focus-visible,label:focus-visible{outline:2px solid #
           </div>
         </sc-for>
       </div>
-      <p style="font-size:12px;color:#6e7379;margin:0">번호가 틀리면 칸에서 바로 고치면 됩니다. 저장 시 저장 확인창이 한 번 뜹니다.</p>
     </div>
   </div>
+  <sc-if value="{{ hasViewer }}">
+    <div style="position:fixed;top:16px;right:16px;bottom:16px;width:min(560px,calc(100vw - 32px));background:#fff;border:1px solid #d6d3cc;border-radius:12px;box-shadow:0 16px 48px #00000033;display:flex;flex-direction:column;z-index:50;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #efede8">
+        <div style="flex:1;min-width:0;font-size:12px;color:#6e7379;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ vName }}</div>
+        <button type="button" onClick="{{ vRotate }}" style="font:inherit;font-size:12px;border:1px solid #d6d3cc;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">↻ 회전</button>
+        <button type="button" onClick="{{ vZoom }}" style="font:inherit;font-size:12px;border:1px solid #d6d3cc;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">{{ vZoomLabel }}</button>
+        <button type="button" onClick="{{ vClose }}" aria-label="닫기" style="font:inherit;font-size:16px;border:0;background:none;cursor:pointer;padding:2px 6px;color:#4a4e54">✕</button>
+      </div>
+      <div style="flex:1;overflow:auto;background:#f4f3ef;display:flex;align-items:center;justify-content:center">
+        <img src="{{ vUrl }}" alt="" style="{{ vImgStyle }}">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;padding:12px;border-top:1px solid #efede8">
+        <button type="button" onClick="{{ vPrev }}" disabled="{{ vNoPrev }}" style="font:inherit;font-size:13px;border:1px solid #d6d3cc;background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer">‹</button>
+        <input inputmode="numeric" aria-label="원운송장번호" value="{{ vNum }}" onChange="{{ vOnNum }}" onKeyDown="{{ vKey }}" placeholder="번호 입력" autofocus="{{ true }}" style="flex:1;min-width:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;font-weight:700;padding:8px 10px;border:1px solid #d6d3cc;border-radius:8px;color:#16181a">
+        <button type="button" onClick="{{ vNext }}" disabled="{{ vNoNext }}" style="font:inherit;font-size:13px;border:1px solid #d6d3cc;background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer">›</button>
+      </div>
+      <sc-if value="{{ vHasInfo }}"><div style="{{ vInfoStyle }}">{{ vInfo }}</div></sc-if>
+    </div>
+  </sc-if>
   <sc-if value="{{ hasToast }}">
     <div style="position:fixed;bottom:24px;right:24px;background:#16181a;color:#fff;border-radius:10px;padding:12px 16px;font-size:13px;max-width:360px;box-shadow:0 8px 24px #0000002e">{{ toast }}</div>
   </sc-if>
@@ -184,7 +208,7 @@ class Component extends DCLogic {
       if (this.sample) { const lim = await this.sample.limits().catch(() => null); this.canImages = !!lim?.images; }
     }
     if (!this.downloads) this.downloads = plainDownloads;
-    const notice = (!this.sample || !this.canImages) ? '자동 인식을 쓸 수 없는 화면입니다. 사진을 넣고 번호를 직접 입력하면 이름을 바꿔 저장합니다.' : '';
+    const notice = '';
     this.setState({ ready: true, notice });
   }
   componentWillUnmount() {
@@ -203,7 +227,9 @@ class Component extends DCLogic {
     items.forEach(it => { if (valid(it.num)) counts[it.num] = (counts[it.num] || 0) + 1; });
     items.forEach(it => {
       if (!valid(it.num)) { out[it.id] = null; return; }
-      const base = prefix + it.num;
+      const hit = this.db ? this.db[it.num] : null;
+      const who = hit && hit.u ? String(hit.u).trim().replace(/[\\/:*?"<>|]/g, '') : '';
+      const base = (prefix || (who ? '목우촌_' : '')) + (who ? who + '_' : '') + it.num;
       if (counts[it.num] === 1) out[it.id] = base + ext(it.file.name);
       else { seen[it.num] = (seen[it.num] || 0) + 1; out[it.id] = `${base}(${seen[it.num]})${ext(it.file.name)}`; }
     });
@@ -215,7 +241,7 @@ class Component extends DCLogic {
     if (!imgs.length) { this.showToast('이미지 파일만 넣을 수 있어요'); return; }
     imgs.sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }));
     const auto = !!(this.sample && this.canImages);
-    const add = imgs.map(f => ({ id: ++this.uid, file: f, url: URL.createObjectURL(f), num: '', status: auto ? 'busy' : 'warn', unsure: false, note: auto ? '' : '자동 인식 사용 불가' }));
+    const add = imgs.map(f => ({ id: ++this.uid, file: f, url: URL.createObjectURL(f), num: '', status: auto ? 'busy' : 'warn', unsure: false, note: '' }));
     this.setState(s => ({ items: [...s.items, ...add] }));
     if (auto) { this.queue.push(...add); this.pump(); }
   }
@@ -227,7 +253,7 @@ class Component extends DCLogic {
   }
   async recognize(it) {
     if (!this.state.items.some(i => i.id === it.id)) return;
-    if (!this.sample || !this.canImages) { this.patch(it.id, { status: 'warn', note: '자동 인식 사용 불가' }); return; }
+    if (!this.sample || !this.canImages) { this.patch(it.id, { status: 'warn', note: '' }); return; }
     try {
       const r = await this.sample.json(PROMPT, { images: it.file });
       const o = digits(r && r.original), w = digits(r && r.waybill);
@@ -245,8 +271,10 @@ class Component extends DCLogic {
     try { await this.downloads.save({ filename: n, data: it.file }); this.showToast('저장: ' + n); }
     catch (e) { if (e.code !== 'declined') this.showToast('저장 안 됨: ' + (e.message || e.code)); }
   }
-  async saveZip() {
-    const nm = this.names(), items = this.state.items;
+  async saveZip(onlySel) {
+    const sel = this.state.sel || {};
+    const nm = this.names(), items = onlySel ? this.state.items.filter(i => sel[i.id]) : this.state.items;
+    if (onlySel && items.length === 1 && nm[items[0].id]) return this.saveOne(items[0]);
     const entries = items.filter(i => nm[i.id]).map(i => ({ name: nm[i.id], file: i.file }));
     const skipped = items.length - entries.length;
     this.setState({ zipping: true });
@@ -275,15 +303,39 @@ class Component extends DCLogic {
         busy: it.status === 'busy', ph: it.status === 'busy' ? '읽는 중…' : '번호 입력',
         chip: manual ? '직접 입력' : label,
         chipStyle: `font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;background:${bg};color:${fg}`,
-        fname: nm[it.id] ? '→ ' + nm[it.id] : (it.status === 'busy' ? '' : '→ 번호를 입력하세요' + (it.note && it.note !== '직접 입력' ? ' · ' + it.note : '')),
+        fname: nm[it.id] ? '→ ' + nm[it.id] : (it.status === 'busy' || !it.note || it.note === '직접 입력' ? '' : it.note),
+        checked: !!(s.sel || {})[it.id],
+        toggle: e => { const c = e.target.checked; this.setState(x => ({ sel: { ...(x.sel || {}), [it.id]: c } })); },
+        view: () => this.setState({ viewId: it.id, vRot: 0, vFit: true }),
+        thumbStyle: 'width:72px;height:72px;border-radius:8px;object-fit:cover;background:#e3e1dc;display:block;cursor:zoom-in;' + (s.viewId === it.id ? 'outline:3px solid #1F6F5C;outline-offset:1px' : ''),
         saveDisabled: !nm[it.id] || !dl, saveOpacity: (!nm[it.id] || !dl) ? 0.45 : 1,
         onNum: e => { const n = digits(e.target.value); this.patch(it.id, { num: n, status: valid(n) ? 'ok' : 'warn', unsure: false, note: '직접 입력' }); },
         save: () => this.saveOne(it),
         del: () => { URL.revokeObjectURL(it.url); this.queue = this.queue.filter(q => q.id !== it.id); this.setState(x => ({ items: x.items.filter(y => y.id !== it.id) })); },
       };
     });
+    const vi = s.items.findIndex(x => x.id === s.viewId), vIt = vi >= 0 ? s.items[vi] : null;
+    const go = d => { const n = s.items[vi + d]; if (n) this.setState({ viewId: n.id, vRot: 0, vFit: true }); };
+    const vHit = vIt && valid(vIt.num) && this.db ? this.db[vIt.num] : null;
+    const vInfo = !vIt || !valid(vIt.num) ? '' : !this.db ? '통합내역 불러오는 중…' : vHit ? (vHit.u || '수취인 없음') + ' · ' + vHit.x.map(p => p.n.replace(/^\[[^\]]*\]\s*/, '') + (p.q > 1 ? ' ×' + p.q : '')).join(', ') : '통합내역에 없는 번호';
+    const rot = s.vRot || 0, side = rot % 180 !== 0;
+    const viewer = {
+      hasViewer: !!vIt, vUrl: vIt ? vIt.url : '', vName: vIt ? (vi + 1) + ' / ' + s.items.length + ' · ' + vIt.file.name : '',
+      vNum: vIt ? vIt.num : '', vInfo, vHasInfo: !!vInfo,
+      vInfoStyle: 'padding:0 12px 12px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (vHit ? 'color:#16181a' : 'color:#b42318;font-weight:600'),
+      vImgStyle: 'display:block;transform:rotate(' + rot + 'deg);transition:transform .15s;' + (s.vFit !== false ? (side ? 'max-width:70vh;max-height:500px' : 'max-width:100%;max-height:100%') : 'width:' + (side ? 'auto' : '200%') + ';max-width:none'),
+      vZoomLabel: s.vFit !== false ? '확대' : '맞춤',
+      vNoPrev: vi <= 0, vNoNext: vi < 0 || vi >= s.items.length - 1,
+      vPrev: () => go(-1), vNext: () => go(1),
+      vRotate: () => this.setState({ vRot: (rot + 90) % 360 }),
+      vZoom: () => this.setState({ vFit: s.vFit === false }),
+      vClose: () => this.setState({ viewId: null }),
+      vOnNum: e => { if (!vIt) return; const n = digits(e.target.value); this.patch(vIt.id, { num: n, status: valid(n) ? 'ok' : 'warn', unsure: false, note: '직접 입력' }); },
+      vKey: e => { if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); if (vi < s.items.length - 1) go(1); } else if (e.key === 'ArrowUp') { e.preventDefault(); go(-1); } else if (e.key === 'Escape') this.setState({ viewId: null }); },
+    };
     const zipDisabled = s.zipping || !dl || !s.items.some(i => valid(i.num)) || s.items.some(i => i.status === 'busy');
     return {
+      ...viewer,
       rows, isEmpty: s.items.length === 0,
       dbLabel: s.dbSize ? `통합내역 ${s.dbSize.toLocaleString()}건 연결됨` : '통합내역 불러오는 중…',
       cMiss: this.db ? s.items.filter(i => valid(i.num) && !this.db[i.num]).length : 0,
@@ -295,7 +347,19 @@ class Component extends DCLogic {
       hasToast: !!s.toast, toast: s.toast,
       zipDisabled, zipOpacity: zipDisabled ? 0.45 : 1, zipLabel: s.zipping ? '묶는 중…' : '전체 ZIP 저장',
       saveZip: () => this.saveZip(),
-      clearAll: () => { s.items.forEach(i => URL.revokeObjectURL(i.url)); this.queue = []; this.setState({ items: [] }); },
+      ...(() => {
+        const sel = s.sel || {}, picked = s.items.filter(i => sel[i.id]), ready = picked.filter(i => nm[i.id]);
+        const dis = s.zipping || !dl || !ready.length || picked.some(i => i.status === 'busy');
+        return {
+          allChecked: s.items.length > 0 && picked.length === s.items.length,
+          toggleAll: e => { const c = e.target.checked; const o = {}; if (c) s.items.forEach(i => { o[i.id] = true; }); this.setState({ sel: o }); },
+          selLabel: picked.length ? `(${picked.length})` : '',
+          selDisabled: dis, selOpacity: dis ? 0.45 : 1,
+          selSaveLabel: s.zipping ? '저장 중…' : picked.length ? `선택 ${ready.length}장 저장` : '선택 저장',
+          saveSel: () => this.saveZip(true),
+        };
+      })(),
+      clearAll: () => { s.items.forEach(i => URL.revokeObjectURL(i.url)); this.queue = []; this.setState({ items: [], sel: {} }); },
       pickerRef: this.pickerRef,
       onPick: e => { this.addFiles(e.target.files); e.target.value = ''; },
       onDropKey: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.pickerRef.current?.click(); } },

@@ -41,11 +41,10 @@
         <sc-if value="{{ hasPending }}"><span style="margin-left:auto;padding:1px 7px;border-radius:999px;background:#C2A14D;color:#16181A;font-size:11px;font-weight:700">{{ pendingBadge }}</span></sc-if>
       </div>
       <div onClick="{{ goSheet }}" style="{{ navSheet }}">🧾 입출고명세서</div>
-      <div onClick="{{ goPromo }}" style="{{ navPromo }}">📣 행사 출고 보드</div>
+      <div onClick="{{ goPromo }}" style="{{ navPromo }}">📣 행사 일정</div>
       <div style="padding:14px 8px 6px;font-size:11px;font-weight:600;color:#6E7379;letter-spacing:0.06em">반품 · 재고</div>
       <div onClick="{{ goReturn }}" style="{{ navReturn }}">↩️ 고객반품 입력</div>
       <div onClick="{{ goReturnList }}" style="{{ navReturnList }}">📋 반품 목록</div>
-      <div onClick="{{ goRetPhoto }}" style="{{ navRetPhoto }}">📷 반품사진 송장명 저장</div>
       <div onClick="{{ goItems }}" style="{{ navItems }}">📦 품목현황</div>
       <div onClick="{{ goExpiry }}" style="{{ navExpiry }}">⏰ 임박재고 알람
         <sc-if value="{{ hasCrit }}"><span style="margin-left:auto;padding:1px 7px;border-radius:999px;background:#B3261E;color:#fff;font-size:11px;font-weight:700">{{ critBadge }}</span></sc-if>
@@ -54,17 +53,23 @@
       <div onClick="{{ goClaims }}" style="{{ navClaims }}">🗂 클레임 관리</div>
       <div onClick="{{ goClaimsX }}" style="{{ navClaimsX }}">💰 클레임 운임 조회</div>
       <sc-if value="{{ showStock }}" hint-placeholder-val="{{ true }}">
-        <div onClick="{{ goStock }}" style="{{ navStock }}">📊 재고실사 콘솔</div>
+        <div onClick="{{ goStock }}" style="{{ navStock }}">📊 월말 재고실사</div>
+        <div onClick="{{ goRetPhoto }}" style="{{ navRetPhoto }}">📷 반품사진</div>
       </sc-if>
     </div>
     <div style="margin-top:auto;padding:16px 20px 0;border-top:1px solid #2C2F33">
       <button onClick="{{ openSync }}" style="display:flex;align-items:center;gap:8px;width:100%;padding:9px 0;border:none;background:none;font-size:12.5px;color:#C6C9CE;cursor:pointer;text-align:left" style-hover="color:#fff">{{ syncLabel }}</button>
       <div style="padding-bottom:4px;font-size:11px;color:#6E7379">{{ syncHint }}</div>
-      <button onClick="{{ exportCsv }}" style="display:flex;align-items:center;gap:8px;width:100%;padding:9px 0;border:none;background:none;font-size:12.5px;color:#C6C9CE;cursor:pointer;text-align:left" style-hover="color:#fff">📥 CSV 내보내기</button>
-      <div style="padding-bottom:4px;font-size:11px;color:#6E7379">{{ csvHint }}</div>
-      <button onClick="{{ backupDownload }}" style="display:flex;align-items:center;gap:8px;width:100%;padding:9px 0;border:none;background:none;font-size:12.5px;color:#C6C9CE;cursor:pointer;text-align:left">💾 전체 백업 파일 받기</button>
-      <label style="display:flex;align-items:center;gap:8px;width:100%;padding:9px 0;font-size:12.5px;color:#C6C9CE;cursor:pointer">♻️ 백업 파일로 복원<input type="file" accept=".json" onChange="{{ backupRestore }}" style="display:none"></input></label>
-      <div style="padding-bottom:4px;font-size:11px;color:#6E7379">{{ backupHint }}</div>
+      <div style="position:relative;padding:6px 0 2px">
+        <button onClick="{{ toggleTools }}" title="내보내기 · 백업" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:1px solid #2C2F33;border-radius:7px;background:{{ toolsBg }};font-size:14px;cursor:pointer;padding:0" style-hover="background:#2C2F33">🗃️</button>
+        <sc-if value="{{ toolsOpen }}">
+          <div style="position:absolute;left:0;right:0;bottom:40px;box-sizing:border-box;padding:6px;background:#202326;border:1px solid #2C2F33;border-radius:9px;box-shadow:0 10px 28px rgba(0,0,0,0.4);display:flex;flex-direction:column;gap:2px;z-index:20">
+            <button onClick="{{ exportCsv }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:8px 10px;border:none;border-radius:6px;background:none;font-size:12.5px;color:#E9E7E2;cursor:pointer;text-align:left" style-hover="background:#2C2F33">📥 CSV 내보내기<span style="font-size:11px;color:#8E9299">{{ csvHint }}</span></button>
+            <button onClick="{{ backupDownload }}" style="display:flex;align-items:center;width:100%;padding:8px 10px;border:none;border-radius:6px;background:none;font-size:12.5px;color:#E9E7E2;cursor:pointer;text-align:left" style-hover="background:#2C2F33">💾 전체 백업 파일 받기</button>
+            <label style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:8px 10px;border-radius:6px;box-sizing:border-box;font-size:12.5px;color:#E9E7E2;cursor:pointer" style-hover="background:#2C2F33">♻️ 백업 파일로 복원<span style="font-size:11px;color:#8E9299">{{ backupHint }}</span><input type="file" accept=".json" onChange="{{ backupRestore }}" style="display:none"></input></label>
+          </div>
+        </sc-if>
+      </div>
     </div>
   </aside>
 
@@ -655,7 +660,7 @@
     </sc-if>
 
     <sc-if value="{{ isPromo }}">
-      <iframe src="행사일정표.html?v=20261009c" title="행사 출고 보드" style="flex:1;width:100%;min-height:100vh;border:0;background:#F2F4F3;display:block"></iframe>
+      <iframe src="행사일정표.html?v=20261009c" title="행사 일정" style="flex:1;width:100%;min-height:100vh;border:0;background:#F2F4F3;display:block"></iframe>
     </sc-if>
 
     <sc-if value="{{ isItems }}">
@@ -1652,6 +1657,8 @@ class Component extends DCLogic {
     const on = !!(S && S.url());
     return {
       syncLabel: dot + " " + label,
+      toolsOpen: !!s.toolsOpen, toolsBg: s.toolsOpen ? "#2C2F33" : "transparent",
+      toggleTools: () => this.setState(p => ({ toolsOpen: !p.toolsOpen })),
       syncHint: st.state === "on" ? ((S && S.name()) || "이름 없음") + " · 변경이 바로 반영됩니다" : (st.msg || "여러 명이 같은 데이터를 함께 씁니다"),
       openSync: () => this.setState({ syncOpen: true, syncUrlDraft: (S && S.url()) || "", syncNameDraft: (S && S.name()) || "", syncErr: "" }),
       hasSync: !!s.syncOpen, isSyncOn: on, showStock: !on || S.isOwner(),
@@ -2227,14 +2234,12 @@ class Component extends DCLogic {
     const s = this.state, f = s.shF;
     const rows = s.shItems.filter(shUsed);
     if (!rows.length) { this.setState({ shErr: "품목을 1개 이상 입력해 주세요." }); return; }
-    if (!window.ExcelJS) { this.setState({ shErr: "엑셀 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요." }); return; }
     this.setState({ shErr: "", shMsg: "엑셀 만드는 중..." });
     try {
-      const res = await fetch("./sheet-template.xlsx");
-      const wb = new ExcelJS.Workbook();
-      await wb.xlsx.load(await res.arrayBuffer());
-      const ws = wb.worksheets[0];
-      const put = (addr, v) => { ws.getCell(addr).value = (v === "" || v === undefined || v === null) ? null : v; };
+      const [res, XF] = await Promise.all([fetch("./sheet-template.xlsx"), import("./xlsx-fill.js")]);
+      if (!res.ok) throw new Error("양식 파일(sheet-template.xlsx)을 찾지 못했습니다");
+      const cells = {};
+      const put = (addr, v) => { cells[addr] = (v === "" || v === undefined || v === null || (typeof v === "number" && !isFinite(v))) ? null : v; };
       const head = [["C5", shDate(f.date)], ["C7", shNum(f.pallet) != null ? shNum(f.pallet) : f.pallet],
         ["H4", f.shipper], ["H5", f.maker], ["H6", f.mgr], ["H7", f.phone]];
       head.forEach(p => put(p[0], p[1]));
@@ -2270,11 +2275,9 @@ class Component extends DCLogic {
       [["E28", sb], ["F28", sp], ["G28", se], ["E80", sb], ["F80", sp], ["G80", se], ["E129", b3], ["G129", e3]]
         .forEach(p => put(p[0], p[1]));
       const name = this.shFileName();
-      ws.name = name.replace(/[\[\]:*?\/\\]/g, "").slice(0, 31);
-      wb.calcProperties = { fullCalcOnLoad: true };
-      const buf = await wb.xlsx.writeBuffer();
+      const blob = await XF.fillXlsx(await res.arrayBuffer(), cells, { sheetName: name.replace(/[\[\]:*?\/\\']/g, "").slice(0, 31) });
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+      a.href = URL.createObjectURL(blob);
       a.download = name + ".xlsx";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
@@ -2732,7 +2735,7 @@ class Component extends DCLogic {
       goExpiry: () => this.setState({ tab: "expiry" }),
       isClaims: s.tab === "claims", navClaims: s.tab === "claims" ? NAV_ON : NAV_OFF, goClaims: () => this.setState({ tab: "claims" }),
       isClaimsX: s.tab === "claimsx", navClaimsX: s.tab === "claimsx" ? NAV_ON : NAV_OFF, goClaimsX: () => this.setState({ tab: "claimsx" }),
-      isRetPhoto: s.tab === "retphoto", navRetPhoto: s.tab === "retphoto" ? NAV_ON : NAV_OFF, goRetPhoto: () => this.setState({ tab: "retphoto" }),
+      isRetPhoto: s.tab === "retphoto" && (!s.syncSt || s.syncSt.state !== "on" || !window.MwSync || window.MwSync.isOwner()), navRetPhoto: s.tab === "retphoto" ? NAV_ON : NAV_OFF, goRetPhoto: () => this.setState({ tab: "retphoto" }),
       isStock: s.tab === "stock", navStock: s.tab === "stock" ? NAV_ON : NAV_OFF, goStock: () => this.setState({ tab: "stock" }),
       exportCsv: () => this.downloadCsv(),
       csvHint: "현재 화면: " + this.csvSpec().name,
