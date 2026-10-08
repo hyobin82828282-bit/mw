@@ -1,0 +1,976 @@
+<title>행사 출고 보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: 상단 붙여넣기 패널 → 3주 타임라인 → 행사 카드 / 탭으로 품목 박스표 */
+:root{
+  --bg:#F2F4F3; --surface:#FFFFFF; --sunk:#E8ECEA; --ink:#1A2123; --muted:#5C696C; --line:#D6DDDA;
+  --accent:#1E6B66; --accent-ink:#FFFFFF; --accent-soft:#DCEDEA;
+  --kraft:#9A6630; --kraft-soft:#F3E6D4;
+  --warn:#B9450F; --warn-soft:#FBE7DC; --ok:#2C7A4B; --ok-soft:#DFF1E5; --past:#8A9497;
+  --today:#C2410C;
+  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121718; --surface:#1A2123; --sunk:#232B2D; --ink:#E7ECEB; --muted:#9AA7A9; --line:#2F393B;
+  --accent:#5BB8AF; --accent-ink:#0E1A19; --accent-soft:#1F3634;
+  --kraft:#D9A56A; --kraft-soft:#3A2D1E;
+  --warn:#F0915C; --warn-soft:#3C2418; --ok:#6FCB93; --ok-soft:#1B3325; --past:#6C787A; --today:#F0915C;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121718; --surface:#1A2123; --sunk:#232B2D; --ink:#E7ECEB; --muted:#9AA7A9; --line:#2F393B;
+  --accent:#5BB8AF; --accent-ink:#0E1A19; --accent-soft:#1F3634;
+  --kraft:#D9A56A; --kraft-soft:#3A2D1E;
+  --warn:#F0915C; --warn-soft:#3C2418; --ok:#6FCB93; --ok-soft:#1B3325; --past:#6C787A; --today:#F0915C;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.55;padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:1040px;margin:0 auto;display:grid;gap:20px}
+h1,h2,h3{margin:0;text-wrap:balance}
+h1{font-size:22px;font-weight:700;letter-spacing:-.01em}
+h2{font-size:15px;font-weight:700}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 12px;font-weight:500}
+button:hover{border-color:var(--muted)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.ghost{border-color:transparent;background:transparent;color:var(--muted);padding:4px 8px}
+button.ghost:hover{color:var(--ink);background:var(--sunk)}
+button.danger{color:var(--warn)}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,textarea{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px;width:100%;min-width:0}
+textarea{resize:vertical}
+label.f{display:grid;gap:4px;font-size:12px;color:var(--muted);font-weight:500;min-width:0}
+label.f>span{letter-spacing:.02em}
+
+header{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px}
+header .sub{font-size:13px;color:var(--muted)}
+.tabs{display:flex;gap:4px;background:var(--sunk);padding:4px;border-radius:8px}
+.tabs button{border:0;background:transparent;padding:6px 14px;border-radius:6px;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0/.08)}
+.badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:9px;background:var(--warn);color:var(--surface);font-size:11px;font-weight:600;text-align:center;margin-left:4px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:12px;min-width:0}
+.intake textarea{min-height:96px}
+.intake .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.thumb{position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1px solid var(--line);background:var(--sunk)}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb button{position:absolute;top:2px;right:2px;padding:0 6px;font-size:12px;line-height:18px}
+.hint{font-size:12px;color:var(--muted)}
+.err{font-size:13px;color:var(--warn)}
+
+/* timeline */
+.tl{overflow-x:auto}
+.tl-grid{display:grid;grid-template-columns:150px repeat(var(--days),minmax(28px,1fr));min-width:calc(150px + var(--days)*28px);font-size:12px}
+.tl-h{padding:4px 0;text-align:center;color:var(--muted);border-bottom:1px solid var(--line);font-family:var(--f-mono)}
+.tl-h.we{color:var(--warn)}
+.tl-h.td{color:var(--today);font-weight:600}
+.tl-h small{display:block;font-family:var(--f-body);font-size:10px}
+.tl-l{padding:6px 8px 6px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px dashed var(--line)}
+.tl-c{border-bottom:1px dashed var(--line);position:relative}
+.tl-c.td{background:color-mix(in srgb,var(--today) 8%,transparent)}
+.bar{position:absolute;top:6px;bottom:6px;left:2px;right:2px;background:var(--accent-soft);border:1px solid var(--accent);}
+.bar.s{border-top-left-radius:5px;border-bottom-left-radius:5px}
+.bar.e{border-top-right-radius:5px;border-bottom-right-radius:5px}
+.bar.mid{border-left:0;border-right:0;left:0;right:0}
+.bar.s.mid,.bar.s:not(.e){right:0;border-right:0}
+.bar.e:not(.s){left:0;border-left:0}
+.pin{position:absolute;top:50%;left:50%;width:10px;height:10px;transform:translate(-50%,-50%) rotate(45deg);background:var(--kraft);border:1px solid var(--surface)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:10px;vertical-align:-1px;margin-right:4px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:3px}
+.legend i.ev{background:transparent;border-style:dashed}
+.evbar{position:absolute;top:4px;bottom:4px;left:0;right:0;border-top:1px dashed var(--muted);border-bottom:1px dashed var(--muted)}
+.ship{color:var(--accent);font-weight:600}
+.legend i.p{width:9px;height:9px;transform:rotate(45deg);background:var(--kraft);border:0;border-radius:0}
+
+/* cards */
+.list-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.cal{display:grid;gap:8px}
+.cal .day{display:grid;grid-template-columns:92px 1fr auto;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.cal .day:first-child{border-top:0}
+.cal .dd{font-family:var(--f-mono);font-weight:600;font-size:13px}
+.cal .dd.we{color:var(--warn)}
+.cal pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--f-body);font-size:13px;min-width:0}
+@media (max-width:520px){.cal .day{grid-template-columns:1fr auto}.cal pre{grid-column:1/-1;grid-row:2}}
+.btnlike{display:inline-block;border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:6px 12px;font-weight:500}
+.sel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px;width:100%;min-width:0}
+.dates{display:flex;flex-wrap:wrap;gap:6px}
+.dates label{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:13px;color:var(--ink);cursor:pointer}
+.dates input{width:auto}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+tr.use td{font-weight:600}
+.warnbox{background:var(--warn-soft);color:var(--warn);border-radius:6px;padding:8px 10px;font-size:13px}
+.okbox{background:var(--ok-soft);color:var(--ok);border-radius:6px;padding:8px 10px;font-size:13px}
+.chips{display:flex;gap:4px;flex-wrap:wrap;flex:1 1 auto;justify-content:flex-end}
+.chips button{padding:2px 10px;font-size:12px;border-radius:12px}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,460px),1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;gap:10px;min-width:0}
+.card.past{opacity:.62}
+.c-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ch{font-size:12px;font-weight:600;padding:1px 8px;border-radius:4px;background:var(--sunk)}
+.st{font-size:12px;font-weight:600;padding:1px 8px;border-radius:4px}
+.st.live{background:var(--ok-soft);color:var(--ok)}
+.st.soon{background:var(--warn-soft);color:var(--warn)}
+.st.later{background:var(--sunk);color:var(--muted)}
+.st.done{background:var(--sunk);color:var(--past)}
+.c-title{font-weight:600;font-size:15px;line-height:1.4}
+.meta{display:flex;gap:18px;flex-wrap:wrap;font-size:13px}
+.meta b{font-weight:500;color:var(--muted);font-size:11px;display:block;letter-spacing:.03em}
+.items{display:grid;gap:4px;margin:0;padding:0;list-style:none}
+.items li{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:13px}
+.items li:first-child{border-top:0}
+.items li>span:first-child{min-width:0;overflow-wrap:anywhere}
+.box{flex:none;font-family:var(--f-mono);font-size:12px;font-weight:600;padding:1px 8px;border-radius:4px;background:var(--kraft-soft);color:var(--kraft);white-space:nowrap}
+.box.miss{background:var(--warn-soft);color:var(--warn);font-family:var(--f-body)}
+.box.diff{outline:1px dashed var(--warn)}
+.sect{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.04em}
+.notes{font-size:13px;background:var(--sunk);border-radius:6px;padding:8px 10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.inb{font-size:13px;display:grid;gap:2px}
+.inb div{display:flex;gap:8px}
+.inb .d{color:var(--kraft);font-weight:600;flex:none}
+.c-act{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+details.raw summary{font-size:12px;color:var(--muted);cursor:pointer}
+details.raw pre{white-space:pre-wrap;font-family:var(--f-body);font-size:12px;color:var(--muted);margin:6px 0 0;overflow-wrap:anywhere}
+
+/* form */
+.form{display:grid;gap:10px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.form .w2{grid-column:span 2}.form .w4{grid-column:1/-1}
+@media (max-width:640px){.form{grid-template-columns:1fr 1fr}.form .w2{grid-column:1/-1}}
+.form-act{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
+.draft-tag{font-size:12px;font-weight:600;color:var(--accent)}
+.preview-items{display:grid;gap:4px}
+
+/* products */
+.ptools{display:flex;gap:8px;flex-wrap:wrap}
+.ptools input{flex:1 1 180px;width:auto}
+.ptable{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:520px}
+th{text-align:left;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.03em;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:4px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+td input{border-color:transparent;background:transparent;padding:5px 6px}
+td input:hover{border-color:var(--line)}
+td input:focus{border-color:var(--accent);background:var(--surface)}
+td.bx input{font-family:var(--f-mono);font-weight:600;color:var(--kraft);width:110px}
+.missing{display:grid;gap:6px}
+.missing .m{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.missing .m span{flex:1 1 200px;min-width:0;overflow-wrap:anywhere}
+.missing .m input{width:110px;font-family:var(--f-mono)}
+.empty{padding:28px 16px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r)}
+.empty b{display:block;color:var(--ink);margin-bottom:4px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:13px;z-index:9}
+@media (prefers-reduced-motion:no-preference){.card{transition:opacity .2s}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>행사 출고 보드</h1>
+      <div class="sub">채널별 행사 공유 메시지를 붙여넣으면 일정·품목·박스가 한 장에 정리됩니다</div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button id="tab-board" role="tab" aria-selected="true">행사 일정</button>
+      <button id="tab-prod" role="tab" aria-selected="false">품목 박스표<span id="missBadge" class="badge" hidden></span></button>
+      <button id="tab-pick" role="tab" aria-selected="false">선작업 셀 할당</button>
+    </div>
+  </header>
+
+  <div id="offline" class="hint" hidden>이 브라우저에 저장하는 모드입니다. 같은 컴퓨터·같은 브라우저에서 열면 그대로 남아 있고, 다른 기기와는 공유되지 않습니다.</div>
+
+  <section id="view-board" class="wrap" style="gap:20px">
+    <div class="panel intake">
+      <h2>행사 공유 붙여넣기</h2>
+      <textarea id="raw" placeholder="카톡 메시지를 그대로 붙여넣거나, 캡처 이미지를 여기에 붙여넣기(Ctrl+V)/끌어다 놓기 하세요.&#10;예) 지마켓 행사공유 / 일자 : 10/10(토) / 상품 : ... / 예상건수 : 1,000건  — 카카오·쿠팡·홈쇼핑 등 채널 상관없이 붙여넣으면 됩니다"></textarea>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="row">
+        <button class="primary" id="parseBtn">저장</button>
+        <label class="hint" style="cursor:pointer"><input type="file" id="imgFile" accept="image/*" multiple hidden><u>캡처 이미지 선택</u></label>
+        <button class="ghost" id="manualBtn">직접 입력</button>
+        <span class="hint" id="parseState"></span>
+      </div>
+      <div class="hint">같은 행사의 정정·추가 메시지(기간 변경, 박스 회신 등)를 붙여넣으면 기존 행사에 합쳐집니다.</div>
+      <div id="draft"></div>
+    </div>
+
+    <div class="panel">
+      <div class="list-head"><h2>3주 타임라인</h2>
+        <div class="legend"><span><i></i>출고 기간</span><span><i class="ev"></i>행사 기간(출고와 다를 때)</span><span><i class="p"></i>입고일</span></div></div>
+      <div class="tl" id="timeline"></div>
+    </div>
+
+    <div class="list-head">
+      <h2 id="listTitle">진행 · 예정 행사</h2>
+      <div class="chips" id="chips"></div>
+      <button id="sheetAll" title="보이는 행사를 출고일 순으로 시트 행 형식으로 복사">시트용 전체 복사</button>
+      <label class="hint" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="showPast" style="width:auto"> 종료된 행사도 보기</label>
+    </div>
+    <div class="cards" id="cards"></div>
+
+    <div class="panel">
+      <div class="list-head"><h2>행사일정 달력 문구</h2><span class="hint">출고 시작일 칸에 들어갈 문구입니다. 네이버는 기간 내 매일 [도착]으로 들어갑니다.</span></div>
+      <div class="hint">시트에서 해당 날짜 칸을 <b>더블클릭(편집 상태)</b>한 뒤 붙여넣으면 여러 줄이 한 칸에 들어갑니다.</div>
+      <div id="calLines" class="cal"></div>
+    </div>
+  </section>
+
+  <section id="view-prod" class="wrap" hidden>
+    <div class="panel">
+      <div class="list-head"><h2>데이터 백업 · 옮기기</h2><span class="hint" id="bkState"></span></div>
+      <div class="hint">행사·박스표·출고일 설정을 파일 하나로 내보내고, 다른 화면(아티팩트 ↔ 디자인 프로젝트)이나 다른 PC에서 가져올 수 있습니다. 가져오면 같은 행사는 덮어쓰고 없는 행사는 추가합니다.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button id="bkExport">내보내기</button>
+        <label style="cursor:pointer"><input type="file" id="bkFile" accept=".json,application/json" hidden><span class="btnlike">가져오기</span></label>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>채널별 출고일</h2>
+      <div class="hint">행사일 기준 며칠 뒤에 실제 출고하는지 정합니다. 채널명이 이 이름으로 시작하면 적용되고, 더 긴 이름이 우선합니다. (예: 카카오 +1 → 카카오 선물하기도 +1, 따로 0일로 넣으면 제외)</div>
+      <div class="missing" id="offs"></div>
+      <form class="ptools" id="offadd">
+        <input id="offch" placeholder="채널명 (예: 쿠팡)" required>
+        <input id="offn" type="number" min="0" max="14" value="1" style="flex:0 1 90px" aria-label="출고 지연일">
+        <button class="primary" type="submit">추가</button>
+      </form>
+      <h2 style="margin-top:8px">주말·공휴일 이월</h2>
+      <div class="hint">출고 시작일이 주말·공휴일이면 다음 평일부터 출고로 표시합니다. 아래 채널은 이월하지 않습니다(주말 출고).</div>
+      <label class="f"><span>이월 제외 채널 (쉼표로 구분, 채널명에 포함되면 제외)</span><input id="noroll" placeholder="네이버, N배송"></label>
+      <label class="f"><span>공휴일 (한 줄에 하나: 날짜 이름)</span><textarea id="hol" rows="5" placeholder="2026-10-09 한글날"></textarea></label>
+      <div class="form-act"><span class="hint" id="holState"></span><button id="calSave" class="primary">공휴일 설정 저장</button></div>
+    </div>
+    <div class="panel" id="missPanel" hidden>
+      <h2>박스 미정 품목</h2>
+      <div class="hint">행사에 들어갔는데 박스표에 없는 품목입니다. 박스를 적고 저장하면 다음 행사부터 자동으로 붙습니다.</div>
+      <div class="missing" id="missing"></div>
+    </div>
+    <div class="panel">
+      <div class="list-head"><h2>품목 박스표</h2><span class="hint" id="pcount"></span></div>
+      <div class="ptools">
+        <input id="pq" placeholder="품목 검색">
+      </div>
+      <form class="ptools" id="padd">
+        <input id="pname" placeholder="품목명 (예: 주부9단 프랑크500gx4개)" required>
+        <input id="pbox" placeholder="박스 (예: 135T)" style="flex:0 1 130px">
+        <input id="pnote" placeholder="메모" style="flex:0 1 160px">
+        <button class="primary" type="submit">추가</button>
+      </form>
+      <div class="ptable"><table><thead><tr><th>품목명</th><th>박스</th><th>메모</th><th></th></tr></thead><tbody id="ptbody"></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="view-pick" class="wrap" hidden>
+    <div class="panel">
+      <h2>1. 재고현황 올리기</h2>
+      <div class="hint">WMS 재고현황 엑셀(품목명·유통기한·재고상태·가용수량·분류1~3 열)을 그대로 올리세요. 파일은 이 화면에서만 읽고 저장하지 않습니다.</div>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <label class="hint" style="cursor:pointer"><input type="file" id="invFile" accept=".xlsx,.xls,.csv" hidden><span class="btnlike">재고현황 파일 선택</span></label>
+        <span class="hint" id="invState">아직 올린 파일이 없습니다</span>
+      </div>
+    </div>
+    <div class="panel" id="pickForm" hidden>
+      <h2>2. 선작업 조건</h2>
+      <div class="form">
+        <label class="f w2"><span>행사 (선택하면 품목·세트 수량 자동)</span><select id="pk-ev" class="sel"></select></label>
+        <label class="f w2"><span>재고 품목</span><select id="pk-item" class="sel"></select></label>
+        <label class="f"><span>작업 건수</span><input id="pk-n" type="number" min="1" inputmode="numeric" placeholder="800"></label>
+        <label class="f"><span>세트당 수량</span><input id="pk-per" type="number" min="1" value="1"></label>
+        <div class="f w2"><span>필요 수량</span><b class="num" id="pk-need" style="font-size:18px;color:var(--ink)">—</b></div>
+        <div class="f w4"><span>사용할 유통기한 (기본: 빠른 순으로 자동, 체크한 날짜만 사용)</span><div id="pk-dates" class="dates"></div></div>
+      </div>
+    </div>
+    <div class="panel" id="pickRes" hidden>
+      <div class="list-head"><h2>3. 사용할 셀</h2>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><button id="pk-copy">문구 복사</button><button class="primary" id="pk-xlsx">엑셀 파일 만들기</button></div></div>
+      <div id="pk-msg"></div>
+      <div class="ptable"><table><thead><tr><th>순서</th><th>셀</th><th>유통기한</th><th style="text-align:right">가용</th><th style="text-align:right">사용</th><th style="text-align:right">잔량</th></tr></thead><tbody id="pk-body"></tbody></table></div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+<datalist id="shipperList"></datalist>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad=n=>String(n).padStart(2,"0");
+const ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parseD=s=>{if(!s||!/^\d{4}-\d{2}-\d{2}$/.test(s))return null;const[a,b,c]=s.split("-").map(Number);return new Date(a,b-1,c)};
+const TODAY=ymd(new Date());
+const WD=["일","월","화","수","목","금","토"];
+const md=s=>{const d=parseD(s);return d?(d.getMonth()+1)+"/"+d.getDate()+"("+WD[d.getDay()]+")":"—"};
+const dayDiff=(a,b)=>Math.round((parseD(a)-parseD(b))/864e5);
+const norm=s=>String(s||"").replace(/\[[^\]]*\]/g,"").replace(/[\s·,()]/g,"").toLowerCase();
+const pid=name=>{let h=5381;const n=norm(name);for(let i=0;i<n.length;i++)h=((h<<5)+h+n.charCodeAt(i))>>>0;return"p"+h.toString(36)};
+
+const S={events:[],products:[],images:[],chF:"",offsets:{"카카오":1},holidays:null,noRoll:["네이버","N배송"],draft:null,editId:null,confirmDel:null,db:null,sample:null,busy:false};
+
+function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2200)}
+
+function findProduct(name){
+  const n=norm(name);if(!n)return null;
+  let best=null;
+  for(const p of S.products){const pn=norm(p.name);if(!pn)continue;
+    if(pn===n)return p;
+    if((n.includes(pn)||pn.includes(n))&&(!best||pn.length>norm(best.name).length))best=p;}
+  return best;
+}
+const addD=(s,n)=>{const d=parseD(s);if(!d)return s;d.setDate(d.getDate()+n);return ymd(d)};
+function shipOffset(ch){const n=norm(ch);let best=null;for(const[k,v]of Object.entries(S.offsets||{})){const kn=norm(k);if(kn&&n.startsWith(kn)&&(!best||kn.length>best[0].length))best=[kn,+v||0]}return best?best[1]:0}
+const DEFAULT_HOL=["2026-01-01 신정","2026-02-16 설날","2026-02-17 설날","2026-02-18 설날","2026-03-02 대체공휴일","2026-05-01 노동절","2026-05-05 어린이날","2026-05-25 대체공휴일","2026-06-03 지방선거","2026-07-17 제헌절","2026-08-17 대체공휴일","2026-09-24 추석","2026-09-25 추석","2026-09-26 추석","2026-10-05 대체공휴일","2026-10-09 한글날","2026-12-25 성탄절","2027-01-01 신정","2027-02-08 설날","2027-02-09 대체공휴일","2027-03-01 삼일절","2027-05-05 어린이날","2027-05-13 부처님오신날","2027-08-16 대체공휴일","2027-09-14 추석","2027-09-15 추석","2027-09-16 추석","2027-10-04 대체공휴일","2027-10-11 대체공휴일","2027-12-27 대체공휴일"];
+function holMap(){const m=new Map();for(const l of(S.holidays||DEFAULT_HOL)){const x=String(l).trim().match(/^(\d{4}-\d{2}-\d{2})\s*(.*)$/);if(x)m.set(x[1],x[2]||"공휴일")}return m}
+function offDay(ds){const d=parseD(ds);if(!d)return"";if(d.getDay()===0||d.getDay()===6)return WD[d.getDay()]+"요일";return holMap().get(ds)||""}
+function rolls(ch){const n=norm(ch);return!(S.noRoll||[]).some(k=>{const kn=norm(k);return kn&&n.includes(kn)})}
+function ship(e){
+  const o=shipOffset(e.channel),a=e.start||e.end,b=e.end||e.start;
+  if(!a)return{s:"",e:"",o,why:[]};
+  let s0=addD(a,o),en=addD(b,o),s1=s0,skipped=[];
+  if(rolls(e.channel)){
+    let g=0;while(offDay(s1)&&g++<14){skipped.push(md(s1)+" "+offDay(s1));s1=addD(s1,1)}
+    g=0;while(offDay(en)&&g++<14){skipped.push(md(en)+" "+offDay(en));en=addD(en,1)}
+  }
+  if(en<s1)en=s1;
+  const why=[];if(o)why.push("행사일 +"+o+"일");if(skipped.length)why.push("주말·공휴일 → 다음 평일");
+  return{s:s1,e:en,o,why,skipped,changed:s1!==a||en!==b};
+}
+const range=(a,b)=>md(a)+(b&&b!==a?" ~ "+md(b):"");
+function status(ev){
+  const sh=ship(ev),s=sh.s,e=sh.e;
+  if(!s)return{k:"later",t:"날짜 미정"};
+  if(e<TODAY)return{k:"done",t:"출고 종료"};
+  if(s<=TODAY)return{k:"live",t:"출고 중"};
+  const d=dayDiff(s,TODAY);return{k:d<=3?"soon":"later",t:"출고 D-"+d};
+}
+function boxChip(it){
+  const p=findProduct(it.name);
+  const cur=(p&&p.box)||it.box||"";
+  const diff=p&&p.box&&it.box&&norm(it.box)!==norm(p.box);
+  const cls="box"+(cur?(diff?" diff":""):" miss");
+  const title=!cur?"박스 미정":p&&p.box?(diff?"메시지 표기: "+it.box+" · 박스표 기준":"박스표 기준"):"메시지 표기 (박스표 미등록)";
+  const set=new Set(S.products.map(x=>x.box).filter(Boolean));if(cur)set.add(cur);
+  const opts=[...set].sort((a,b)=>a.localeCompare(b,"ko",{numeric:true}));
+  const name=(p&&p.name)||it.name;
+  return`<select class="${cls}" data-boxpick="${esc(name)}" title="${esc(title)} · 눌러서 변경" aria-label="박스 선택" style="border:0;cursor:pointer;font:inherit;font-size:12px;font-weight:600">${cur?"":'<option value="" selected>박스 미정 ▾</option>'}${opts.map(b=>`<option value="${esc(b)}"${b===cur?" selected":""}>${esc(b)}${b===cur?" ▾":""}</option>`).join("")}<option value="__new">직접 입력…</option></select>`;
+}
+
+/* ---------- timeline ---------- */
+function renderTimeline(){
+  const start=parseD(TODAY);start.setDate(start.getDate()-3);
+  const days=21,cols=[];for(let i=0;i<days;i++){const d=new Date(start);d.setDate(d.getDate()+i);cols.push(ymd(d))}
+  const last=cols[days-1];
+  const evs=S.events.filter(e=>{const h=ship(e);return h.s&&(h.e>=cols[0]&&(e.start||e.end)<=last)}).sort((a,b)=>ship(a).s.localeCompare(ship(b).s));
+  let h=`<div class="tl-grid" style="--days:${days}"><div class="tl-h"></div>`;
+  for(const c of cols){const d=parseD(c);{const hn=holMap().get(c);h+=`<div class="tl-h${c===TODAY?" td":(d.getDay()%6===0||hn?" we":"")}" title="${esc(hn||"")}">${d.getDate()}<small>${c===TODAY?"오늘":(hn?"휴":WD[d.getDay()])}</small></div>`}}
+  if(!evs.length)h+=`<div class="tl-l muted" style="grid-column:1/-1;text-align:center;padding:14px">이 기간에 잡힌 행사가 없습니다</div>`;
+  for(const e of evs){
+    h+=`<div class="tl-l" title="${esc(e.title)}"><b>${esc(e.channel||"")}</b> ${esc(e.title||"")}</div>`;
+    const inbDates=new Set((e.inbound||[]).map(x=>x.date).filter(Boolean));
+    for(const c of cols){
+      const sh=ship(e),s=sh.s,en=sh.e,inn=c>=s&&c<=en,evIn=sh.changed&&!inn&&c>=(e.start||e.end)&&c<=(e.end||e.start);
+      let cls="bar";if(c===s)cls+=" s";if(c===en)cls+=" e";if(c!==s&&c!==en)cls+=" mid";
+      h+=`<div class="tl-c${c===TODAY?" td":""}">${inn?`<div class="${cls}"></div>`:""}${evIn?`<div class="evbar" title="행사 기간"></div>`:""}${inbDates.has(c)?`<div class="pin" title="입고"></div>`:""}</div>`;
+    }
+  }
+  $("#timeline").innerHTML=h+"</div>";
+}
+
+/* ---------- cards ---------- */
+function renderCards(){
+  const past=$("#showPast").checked;
+  const chs=[...new Set(S.events.filter(e=>past||status(e).k!=="done").map(e=>e.channel||"채널 미정"))].sort((a,b)=>a.localeCompare(b,"ko"));
+  if(S.chF&&!chs.includes(S.chF))S.chF="";
+  $("#chips").innerHTML=chs.length>1?[`<button data-ch="" aria-pressed="${!S.chF}">전체</button>`,...chs.map(c=>`<button data-ch="${esc(c)}" aria-pressed="${S.chF===c}">${esc(c)}</button>`)].join(""):"";
+  let evs=S.events.filter(e=>(past||status(e).k!=="done")&&(!S.chF||(e.channel||"채널 미정")===S.chF));
+  evs.sort((a,b)=>{const ka=status(a).k==="done"?1:0,kb=status(b).k==="done"?1:0;return ka-kb||(ka?(b.start||"").localeCompare(a.start||""):(a.start||"9").localeCompare(b.start||"9"))});
+  $("#listTitle").textContent=past?"전체 행사":"진행 · 예정 행사";
+  if(!evs.length){$("#cards").innerHTML=`<div class="empty" style="grid-column:1/-1"><b>${S.events.length?"진행·예정 행사가 없습니다":"아직 등록된 행사가 없습니다"}</b>위 칸에 행사 공유 메시지나 캡처를 붙여넣고 「저장」을 누르세요.</div>`;return}
+  $("#cards").innerHTML=evs.map(e=>{
+    if(S.editId===e.id)return`<div class="card">${formHTML(e,"edit")}</div>`;
+    const st=status(e);
+    const items=(e.items||[]).map(it=>`<li><span>${esc(it.name)}</span>${boxChip(it)}</li>`).join("");
+    const inb=(e.inbound||[]).map(x=>`<div><span class="d">${x.date?md(x.date):"입고"}</span><span>${esc(x.text)}</span></div>`).join("");
+    const del=S.confirmDel===e.id;
+    return`<article class="card${st.k==="done"?" past":""}">
+      <div class="c-top">${e.shipper?`<span class="ch" style="background:var(--kraft-soft);color:var(--kraft)">${esc(e.shipper)}</span>`:""}<span class="ch">${esc(e.channel||"채널 미정")}</span>${e.shipType==="도착"?`<span class="ch">도착</span>`:""}<span class="st ${st.k}">${st.t}</span></div>
+      <div class="c-title">${esc(e.title||"(제목 없음)")}</div>
+      <div class="meta"><div><b>행사기간</b><span class="num">${range(e.start,e.end)}</span></div>
+        ${(()=>{const h=ship(e);return h.changed?`<div><b>실제 출고 · ${esc(h.why.join(", "))}</b><span class="num ship" title="${esc((h.skipped||[]).join(", "))}">${range(h.s,h.e)}</span></div>`:""})()}
+        <div><b>예상건수</b><span class="num">${esc(e.expected||"—")}</span></div></div>
+      ${items?`<div><div class="sect">품목 · 박스</div><ul class="items">${items}</ul></div>`:""}
+      ${inb?`<div><div class="sect">입고</div><div class="inb">${inb}</div></div>`:""}
+      ${e.notes?`<div class="notes">${esc(e.notes)}</div>`:""}
+      ${e.raw?`<details class="raw"><summary>받은 메시지 원문</summary><pre>${esc(e.raw)}</pre></details>`:""}
+      <div class="c-act">
+        <button class="ghost" data-cal="${e.id}">달력 문구 복사</button>
+        <button class="ghost" data-sheet="${e.id}">시트용 복사</button>
+        <button class="ghost" data-edit="${e.id}">수정</button>
+        ${del?`<button class="danger" data-delok="${e.id}">삭제 확인</button><button class="ghost" data-delno>취소</button>`:`<button class="ghost" data-del="${e.id}">삭제</button>`}
+      </div></article>`;
+  }).join("");
+}
+
+/* ---------- form (draft / edit) ---------- */
+function formHTML(e,mode){
+  const items=(e.items||[]).map(i=>i.name+(i.box?" | "+i.box:"")).join("\n");
+  const inb=(e.inbound||[]).map(x=>(x.date||"")+" | "+x.text).join("\n");
+  const preview=(e.items||[]).map(it=>`<li><span>${esc(it.name)}</span>${boxChip(it)}</li>`).join("");
+  return`<form class="form" data-mode="${mode}">
+    ${mode==="draft"?`<div class="w4 draft-tag">${e._matchId?(e._auto?"같은 채널·기간·품목의 행사가 이미 있어 그 행사에 합칩니다 → "+esc(evLabel(S.events.find(x=>x.id===e._matchId)||{})):"기존 행사에 합치기 — 확인 후 저장하세요"):"새 행사 — 확인 후 저장하세요"}</div>`:""}
+    <label class="f"><span>화주사</span><input id="f-shp" value="${esc(e.shipper)}" placeholder="목우촌" list="shipperList"></label>
+    <label class="f"><span>채널(행사명)</span><input id="f-ch" value="${esc(e.channel)}" placeholder="카카오"></label>
+    <label class="f"><span>출고유형</span><select id="f-type" style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px"><option${e.shipType==="도착"?"":" selected"}>일반</option><option${e.shipType==="도착"?" selected":""}>도착</option></select></label>
+    <label class="f"><span>예상건수</span><input id="f-exp" value="${esc(e.expected)}" placeholder="1,000건"></label>
+    <label class="f w2"><span>행사 메모용 제목</span><input id="f-title" value="${esc(e.title)}" placeholder="나주배 오리훈제 카카오 행사"></label>
+    <label class="f"><span>행사 시작일</span><input type="date" id="f-s" value="${esc(e.start)}"></label>
+    <label class="f"><span>행사 종료일</span><input type="date" id="f-e" value="${esc(e.end)}"></label>
+    <label class="f w4"><span>입고 (한 줄에 하나: 날짜 | 내용)</span><textarea id="f-inb" rows="2" placeholder="2026-10-12 | 나주배 오리훈제200g 15,000개(8p) 오전">${esc(inb)}</textarea></label>
+    <label class="f w4"><span>품목 (한 줄에 하나: 품목명 | 박스)</span><textarea id="f-items" rows="${Math.max(3,(e.items||[]).length+1)}" placeholder="주부9단 프랑크500gx4개 | 135T">${esc(items)}</textarea></label>
+    ${preview?`<div class="w4"><div class="sect">박스표 대조</div><ul class="items preview-items">${preview}</ul></div>`:""}
+    <label class="f w4"><span>메모</span><textarea id="f-notes" rows="2" placeholder="선작업 불가, 쿠폰으로 물량 증가 가능 등">${esc(e.notes)}</textarea></label>
+    <div class="form-act w4">
+      <button type="button" class="ghost" data-cancel>취소</button>
+      <button type="submit" class="primary">저장</button>
+    </div></form>`;
+}
+function readForm(form){
+  const g=id=>form.querySelector(id).value.trim();
+  const items=g("#f-items").split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{const[a,...b]=l.split("|");return{name:a.trim(),box:b.join("|").trim()}});
+  const inbound=g("#f-inb").split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{const m=l.match(/^(\d{4}-\d{2}-\d{2})?\s*\|?\s*(.*)$/);return{date:m[1]||"",text:(m[2]||"").trim()}});
+  let s=g("#f-s"),e=g("#f-e");if(s&&!e)e=s;if(e&&!s)s=e;if(s&&e&&e<s)[s,e]=[e,s];
+  return{shipper:g("#f-shp"),shipType:form.querySelector("#f-type").value,channel:g("#f-ch"),title:g("#f-title"),expected:g("#f-exp"),start:s,end:e,items,inbound,notes:g("#f-notes")};
+}
+function renderDraft(){
+  $("#draft").innerHTML=S.draft?formHTML(S.draft,"draft"):"";
+}
+
+/* ---------- 중복 판정 ---------- */
+const flat=s=>String(s||"").replace(/\s+/g,"");
+function dupMessage(text){const f=flat(text);if(f.length<10)return null;return S.events.find(e=>flat(e.raw).includes(f))||null}
+function itemsOverlap(a,b){return(a||[]).some(x=>(b||[]).some(y=>{const p=norm(x.name),q=norm(y.name);return p&&q&&(p===q||p.includes(q)||q.includes(p))}))}
+function sameEvent(d,skipId){
+  if(!d.start)return null;const ch=norm(d.channel),ds=d.start,de=d.end||d.start;
+  return S.events.find(e=>e.id!==skipId&&(!ch||norm(e.channel)===ch)&&e.start&&ds<=(e.end||e.start)&&de>=e.start&&itemsOverlap(e.items,d.items))||null}
+function sig(e){return JSON.stringify([norm(e.channel),flat(e.title),e.start||"",e.end||"",flat(e.expected),(e.items||[]).map(i=>norm(i.name)+"|"+norm(i.box)).sort(),(e.inbound||[]).map(x=>(x.date||"")+flat(x.text)).sort(),flat(e.notes)])}
+const evLabel=e=>`[${e.channel||"채널 미정"}] ${e.title||""} (${md(e.start)}${e.end&&e.end!==e.start?"~"+md(e.end):""})`;
+
+async function saveEvent(data,id,raw){
+  if(!S.db){toast("저장소에 연결되지 않았습니다");return}
+  const prev=id?S.events.find(e=>e.id===id):null;
+  const doc={...data,raw:[prev&&prev.raw,raw].filter(Boolean).join("\n\n— 추가 메시지 —\n\n"),updatedAt:new Date().toISOString()};
+  if(prev&&(!raw||flat(prev.raw).includes(flat(raw))))doc.raw=prev.raw||"";
+  const ref=id?S.db.collection("events").doc(id):S.db.collection("events").doc();
+  await ref.set(doc);
+  // 메시지에 박스가 적힌 품목은 박스표에 없으면 등록
+  for(const it of data.items){
+    if(!it.box||!it.name)continue;
+    if(findProduct(it.name))continue;
+    await S.db.collection("products").doc(pid(it.name)).set({name:it.name,box:it.box,note:"행사 메시지에서 등록",updatedAt:new Date().toISOString()});
+  }
+}
+
+/* ---------- parse with Claude ---------- */
+async function parse(){
+  const raw=$("#raw").value.trim();
+  if(!raw&&!S.images.length){$("#parseState").textContent="메시지나 캡처를 먼저 넣어 주세요.";return}
+  const dm=raw&&dupMessage(raw);
+  if(dm){$("#parseState").textContent="이미 등록된 메시지입니다 → "+evLabel(dm);return}
+  if(!S.sample&&!raw){$("#parseState").textContent="이 화면에서는 캡처 이미지를 읽을 수 없습니다. 메시지를 텍스트로 붙여넣어 주세요.";return}
+  S.busy=true;$("#parseBtn").disabled=true;$("#parseState").textContent="저장하는 중…";
+  const existing=S.events.filter(e=>(e.end||e.start||"9")>=ymd(new Date(Date.now()-14*864e5))).map(e=>({id:e.id,channel:e.channel,title:e.title,start:e.start,end:e.end,expected:e.expected,items:e.items,inbound:e.inbound,notes:e.notes}));
+  const prompt=`너는 물류센터(오산센터) 출고 담당자를 돕는 정리 도우미다. 화주사가 카카오톡 등으로 보낸 '행사 공유' 메시지(카카오, 지마켓, 쿠팡, 11번가, 홈쇼핑 등 어떤 판매 채널이든)(텍스트 또는 캡처 이미지)를 읽고 JSON 하나만 반환한다.
+오늘 날짜: ${TODAY}. 연도가 없는 날짜는 오늘과 가장 가까운 연도로 해석한다. "10/12 ~ 15"처럼 종료일의 월이 생략되면 시작 월을 쓴다.
+
+기존 행사(JSON): ${JSON.stringify(existing)}
+박스표에 등록된 품목명: ${JSON.stringify(S.products.map(p=>p.name))}
+
+규칙:
+- 메시지가 기존 행사 하나를 정정·보충하는 내용이면(같은 채널이고 기간이 겹치거나 품목이 같음, 또는 "기간 변경", 박스 회신 등) matchId에 그 id를 넣고, event에는 기존 내용에 새 정보를 반영한 전체 내용을 넣는다. 새 행사면 matchId는 null.
+- shipper: 화주사명 (예: 목우촌, 잔슨빌, 동원에프앤비). 메시지에 없으면 기존 행사에서 같은 브랜드 상품의 화주사를 쓰고, 모르면 "".
+- shipType: 도착보장·네이버(N배송) 등 '도착' 출고면 "도착", 아니면 "일반".
+- channel: 판매 채널명 (예: 카카오, 카카오 선물하기, 지마켓, 쿠팡, 11번가, 홈쇼핑, 도착보장 등 메시지 표기 기준으로 짧게). 메시지에 없으면 기존 값 유지 또는 "".
+- title: 대표 상품 중심의 짧은 행사명 (예: "나주배 오리훈제 8개입").
+- start, end: "YYYY-MM-DD". 하루 행사면 같은 날짜.
+- expected: 예상건수 표기 그대로 (예: "1,000~1,500건").
+- items: 행사 상품 목록 [{name, box}]. name은 메시지 표기 그대로 쓰되, 박스표 등록 품목과 같은 상품이면 등록된 이름을 쓴다. box는 메시지에 박스 규격(예: 135T)이 적혀 있을 때만 그 표기 그대로, 없으면 "". 세트 구성("A + B")은 한 줄로 유지.
+- inbound: 입고 관련 정보 [{date:"YYYY-MM-DD" 또는 "", text:"품목, 수량, 시간 등"}].
+- notes: 출고 작업에 영향 주는 주의사항을 짧은 문장 몇 줄로 (예: "월요일 입고분 출고 → 선작업 불가", "쿠폰으로 물량 증가 가능", "입고 즉시 불용대기 처리"). 기존 메모가 있으면 합친다. 기간·예상건수가 바뀐 경우 해당 필드만 최종 값으로 고치고, 변경 이력("A → B로 변경" 등)은 메모에 적지 않는다.
+
+- text: 메시지 본문을 적힌 그대로 옮긴 텍스트 (캡처 이미지면 이미지 속 메시지 글자를 그대로 받아 적는다).
+
+반환 형식: {"text":"", "matchId": string|null, "event": {"shipper":"","shipType":"일반","channel":"","title":"","start":"","end":"","expected":"","items":[{"name":"","box":""}],"inbound":[{"date":"","text":""}],"notes":""}}
+
+메시지:
+${raw||"(첨부 이미지 참고)"}`;
+  try{
+    const opts={modelTier:"default"};if(S.images.length)opts.images=S.images.map(x=>x.blob);
+    const r=S.sample?await S.sample.json(prompt,opts):{text:raw,matchId:null,event:parseLocal(raw)};
+    let ev=r&&r.event?r.event:r;
+    const text=(r&&typeof r.text==="string"&&r.text.trim())||"";
+    const msg=raw||text||(S.images.length?"(캡처 이미지 "+S.images.length+"장)":"");
+    if(!raw&&text){const dm2=dupMessage(text);if(dm2){$("#parseState").textContent="이미 등록된 메시지입니다 → "+evLabel(dm2);return}}
+    let match=r&&r.matchId&&S.events.find(e=>e.id===r.matchId)?r.matchId:null,auto=false;
+    if(!match){const se=sameEvent(ev);if(se){match=se.id;auto=true}}
+    if(match&&!S.sample)ev=mergeLocal(S.events.find(e=>e.id===match),ev);
+    const base={channel:"",title:"",start:"",end:"",expected:"",items:[],inbound:[],notes:""};
+    if(match&&sig({...base,...ev})===sig(S.events.find(e=>e.id===match))){$("#parseState").textContent="이미 반영된 내용입니다(변경 사항 없음) → "+evLabel(S.events.find(e=>e.id===match));return}
+    S.draft={...base,...ev,_matchId:match,_auto:auto,_raw:msg};
+    if(!S.draft.shipper)S.draft.shipper=lastShipper();
+    if(!S.draft.shipType)S.draft.shipType=/도착|네이버|n배송/i.test(S.draft.channel||"")?"도착":"일반";
+    const d0=S.draft,data={shipper:d0.shipper,shipType:d0.shipType,channel:d0.channel||"",title:d0.title||"",expected:d0.expected||"",start:d0.start||"",end:d0.end||d0.start||"",items:(d0.items||[]).map(i=>({name:i.name||"",box:i.box||""})),inbound:(d0.inbound||[]).map(x=>({date:x.date||"",text:x.text||""})),notes:d0.notes||""};
+    await saveEvent(data,d0._matchId,d0._raw);
+    S.draft=null;renderDraft();$("#raw").value="";S.images.forEach(x=>URL.revokeObjectURL(x.url));S.images=[];renderThumbs();
+    $("#parseState").textContent=(d0._matchId?"기존 행사에 합쳐 저장했습니다 → ":"저장했습니다 → ")+evLabel(data)+" · 고칠 내용은 카드의 「수정」에서";
+    toast(d0._matchId?"기존 행사에 합쳐 저장했습니다":"저장했습니다");
+  }catch(e){
+    const c=e&&e.code;
+    $("#parseState").textContent=c==="not_granted"?"Claude 사용 권한이 꺼져 있습니다. 「직접 입력」으로 등록할 수 있어요.":c==="rate_limited"?"요청이 많습니다. 잠시 후 다시 눌러 주세요.":c==="images_unavailable"?"이 화면에서는 이미지를 보낼 수 없습니다. 메시지를 텍스트로 붙여넣어 주세요.":"저장하지 못했습니다. 메시지를 확인하고 다시 시도하거나 「직접 입력」을 쓰세요.";
+  }finally{S.busy=false;$("#parseBtn").disabled=false}
+}
+
+/* ---------- images ---------- */
+function addImages(files){
+  for(const f of files){if(!f.type.startsWith("image/"))continue;if(S.images.length>=6)break;S.images.push({blob:f,url:URL.createObjectURL(f)})}
+  renderThumbs();
+}
+function renderThumbs(){
+  $("#thumbs").innerHTML=S.images.map((x,i)=>`<div class="thumb"><img src="${x.url}" alt="캡처 ${i+1}"><button data-rmimg="${i}" aria-label="이미지 빼기">×</button></div>`).join("");
+}
+
+/* ---------- products ---------- */
+function missingNames(){
+  const seen=new Map();
+  for(const e of S.events){if(status(e).k==="done")continue;for(const it of e.items||[]){if(it.box||findProduct(it.name))continue;const k=norm(it.name);if(k&&!seen.has(k))seen.set(k,it.name)}}
+  return[...seen.values()];
+}
+function renderProducts(){
+  const q=norm($("#pq").value);
+  const list=S.products.filter(p=>!q||norm(p.name).includes(q)||norm(p.box).includes(q)).sort((a,b)=>a.name.localeCompare(b.name,"ko"));
+  $("#pcount").textContent=S.products.length+"개 품목";
+  $("#ptbody").innerHTML=list.length?list.map(p=>{const del=S.confirmDel===p.id;return`<tr data-pid="${p.id}">
+    <td><input id="pn-${p.id}" data-f="name" value="${esc(p.name)}" aria-label="품목명"></td>
+    <td class="bx"><input id="pb-${p.id}" data-f="box" value="${esc(p.box)}" placeholder="—" aria-label="박스"></td>
+    <td><input id="pm-${p.id}" data-f="note" value="${esc(p.note)}" aria-label="메모"></td>
+    <td style="white-space:nowrap;text-align:right">${del?`<button class="danger" data-pdelok="${p.id}">삭제 확인</button><button class="ghost" data-delno>취소</button>`:`<button class="ghost" data-pdel="${p.id}">삭제</button>`}</td></tr>`}).join("")
+    :`<tr><td colspan="4"><div class="empty"><b>${S.products.length?"검색 결과가 없습니다":"박스표가 비어 있습니다"}</b>품목명과 박스를 위 칸에 넣고 「추가」를 누르면 행사 품목에 자동으로 붙습니다.</div></td></tr>`;
+  const miss=missingNames();
+  $("#missPanel").hidden=!miss.length;
+  $("#missBadge").hidden=!miss.length;$("#missBadge").textContent=miss.length;
+  $("#missing").innerHTML=miss.map((n,i)=>`<div class="m"><span>${esc(n)}</span><input id="mb-${i}" placeholder="박스" data-mname="${esc(n)}"><button data-msave="${i}">저장</button></div>`).join("");
+}
+
+/* ---------- 시트 행 (출고일 | 화주사 | 출고유형 | 행사명 | 주력제품 | 예상건수 | 주요 부자재) ---------- */
+function lastShipper(){const l=[...S.events].filter(e=>e.shipper).sort((a,b)=>(b.updatedAt||"").localeCompare(a.updatedAt||""))[0];return l?l.shipper:""}
+const mdS=s=>{const d=parseD(s);return d?(d.getMonth()+1)+"/"+d.getDate():""};
+function boxOf(it){const p=findProduct(it.name);return(p&&p.box)||it.box||""}
+function sheetRow(e){
+  const h=ship(e);
+  const date=h.s?(h.e&&h.e!==h.s?mdS(h.s)+"~"+mdS(h.e):mdS(h.s)):"";
+  const items=(e.items||[]).map(i=>i.name).join(", ");
+  const cnt=new Map();let miss=0;for(const it of e.items||[]){const b=boxOf(it);if(!b){miss++;continue}cnt.set(b,(cnt.get(b)||0)+1)}
+  let box=cnt.size<=1?[...cnt.keys()].join(""):[...cnt].map(([b,n])=>b+" "+n+"종").join(", ");
+  if(miss)box=(box?box+", ":"")+"박스 미정"+(cnt.size?" "+miss+"종":"");
+  const cell=v=>String(v||"").replace(/[\t\r\n]+/g," ").trim();
+  return[date,e.shipper,typeOf(e),e.channel,items,e.expected,box].map(cell).join("\t");
+}
+async function copyText(txt,msg){try{await navigator.clipboard.writeText(txt);toast(msg)}catch(_){$("#raw").value=txt;$("#raw").focus();$("#raw").select();toast("위 입력칸에 넣었습니다. Ctrl+C로 복사하세요")}}
+/* ---------- 달력 문구: [일반] 목우촌 : 1,000건 / 카카오 / 품목 외 N건 / ~10/17(토) ---------- */
+const isNaver=e=>/네이버|n배송/i.test(e.channel||"");
+const typeOf=e=>isNaver(e)?"도착":(e.shipType||"일반");
+const shortName=n=>String(n||"").replace(/\[[^\]]*\]\s*/g,"").replace(/([0-9A-Za-z가-힣])\s*[xX]\s*(\d)/g,"$1*$2").trim();
+const mdW=s=>{const d=parseD(s);return d?(d.getMonth()+1)+"/"+d.getDate()+"("+WD[d.getDay()]+")":""};
+function calLine(e){
+  const h=ship(e),it=e.items||[];
+  const prod=it.length?shortName(it[0].name)+(it.length>1?" 외 "+(it.length-1)+"건":""):"";
+  const parts=[`[${typeOf(e)}] ${e.shipper||"화주사"} : ${e.expected||"건수 미정"}`,e.channel||"",prod];
+  if(h.e&&h.e!==h.s)parts.push("~"+mdW(h.e));
+  return parts.filter(Boolean).join(" / ");
+}
+function calDays(e){const h=ship(e);if(!h.s)return[];if(!isNaver(e))return[h.s];const out=[];let d=h.s,g=0;while(d<=h.e&&g++<62){out.push(d);d=addD(d,1)}return out}
+function calMap(evs){const m=new Map();for(const e of evs)for(const d of calDays(e)){if(!m.has(d))m.set(d,[]);m.get(d).push(calLine(e))}return new Map([...m].sort((a,b)=>a[0].localeCompare(b[0])))}
+function renderCal2(){
+  const m=calMap(visibleEvents());
+  $("#calLines").innerHTML=m.size?[...m].map(([d,ls])=>{const w=parseD(d).getDay();return`<div class="day"><span class="dd${w%6===0||holMap().get(d)?" we":""}">${mdW(d)}</span><pre>${esc(ls.join("\n"))}</pre><button class="ghost" data-calday="${d}">복사</button></div>`}).join("")
+    :`<div class="empty"><b>표시할 출고 일정이 없습니다</b>행사를 등록하면 출고일별 달력 문구가 여기에 정리됩니다.</div>`;
+}
+function visibleEvents(){const past=$("#showPast").checked;return S.events.filter(e=>(past||status(e).k!=="done")&&(!S.chF||(e.channel||"채널 미정")===S.chF)).sort((a,b)=>(ship(a).s||"9").localeCompare(ship(b).s||"9"))}
+function renderOffsets(){
+  const ent=Object.entries(S.offsets||{}).sort((a,b)=>a[0].localeCompare(b[0],"ko"));
+  $("#offs").innerHTML=ent.length?ent.map(([k,v],i)=>`<div class="m"><span>${esc(k)}</span><span class="hint">행사일 +</span><input id="off-${i}" type="number" min="0" max="14" value="${+v||0}" data-offk="${esc(k)}" style="width:70px" aria-label="${esc(k)} 출고 지연일"><span class="hint">일</span><button class="ghost" data-offdel="${esc(k)}">삭제</button></div>`).join(""):`<div class="hint">설정된 채널이 없습니다. 모든 행사가 행사일 당일 출고로 표시됩니다.</div>`;
+}
+async function saveOffsets(o){if(!S.db)return;S.offsets=o;renderAll();await S.db.doc("settings/channel").set({offsets:o,updatedAt:new Date().toISOString()});toast("출고일 설정을 저장했습니다")}
+function renderCal(){
+  const a=document.activeElement;
+  if(a!==$("#noroll"))$("#noroll").value=(S.noRoll||[]).join(", ");
+  if(a!==$("#hol"))$("#hol").value=(S.holidays||DEFAULT_HOL).join("\n");
+  $("#holState").textContent=S.holidays?"":"기본 공휴일 목록(2026~2027) 사용 중";
+}
+function renderAll(){$("#shipperList").innerHTML=[...new Set(S.events.map(e=>e.shipper).filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join("");renderTimeline();renderCards();renderCal2();renderProducts();renderOffsets();renderCal()}
+
+/* ---------- events ---------- */
+document.addEventListener("click",async ev=>{
+  const t=ev.target.closest("button");if(!t)return;
+  const d=t.dataset;
+  if(t.id==="tab-board"||t.id==="tab-prod"||t.id==="tab-pick"){for(const k of["board","prod","pick"]){$("#tab-"+k).setAttribute("aria-selected",t.id==="tab-"+k);$("#view-"+k).hidden=t.id!=="tab-"+k}try{localStorage.setItem("tab",t.id)}catch(e){}if(t.id==="tab-pick")renderPickEvents();return}
+  if(t.id==="parseBtn")return parse();
+  if(d.ch!==undefined){S.chF=d.ch;renderCards();renderCal2();return}
+  if(t.id==="calSave"){
+    const nr=$("#noroll").value.split(/[,\n]/).map(x=>x.trim()).filter(Boolean);
+    const hl=$("#hol").value.split("\n").map(x=>x.trim()).filter(Boolean);
+    const bad=hl.filter(x=>!/^\d{4}-\d{2}-\d{2}(\s|$)/.test(x));
+    if(bad.length){$("#holState").textContent="날짜 형식을 확인하세요: "+bad[0];return}
+    S.noRoll=nr;S.holidays=hl;renderAll();
+    try{await S.db.doc("settings/calendar").set({noRoll:nr,holidays:hl,updatedAt:new Date().toISOString()});toast("공휴일 설정을 저장했습니다")}catch(e){toast("저장하지 못했습니다")}
+    return}
+  if(d.offdel!==undefined){const o={...S.offsets};delete o[d.offdel];return saveOffsets(o)}
+  if(t.id==="manualBtn"){S.draft={shipper:lastShipper(),shipType:"일반",channel:"",title:"",start:"",end:"",expected:"",items:[],inbound:[],notes:"",_matchId:null,_raw:$("#raw").value.trim()};renderDraft();return}
+  if(d.rmimg!==undefined){URL.revokeObjectURL(S.images[+d.rmimg].url);S.images.splice(+d.rmimg,1);renderThumbs();return}
+  if(d.cancel!==undefined){if(t.closest("#draft")){S.draft=null;renderDraft()}else{S.editId=null;renderCards()}return}
+  if(d.edit){S.editId=d.edit;S.confirmDel=null;renderCards();return}
+  if(d.del){S.confirmDel=d.del;renderCards();return}
+  if(d.pdel){S.confirmDel=d.pdel;renderProducts();return}
+  if(d.delno!==undefined){S.confirmDel=null;renderCards();renderProducts();return}
+  if(d.delok){S.confirmDel=null;await S.db.collection("events").doc(d.delok).delete();toast("행사를 삭제했습니다");return}
+  if(d.pdelok){S.confirmDel=null;await S.db.collection("products").doc(d.pdelok).delete();toast("품목을 삭제했습니다");return}
+  if(d.calday){const m=calMap(visibleEvents());copyText((m.get(d.calday)||[]).join("\n"),mdW(d.calday)+" 칸 문구 복사 — 칸을 더블클릭한 뒤 붙여넣으세요");return}
+  if(d.cal){const e=S.events.find(x=>x.id===d.cal);if(!e)return;const days=calDays(e);copyText(calLine(e),isNaver(e)?`복사 — ${mdW(days[0])}~${mdW(days[days.length-1])} 매일 칸에 넣으세요`:`복사 — ${mdW(days[0]||"")} 칸에 넣으세요`);return}
+  if(d.sheet){const e=S.events.find(x=>x.id===d.sheet);if(e)copyText(sheetRow(e),"1행 복사 — 시트의 출고일 칸에 붙여넣으세요");return}
+  if(t.id==="sheetAll"){const ev2=visibleEvents();if(!ev2.length){toast("복사할 행사가 없습니다");return}copyText(ev2.map(sheetRow).join("\n"),ev2.length+"행 복사 — 시트의 출고일 칸에 붙여넣으세요");return}
+  if(d.msave!==undefined){
+    const inp=$("#mb-"+d.msave),box=inp.value.trim(),name=inp.dataset.mname;if(!box){inp.focus();return}
+    await S.db.collection("products").doc(pid(name)).set({name,box,note:"",updatedAt:new Date().toISOString()});toast("박스표에 저장했습니다");return}
+});
+document.addEventListener("submit",async ev=>{
+  ev.preventDefault();const f=ev.target;
+  if(f.id==="offadd"){const k=$("#offch").value.trim();if(!k)return;await saveOffsets({...S.offsets,[k]:Math.max(0,+$("#offn").value||0)});f.reset();return}
+  if(f.id==="padd"){
+    const name=$("#pname").value.trim();if(!name)return;
+    await S.db.collection("products").doc(pid(name)).set({name,box:$("#pbox").value.trim(),note:$("#pnote").value.trim(),updatedAt:new Date().toISOString()});
+    f.reset();$("#pname").focus();toast("추가했습니다");return}
+  if(f.dataset.mode==="draft"){
+    const data=readForm(f);
+    if(!S.draft._matchId){const se=sameEvent(data);if(se){toast("같은 행사가 이미 있습니다: "+evLabel(se)+" — 그 카드에서 수정하세요");return}}
+    else{const cur=S.events.find(e=>e.id===S.draft._matchId);if(cur&&sig(data)===sig(cur)){S.draft=null;renderDraft();$("#raw").value="";toast("변경 사항이 없어 저장하지 않았습니다");return}}
+    try{await saveEvent(data,S.draft._matchId,S.draft._raw);S.draft=null;renderDraft();$("#raw").value="";S.images.forEach(x=>URL.revokeObjectURL(x.url));S.images=[];renderThumbs();toast("저장했습니다")}
+    catch(e){toast("저장하지 못했습니다: "+(e&&e.code||"오류"))}
+    return}
+  if(f.dataset.mode==="edit"){
+    const id=S.editId;try{await saveEvent(readForm(f),id,"");S.editId=null;toast("수정했습니다")}catch(e){toast("저장하지 못했습니다")}}
+});
+document.addEventListener("change",async ev=>{
+  const t=ev.target;
+  if(t.id==="showPast"){renderCards();renderCal2();return}
+  if(t.dataset.offk!==undefined){return saveOffsets({...S.offsets,[t.dataset.offk]:Math.max(0,+t.value||0)})}
+  if(t.id==="imgFile"){addImages(t.files);t.value="";return}
+  if(t.dataset&&t.dataset.boxpick!==undefined){
+    let box=t.value;const name=t.dataset.boxpick;if(!box||!name)return;
+    if(box==="__new"){box=(prompt(name+" 박스를 입력하세요 (예: 135T)")||"").trim();if(!box){renderAll();return}}
+    try{await S.db.collection("products").doc(pid(name)).set({name,box,note:"",updatedAt:new Date().toISOString()});toast("박스표에 저장했습니다")}catch(e){toast("저장하지 못했습니다")}
+    return}
+  const tr=t.closest("tr[data-pid]");
+  if(tr&&t.dataset.f){
+    const id=tr.dataset.pid,p=S.products.find(x=>x.id===id);if(!p)return;
+    const v=t.value.trim();if(v===(p[t.dataset.f]||""))return;
+    try{await S.db.collection("products").doc(id).update({[t.dataset.f]:v,updatedAt:new Date().toISOString()});toast("저장했습니다")}catch(e){toast("저장하지 못했습니다")}
+  }
+});
+$("#pq").addEventListener("input",renderProducts);
+$("#raw").addEventListener("paste",ev=>{const fs=[...(ev.clipboardData&&ev.clipboardData.files||[])];if(fs.length){ev.preventDefault();addImages(fs)}});
+const intake=document.querySelector(".intake");
+intake.addEventListener("dragover",e=>e.preventDefault());
+intake.addEventListener("drop",e=>{e.preventDefault();addImages([...e.dataTransfer.files])});
+try{const tb=localStorage.getItem("tab");if(tb==="tab-prod"||tb==="tab-pick")$("#"+tb).click()}catch(e){}
+
+renderAll();
+
+/* ---------- 선작업 셀 할당 ---------- */
+const P={hdr:[],rows:[],col:{},fileName:"",alloc:null};
+const pnorm=s=>norm(s).replace(/\*/g,"").replace(/x\d+(개|팩|입)?$/,"");
+function findCol(names){for(const n of names){const i=P.hdr.findIndex(h=>String(h).replace(/\s/g,"")===n);if(i>=0)return i}return -1}
+function toDate(v){if(v instanceof Date&&!isNaN(v))return ymd(v);const s=String(v||"").trim();const m=s.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);return m?m[1]+"-"+pad(m[2])+"-"+pad(m[3]):s}
+function cellOf(r){const c=P.col;if(c.loc>=0&&r[c.loc])return String(r[c.loc]);return[c.c1,c.c2,c.c3].filter(i=>i>=0).map(i=>String(r[i]??"").trim()).filter(Boolean).join("-")}
+async function loadInv(file){
+  if(!window.XLSX){$("#invState").textContent="엑셀 읽기 도구를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.";return}
+  try{
+    const wb=XLSX.read(await file.arrayBuffer(),{type:"array",cellDates:true});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true});
+    const hi=aoa.findIndex(r=>r.some(v=>String(v).replace(/\s/g,"")==="품목명"));
+    if(hi<0){$("#invState").textContent="'품목명' 열을 찾지 못했습니다. 재고현황 원본 파일인지 확인하세요.";return}
+    P.hdr=aoa[hi];P.rows=aoa.slice(hi+1).filter(r=>r.some(v=>v!==""));P.fileName=file.name;
+    P.col={name:findCol(["품목명"]),exp:findCol(["유통기한"]),st:findCol(["재고상태"]),avail:findCol(["가용수량"]),qty:findCol(["재고수량"]),c1:findCol(["분류1"]),c2:findCol(["분류2"]),c3:findCol(["분류3"]),loc:findCol(["로케이션","셀","LOC"])};
+    const items=new Set(P.rows.map(r=>r[P.col.name]));
+    $("#invState").textContent=`${file.name} · ${P.rows.length}행 · 품목 ${items.size}종`;
+    $("#pickForm").hidden=false;renderPickEvents();renderPickItems();runPick();
+  }catch(e){$("#invState").textContent="파일을 읽지 못했습니다: "+(e&&e.message||e)}
+}
+function avail(r){const c=P.col;const v=c.avail>=0?r[c.avail]:r[c.qty];return Math.max(0,Math.floor(Number(String(v).replace(/,/g,""))||0))}
+function usable(r){const c=P.col;return c.st<0||String(r[c.st]).trim()===""||String(r[c.st]).includes("가용")}
+function renderPickEvents(){
+  if(!$("#pk-ev"))return;const cur=$("#pk-ev").value;
+  const evs=S.events.filter(e=>status(e).k!=="done").sort((a,b)=>(ship(a).s||"9").localeCompare(ship(b).s||"9"));
+  $("#pk-ev").innerHTML=`<option value="">행사 선택 안 함</option>`+evs.map(e=>`<option value="${e.id}">${esc(mdW(ship(e).s))} ${esc(e.channel||"")} · ${esc(e.title||"")}</option>`).join("");
+  $("#pk-ev").value=evs.some(e=>e.id===cur)?cur:"";
+}
+function renderPickItems(){
+  const m=new Map();for(const r of P.rows){if(!usable(r))continue;const n=r[P.col.name];m.set(n,(m.get(n)||0)+avail(r))}
+  const cur=$("#pk-item").value;
+  $("#pk-item").innerHTML=[...m].sort((a,b)=>String(a[0]).localeCompare(String(b[0]),"ko")).map(([n,q])=>`<option value="${esc(n)}">${esc(n)} (가용 ${q.toLocaleString()})</option>`).join("");
+  if([...m.keys()].includes(cur))$("#pk-item").value=cur;
+  renderPickDates();
+}
+function renderPickDates(){
+  const item=$("#pk-item").value,m=new Map();
+  for(const r of P.rows){if(r[P.col.name]!==item||!usable(r))continue;const d=toDate(r[P.col.exp]);m.set(d,(m.get(d)||0)+avail(r))}
+  $("#pk-dates").innerHTML=[...m].sort((a,b)=>a[0].localeCompare(b[0])).map(([d,q],i)=>`<label><input type="checkbox" id="pkd-${i}" data-pkd="${esc(d)}" checked>${esc(d)} <span class="muted num">${q.toLocaleString()}</span></label>`).join("");
+}
+function applyEvent(){
+  const e=S.events.find(x=>x.id===$("#pk-ev").value);if(!e||!P.rows.length)return;
+  const names=[...new Set(P.rows.map(r=>r[P.col.name]))];
+  for(const it of e.items||[]){
+    const base=pnorm(it.name);const hit=names.find(n=>{const k=pnorm(n);return k&&(base.includes(k)||k.includes(base))});
+    if(hit){$("#pk-item").value=hit;renderPickDates();const m=String(it.name).match(/[xX*]\s*(\d+)\s*(개|팩|입)?\s*$/);$("#pk-per").value=m?m[1]:1;break}
+  }
+}
+function allocate(need,cands){
+  const groups=new Map();for(const c of cands){if(!groups.has(c.exp))groups.set(c.exp,[]);groups.get(c.exp).push(c)}
+  const out=[];let rem=need;
+  for(const[,g]of[...groups].sort((a,b)=>a[0].localeCompare(b[0]))){
+    if(rem<=0)break;const tot=g.reduce((s,c)=>s+c.q,0);
+    if(tot<=rem){g.forEach(c=>out.push({...c,use:c.q}));rem-=tot;continue}
+    // 같은 유통기한 안에서: 딱 맞는 조합 → 통째로 비우는 셀 우선 → 남는 양은 가장 작은 셀에서
+    let pick=null;
+    if(g.length<=18){const best=new Map([[0,[]]]);for(const c of g){for(const[s0,arr]of[...best]){const s1=s0+c.q;if(s1<=rem&&(!best.has(s1)||best.get(s1).length>arr.length+1))best.set(s1,[...arr,c])}}if(best.has(rem))pick=best.get(rem).map(c=>({...c,use:c.q}))}
+    if(!pick){pick=[];let r=rem;const pool=[...g].sort((a,b)=>b.q-a.q);
+      for(const c of pool){if(c.q<=r){pick.push({...c,use:c.q});r-=c.q}}
+      if(r>0){const used=new Set(pick.map(x=>x.key));const rest=pool.filter(c=>!used.has(c.key)&&c.q>=r).sort((a,b)=>a.q-b.q);if(rest.length)pick.push({...rest[0],use:r})}
+    }
+    pick.forEach(c=>out.push(c));rem=0;
+  }
+  return{out,short:Math.max(0,rem)};
+}
+function runPick(){
+  if(!P.rows.length)return;
+  const n=Math.floor(+$("#pk-n").value||0),per=Math.max(1,Math.floor(+$("#pk-per").value||1)),need=n*per;
+  $("#pk-need").textContent=n?`${need.toLocaleString()}개 (${n.toLocaleString()}건 × ${per})`:"—";
+  if(!n){$("#pickRes").hidden=true;P.alloc=null;return}
+  const item=$("#pk-item").value,dates=new Set([...document.querySelectorAll("[data-pkd]")].filter(x=>x.checked).map(x=>x.dataset.pkd));
+  const cands=P.rows.map((r,i)=>({r,key:i,exp:toDate(r[P.col.exp]),cell:cellOf(r),q:avail(r)})).filter(c=>c.r[P.col.name]===item&&usable(c.r)&&c.q>0&&dates.has(c.exp));
+  const res=allocate(need,cands);res.out.sort((a,b)=>a.exp.localeCompare(b.exp)||(b.use===b.q)-(a.use===a.q)||a.cell.localeCompare(b.cell));
+  P.alloc={...res,need,n,per,item,ev:S.events.find(x=>x.id===$("#pk-ev").value)||null};
+  const got=need-res.short;
+  $("#pk-msg").innerHTML=res.short?`<div class="warnbox">재고가 ${res.short.toLocaleString()}개 부족합니다 (선택한 유통기한 기준 ${got.toLocaleString()}개만 가능 = ${Math.floor(got/per).toLocaleString()}건). 유통기한 체크를 늘리거나 건수를 줄이세요.</div>`
+    :`<div class="okbox">${res.out.length}개 셀에서 ${need.toLocaleString()}개 사용 · 통째로 비우는 셀 ${res.out.filter(c=>c.use===c.q).length}개</div>`;
+  $("#pk-body").innerHTML=res.out.map((c,i)=>`<tr class="use"><td>${i+1}</td><td>${esc(c.cell)}</td><td class="num">${esc(c.exp)}</td><td class="r">${c.q.toLocaleString()}</td><td class="r" style="color:var(--accent)">${c.use.toLocaleString()}</td><td class="r">${(c.q-c.use).toLocaleString()}</td></tr>`).join("")+`<tr><td></td><td><b>합계</b></td><td></td><td></td><td class="r"><b>${got.toLocaleString()}</b></td><td></td></tr>`;
+  $("#pickRes").hidden=false;
+}
+function pickText(){
+  const a=P.alloc;if(!a)return"";const e=a.ev;
+  const l=[`[선작업] ${e?(e.channel+" "):""}${a.item} ${a.n.toLocaleString()}건 × ${a.per} = ${a.need.toLocaleString()}개`];
+  a.out.forEach((c,i)=>l.push(`${i+1}. ${c.cell} (${c.exp}) ${c.use.toLocaleString()}개${c.use===c.q?" 전량":" / 잔량 "+(c.q-c.use).toLocaleString()}`));
+  if(a.short)l.push(`※ ${a.short.toLocaleString()}개 부족`);return l.join("\n");
+}
+async function exportData(){
+  const data={app:"event-board",version:1,exportedAt:new Date().toISOString(),
+    events:S.events.map(e=>{const{id,...rest}=e;return{id,data:rest}}),
+    products:S.products.map(p=>{const{id,...rest}=p;return{id,data:rest}}),
+    settings:{channel:{offsets:S.offsets||{}},calendar:{holidays:S.holidays||null,noRoll:S.noRoll||[]}}};
+  const txt=JSON.stringify(data,null,1),d=new Date(),fname=`행사출고보드_백업_${String(d.getFullYear()).slice(2)}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
+  const dl=await window.claude?.use?.("downloads");
+  try{
+    if(dl)await dl.save({filename:fname,data:txt});
+    else{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type:"application/json"}));a.download=fname;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+    $("#bkState").textContent=`행사 ${data.events.length}건 · 품목 ${data.products.length}개 내보냄`;
+  }catch(e){toast(e&&e.code==="declined"?"저장을 취소했습니다":"내보내지 못했습니다")}
+}
+async function importData(file){
+  if(!S.db){toast("저장소가 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요");return}
+  let d;try{d=JSON.parse(await file.text())}catch(e){$("#bkState").textContent="백업 파일을 읽지 못했습니다";return}
+  if(!d||d.app!=="event-board"){$("#bkState").textContent="행사 출고 보드 백업 파일이 아닙니다";return}
+  let ne=0,np=0;
+  try{
+    for(const x of d.events||[]){if(!x.id||!x.data)continue;await S.db.collection("events").doc(String(x.id)).set(x.data);ne++}
+    for(const x of d.products||[]){if(!x.id||!x.data)continue;await S.db.collection("products").doc(String(x.id)).set(x.data);np++}
+    if(d.settings&&d.settings.channel)await S.db.doc("settings/channel").set({...d.settings.channel,updatedAt:new Date().toISOString()});
+    if(d.settings&&d.settings.calendar){const c=d.settings.calendar;await S.db.doc("settings/calendar").set({noRoll:c.noRoll||[],holidays:c.holidays||DEFAULT_HOL,updatedAt:new Date().toISOString()})}
+    $("#bkState").textContent=`행사 ${ne}건 · 품목 ${np}개 가져옴`;toast("가져왔습니다");
+  }catch(e){$("#bkState").textContent="일부만 가져왔습니다 (행사 "+ne+"건 · 품목 "+np+"개)"}
+}
+document.addEventListener("click",ev=>{const t=ev.target.closest("button");if(t&&t.id==="bkExport")exportData()});
+document.addEventListener("change",ev=>{const t=ev.target;if(t.id==="bkFile"&&t.files[0]){importData(t.files[0]);t.value=""}});
+
+async function pickXlsx(){
+  const a=P.alloc;if(!a||!window.XLSX)return;
+  const dl=await window.claude?.use?.("downloads");
+  const fname0=null;
+  const hdr=[...P.hdr,"사용수량","작업후 잔량"];
+  const rows=a.out.map(c=>[...c.r,c.use,c.q-c.use]);
+  const sh=XLSX.utils.aoa_to_sheet([hdr,...rows]);
+  sh["!cols"]=hdr.map(h=>({wch:Math.max(8,Math.min(30,String(h).length*2+2))}));
+  const e=a.ev;
+  const sum=XLSX.utils.aoa_to_sheet([["항목","내용"],["행사",e?`${e.channel||""} ${e.title||""}`.trim():""],["행사기간",e?range(e.start,e.end):""],["실제 출고",e?range(ship(e).s,ship(e).e):""],["품목",a.item],["작업 건수",a.n],["세트당 수량",a.per],["필요 수량",a.need],["할당 수량",a.need-a.short],["부족",a.short],["원본 파일",P.fileName],["작성",new Date().toLocaleString("ko-KR")]]);
+  sum["!cols"]=[{wch:12},{wch:44}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,sh,"선작업 할당");XLSX.utils.book_append_sheet(wb,sum,"요약");
+  const buf=XLSX.write(wb,{type:"array",bookType:"xlsx"});
+  const d=new Date(),stamp=String(d.getFullYear()).slice(2)+pad(d.getMonth()+1)+pad(d.getDate());
+  const nm=String(a.item).replace(/\[[^\]]*\]/g,"").replace(/[*\\/:?"<>|]/g,"").trim().slice(0,30);
+  const fname=`선작업_${nm}_${a.n}건_${stamp}.xlsx`;
+  if(!dl){try{XLSX.writeFile(wb,fname);toast("엑셀 파일을 저장했습니다")}catch(e){toast("이 화면에서는 파일 저장을 쓸 수 없습니다. 「문구 복사」를 이용하세요")}return}
+  try{await dl.save({filename:fname,data:buf});toast("엑셀 파일을 저장했습니다")}
+  catch(err){const c=err&&err.code;toast(c==="declined"?"저장을 취소했습니다":c==="rate_limited"?"잠시 후 다시 눌러 주세요":"파일을 저장하지 못했습니다")}
+}
+document.addEventListener("change",ev=>{
+  const t=ev.target;
+  if(t.id==="invFile"&&t.files[0]){loadInv(t.files[0]);t.value="";return}
+  if(t.id==="pk-ev"){applyEvent();runPick();return}
+  if(t.id==="pk-item"){renderPickDates();runPick();return}
+  if(t.dataset&&t.dataset.pkd!==undefined){runPick();return}
+});
+document.addEventListener("input",ev=>{if(ev.target.id==="pk-n"||ev.target.id==="pk-per")runPick()});
+document.addEventListener("click",ev=>{const t=ev.target.closest("button");if(!t)return;if(t.id==="pk-copy")copyText(pickText(),"선작업 문구를 복사했습니다");if(t.id==="pk-xlsx")pickXlsx()});
+
+/* ---------- 실시간 공유 저장소 (물류 관리 '실시간 공유'에 연결된 Firebase) ---------- */
+function fbDB(base){
+  const enc=k=>String(k).replace(/[%.#$\[\]\/]/g,c=>"%"+c.charCodeAt(0).toString(16).toUpperCase().padStart(2,"0"));
+  const dec=k=>{try{return decodeURIComponent(k)}catch(e){return k}};
+  const sp=p=>String(p||"").split("/").filter(Boolean);
+  let mem={},ready=false;const subs=[];
+  const fire=()=>subs.forEach(f=>{try{f()}catch(e){}});
+  const setAt=(parts,v)=>{if(!parts.length){mem=v&&typeof v==="object"?v:{};return}let o=mem;for(let i=0;i<parts.length-1;i++){if(!o[parts[i]]||typeof o[parts[i]]!=="object")o[parts[i]]={};o=o[parts[i]]}const l=parts[parts.length-1];if(v==null)delete o[l];else o[l]=v};
+  const es=new EventSource(base+"/mw/board.json");
+  const mirrorLocal=()=>{try{const o={};Object.keys(mem).forEach(c=>{o[c]={};Object.keys(mem[c]||{}).forEach(k=>{const v=mem[c][k];if(v&&v.j)try{o[c][dec(k)]=JSON.parse(v.j)}catch(e){}})});localStorage.setItem("eventBoard.v1",JSON.stringify(o))}catch(e){}};
+  let joined=false;
+  subs.push(()=>{if(ready&&joined)mirrorLocal()});
+  const first=new Promise(res=>{
+    es.addEventListener("put",e=>{let m;try{m=JSON.parse(e.data)}catch(_){return}if(!m)return;setAt(sp(m.path),m.data);if(!ready){ready=true;res()}fire()});
+  });
+  es.addEventListener("patch",e=>{let m;try{m=JSON.parse(e.data)}catch(_){return}if(!m)return;const b=sp(m.path);Object.keys(m.data||{}).forEach(k=>setAt(b.concat(sp(k)),m.data[k]));fire()});
+  const val=(c,id)=>{const o=(mem[c]||{})[enc(id)];if(!o||!o.j)return undefined;try{return JSON.parse(o.j)}catch(e){return undefined}};
+  const write=async(c,id,v)=>{
+    const p=c+"/"+enc(id),body=v==null?null:{j:JSON.stringify(v)};
+    setAt(sp(p),body);fire();
+    const r=await fetch(base+"/mw/board/"+p+".json",v==null?{method:"DELETE"}:{method:"PUT",body:JSON.stringify(body)});
+    if(!r.ok)throw{code:"unavailable",message:"HTTP "+r.status};
+  };
+  const snap=(id,v)=>({id,exists:!!v,data:()=>v?JSON.parse(JSON.stringify(v)):undefined});
+  const docRef=(c,id)=>({id,
+    set:d=>write(c,id,JSON.parse(JSON.stringify(d))),
+    update:async d=>{await first;const cur=val(c,id);if(!cur)throw{code:"invalid_argument"};return write(c,id,Object.assign(cur,JSON.parse(JSON.stringify(d))))},
+    delete:()=>write(c,id,null),
+    get:async()=>{await first;return snap(id,val(c,id))},
+    onSnapshot:next=>{const f=()=>{if(ready)next(snap(id,val(c,id)))};subs.push(f);f();return()=>{}}});
+  const colRef=c=>({
+    doc:id=>docRef(c,id||("l"+Date.now().toString(36)+Math.random().toString(36).slice(2,7))),
+    onSnapshot:next=>{const f=()=>{if(!ready)return;const docs=Object.keys(mem[c]||{}).map(k=>{const id=dec(k);return snap(id,val(c,id))}).filter(d=>d.exists);next({docs,size:docs.length,empty:!docs.length})};subs.push(f);f();return()=>{}}});
+  return{collection:colRef,doc:path=>{const[c,id]=path.split("/");return docRef(c,id)},ready:first,joined:()=>{joined=true;mirrorLocal()}};
+}
+async function boardJoin(db,url,mem){
+  const k="mw_sync_joined_board3:"+url;if(localStorage.getItem(k))return;
+  mem=mem||{};
+  for(const c of Object.keys(mem))for(const id of Object.keys(mem[c]||{})){
+    try{const r=await db.collection(c).doc(id).get();if(!r.exists)await db.collection(c).doc(id).set(mem[c][id])}catch(e){}
+  }
+  localStorage.setItem(k,"1");
+}
+
+/* ---------- 로컬 저장소 (claude.ai 밖에서 열었을 때) ---------- */
+function localDB(){
+  const KEY="eventBoard.v1";let mem={};
+  try{mem=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(e){mem={}}
+  const subs=[];
+  const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(mem))}catch(e){}subs.forEach(f=>f())};
+  const col=c=>mem[c]||(mem[c]={});
+  const snap=(id,v)=>({id,exists:!!v,data:()=>v?JSON.parse(JSON.stringify(v)):undefined});
+  const docRef=(c,id)=>({id,
+    set:async d=>{col(c)[id]=JSON.parse(JSON.stringify(d));persist()},
+    update:async d=>{if(!col(c)[id])throw{code:"invalid_argument"};Object.assign(col(c)[id],JSON.parse(JSON.stringify(d)));persist()},
+    delete:async()=>{delete col(c)[id];persist()},
+    get:async()=>snap(id,col(c)[id]),
+    onSnapshot:next=>{const f=()=>next(snap(id,col(c)[id]));subs.push(f);setTimeout(f,0);return()=>{}}});
+  const colRef=c=>({
+    doc:id=>docRef(c,id||("l"+Date.now().toString(36)+Math.random().toString(36).slice(2,7))),
+    onSnapshot:next=>{const f=()=>{const docs=Object.entries(col(c)).map(([id,v])=>snap(id,v));next({docs,size:docs.length,empty:!docs.length})};subs.push(f);setTimeout(f,0);return()=>{}}});
+  window.addEventListener("storage",e=>{if(e.key===KEY){try{mem=JSON.parse(e.newValue||"{}")||{}}catch(_){}subs.forEach(f=>f())}});
+  return{collection:colRef,doc:path=>{const[c,id]=path.split("/");return docRef(c,id)}};
+}
+
+/* ---------- 메시지 직접 해석 (자동 정리를 쓸 수 없을 때) ---------- */
+function nearYear(m,d){const t=new Date();let best=null;for(const y of[t.getFullYear()-1,t.getFullYear(),t.getFullYear()+1]){const x=new Date(y,m-1,d);if(!best||Math.abs(x-t)<Math.abs(best-t))best=x}return ymd(best)}
+function parseDates(str){
+  const s=String(str||"");let m;
+  if(m=s.match(/(\d{1,2})\s*\/\s*(\d{1,2})[^\d~\-]*[~\-]\s*(?:(\d{1,2})\s*\/\s*)?(\d{1,2})/)){const a=nearYear(+m[1],+m[2]);const em=m[3]?+m[3]:+m[1];let b=nearYear(em,+m[4]);if(b<a)b=addD(b,0);return[a,b]}
+  if(m=s.match(/(\d{1,2})\s*일\s*[~\-]\s*(\d{1,2})\s*일/)){const mo=new Date().getMonth()+1;return[nearYear(mo,+m[1]),nearYear(mo,+m[2])]}
+  if(m=s.match(/(\d{1,2})\s*\/\s*(\d{1,2})/)){const a=nearYear(+m[1],+m[2]);return[a,a]}
+  return["",""];
+}
+const BOX_RE=/\s+(\d+\s*T|\d+\s*K|굴|바지락|글)\s*$/i;
+function parseLocal(raw){
+  const lines=String(raw||"").split(/\r?\n/).map(l=>l.trim());
+  const ev={shipper:"",shipType:"",channel:"",title:"",start:"",end:"",expected:"",items:[],inbound:[],notes:""};
+  const first=lines.find(Boolean)||"";
+  const cm=first.match(/^(.+?)\s*행사\s*공유/);if(cm)ev.channel=cm[1].trim();
+  if(!ev.channel){const k=["카카오 선물하기","카카오","지마켓","G마켓","쿠팡","11번가","네이버","옥션","SSG","홈쇼핑","도착보장"].find(k=>String(raw).includes(k));if(k)ev.channel=k}
+  const lab=/^(메인\s*상품|상품|품목|제품|일자|기간|일정|예상\s*건수|입고일|수량)\s*(?:[:：]\s*(.*)|$)/;
+  const notes=[];let mode="",inPrep=false,pendIn="";
+  for(const l of lines){
+    if(!l){mode="";continue}
+    if(l===first&&cm)continue;
+    if(/입고분\s*$/.test(l)){inPrep=true;mode="";continue}
+    const m=l.match(lab);
+    if(m){const k=m[1].replace(/\s/g,""),v=(m[2]||"").trim();
+      if(inPrep&&/상품|품목|제품/.test(k)){pendIn=v;mode="";continue}
+      if(/일자|기간|일정/.test(k)){const[a,b]=parseDates(v);if(a){ev.start=a;ev.end=b}mode=""}
+      else if(/예상건수/.test(k)){ev.expected=v;mode=""}
+      else if(/상품|품목|제품/.test(k)){mode="items";if(v)v.split(/\s*,\s*/).filter(Boolean).forEach(x=>pushItem(x))}
+      else if(/입고일/.test(k)){const[a]=parseDates(v);ev.inbound.push({date:a,text:[pendIn,v].filter(Boolean).join(" ")});pendIn="";mode="in"}
+      else if(/수량/.test(k)&&ev.inbound.length){ev.inbound[ev.inbound.length-1].text+=" · "+v}
+      continue}
+    const em=l.match(/예상\s*건수\s*[:：]?\s*([\d,~\s]+건?(?:\s*이상)?)/);
+    if(em){ev.expected=em[1].trim();const[a,b]=parseDates(l.replace(em[0],""));if(a&&!ev.start){ev.start=a;ev.end=b}continue}
+    if(mode==="items"&&/\d/.test(l)&&/(g|kg|개|팩|입|ml)/i.test(l)){pushItem(l);continue}
+    if(!ev.start&&/\d{1,2}\s*(\/\s*\d{1,2}|일)\s*[~\-]/.test(l)){const[a,b]=parseDates(l);if(a){ev.start=a;ev.end=b;continue}}
+    if(/(g|kg)\s*[x*×]\s*\d/i.test(l)&&l.length<60){pushItem(l);continue}
+    notes.push(l);
+  }
+  function pushItem(x){x=x.trim();if(!x)return;const bm=x.match(BOX_RE);let box="";if(bm){box=bm[1].replace(/\s/g,"");x=x.slice(0,bm.index).trim()}x=x.replace(/^프라임\s+/,"");ev.items.push({name:x,box})}
+  if(!ev.expected){const em=String(raw).match(/([\d,]+\s*(?:~\s*[\d,]+)?\s*건)/);if(em)ev.expected=em[1]}
+  ev.notes=notes.filter(n=>n.length>3).join("\n");
+  ev.title=ev.items.length?shortTitle(ev.items):"";
+  return ev;
+}
+function mergeLocal(prev,ev){
+  const o={...prev};delete o.id;delete o.raw;delete o.updatedAt;
+  for(const k of["shipper","shipType","channel","start","end","expected"])if(ev[k])o[k]=ev[k];
+  const items=(prev.items||[]).map(i=>({...i}));
+  for(const it of ev.items||[]){const n=norm(it.name);const hit=items.find(x=>{const m=norm(x.name);return m===n||m.includes(n)||n.includes(m)});if(hit){if(it.box)hit.box=it.box}else items.push({...it})}
+  o.items=items;
+  const inb=[...(prev.inbound||[])];for(const x of ev.inbound||[])if(!inb.some(y=>flat(y.text)===flat(x.text)))inb.push(x);o.inbound=inb;
+  const pn=prev.notes||"";o.notes=ev.notes&&!flat(pn).includes(flat(ev.notes))?[pn,ev.notes].filter(Boolean).join("\n"):pn;
+  if(!o.title)o.title=ev.title;return o;
+}
+function shortTitle(items){const n=String(items[0].name).replace(/\[[^\]]*\]/g,"").trim();return items.length>1?n+" 외 "+(items.length-1)+"종":n}
+
+/* ---------- capabilities ---------- */
+(async()=>{
+  let db=null;
+  const syncUrl=(localStorage.getItem("mw_sync_url")||"").trim().replace(/\/+$/,"");
+  if(syncUrl&&window.EventSource){try{let localMem={};try{localMem=JSON.parse(localStorage.getItem("eventBoard.v1")||"{}")||{}}catch(e){}const f=fbDB(syncUrl);const ok=await Promise.race([f.ready.then(()=>true),new Promise(r=>setTimeout(()=>r(false),8000))]);if(ok){db=f;await boardJoin(db,syncUrl,localMem);f.joined()}}catch(e){db=null}}
+  if(!db)db=await window.claude?.use?.("db");
+  if(!db){db=localDB();$("#offline").hidden=false}
+  S.db=db;
+  db.collection("events").onSnapshot(s=>{S.events=s.docs.map(d=>({id:d.id,...d.data()}));renderAll()},()=>{$("#offline").hidden=false});
+  db.collection("products").onSnapshot(s=>{S.products=s.docs.map(d=>({id:d.id,...d.data()}));renderAll()},()=>{});
+  db.doc("settings/calendar").onSnapshot(d=>{if(d.exists){const v=d.data();if(Array.isArray(v.holidays))S.holidays=v.holidays;if(Array.isArray(v.noRoll))S.noRoll=v.noRoll;renderAll()}},()=>{});
+  db.doc("settings/channel").onSnapshot(d=>{if(d.exists){const o=d.data().offsets;S.offsets=o&&typeof o==="object"?o:{};renderAll()}},()=>{});
+})();
+(async()=>{
+  const sm=await window.claude?.use?.("sample");
+  S.sample=sm||null;if(!sm)$(".intake label.hint").hidden=true;
+  if(sm){try{const l=await sm.limits();if(!l.images)$(".intake label.hint").hidden=true}catch(e){}}
+})();
+})();
+</script>

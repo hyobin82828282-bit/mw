@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:#f4f3ef;color:#16181a;font:14px/1.55 Pretendard,"Noto Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#1f6f5c}a:hover{color:#16503f}
+input:focus-visible,button:focus-visible,label:focus-visible{outline:2px solid #1f6f5c;outline-offset:2px}
+</style>
+</helmet>
+<div style="min-height:100vh;background:#f4f3ef">
+  <div style="border-bottom:1px solid #e3e1dc;background:#fff;padding:16px 28px">
+    <div style="display:flex;flex-direction:column;gap:3px">
+      <div style="color:#6e7379;font-size:12px">물류비 마감 · 도구</div>
+      <div style="font-size:20px;font-weight:700;letter-spacing:-.3px">반품사진 송장명 저장</div>
+    </div>
+  </div>
+  <div style="padding:24px 28px 40px">
+    <div style="max-width:1120px;display:flex;flex-direction:column;gap:16px">
+      <p style="margin:0;color:#4a4e54;font-size:13px;max-width:70ch">반품 박스 사진을 넣으면 CJ 반품송장의 <b>원운송장번호</b>를 읽어 파일 이름을 그 번호로 바꿔 저장합니다. 같은 번호 사진이 여러 장이면 (1), (2)… 순번이 붙습니다.</p>
+
+      <label tabindex="0" onKeyDown="{{ onDropKey }}" onDragEnter="{{ onDragOver }}" onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" style="{{ dropStyle }}" style-hover="border-color:#1f6f5c;background:#f8f7f4">
+        <strong style="font-size:15px">사진을 여기로 끌어오거나 눌러서 선택</strong>
+        <small style="color:#6e7379;font-size:12px">JPG · PNG · WebP · 여러 장 한 번에 가능</small>
+        <input type="file" ref="{{ pickerRef }}" onChange="{{ onPick }}" accept="image/jpeg,image/png,image/webp" multiple="multiple" style="display:none">
+      </label>
+
+      <sc-if value="{{ hasNotice }}">
+        <div style="padding:10px 16px;border-radius:12px;background:#fff3d6;color:#7a5a12;font-size:13px">{{ notice }}</div>
+      </sc-if>
+
+      <div style="border:1px solid #e3e1dc;background:#fff;border-radius:12px;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;color:#6e7379;font-size:13px">
+          <span>사진 <b style="color:#16181a;font-variant-numeric:tabular-nums">{{ cTotal }}</b></span>
+          <span>인식 <b style="color:#16181a;font-variant-numeric:tabular-nums">{{ cOk }}</b></span>
+          <span>확인 필요 <b style="color:#16181a;font-variant-numeric:tabular-nums">{{ cWarn }}</b></span>
+          <span>통합내역 없음 <b style="color:#b42318;font-variant-numeric:tabular-nums">{{ cMiss }}</b></span>
+          <span style="font-size:12px;color:#1f6f5c">{{ dbLabel }}</span>
+          <span style="display:flex;gap:6px;align-items:center">
+            <label for="prefix">앞에 붙일 말</label>
+            <input id="prefix" value="{{ prefix }}" onChange="{{ onPrefix }}" placeholder="예: 목우촌_" style="font:inherit;font-size:12px;padding:6px 8px;border:1px solid #d6d3cc;border-radius:6px;width:130px">
+          </span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="button" onClick="{{ clearAll }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #d6d3cc;background:#fff;color:#16181a;border-radius:8px;padding:8px 14px;cursor:pointer" style-hover="background:#f4f3ef">비우기</button>
+          <button type="button" onClick="{{ saveZip }}" disabled="{{ zipDisabled }}" style="font:inherit;font-size:13px;font-weight:700;border:1px solid #1f6f5c;background:#1f6f5c;color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ zipOpacity }}" style-hover="background:#16503f">{{ zipLabel }}</button>
+        </div>
+      </div>
+
+      <div style="border:1px solid #e3e1dc;background:#fff;border-radius:12px;overflow:hidden">
+        <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 16px;background:#f8f7f4">
+            <div style="width:72px;height:72px;border-radius:8px;background:#e3e1dc"></div>
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+              <div style="font-size:12px;color:#6e7379">예시 · IMG_4821.jpg</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input value="302042092242" disabled="disabled" aria-label="예시 번호" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;font-weight:700;padding:5px 9px;border:1px solid #d6d3cc;border-radius:6px;background:#f8f7f4;color:#16181a;width:170px;max-width:100%">
+                <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#e6f0ec;color:#1f6f5c">인식됨</span>
+              </div>
+              <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#4a4e54">→ 302042092242.jpg</div>
+            </div>
+            <span style="font-size:12px;color:#6e7379">예시</span>
+          </div>
+        </sc-if>
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="0">
+          <div style="display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 16px;border-top:{{ r.border }}">
+            <img src="{{ r.url }}" alt="" style="width:72px;height:72px;border-radius:8px;object-fit:cover;background:#e3e1dc;display:block">
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
+              <div style="font-size:12px;color:#6e7379;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input inputmode="numeric" aria-label="원운송장번호" value="{{ r.num }}" onChange="{{ r.onNum }}" disabled="{{ r.busy }}" placeholder="{{ r.ph }}" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;font-weight:700;padding:5px 9px;border:1px solid #d6d3cc;border-radius:6px;background:#fff;color:#16181a;width:170px;max-width:100%">
+                <span title="{{ r.note }}" style="{{ r.chipStyle }}">{{ r.chip }}</span>
+              </div>
+<sc-if value="{{ r.hasInfo }}"><div title="{{ r.info }}" style="{{ r.infoStyle }}">{{ r.info }}</div></sc-if>
+              <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#4a4e54;word-break:break-all">{{ r.fname }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+              <button type="button" onClick="{{ r.save }}" disabled="{{ r.saveDisabled }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #d6d3cc;background:#fff;color:#16181a;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ r.saveOpacity }}" style-hover="background:#f4f3ef">저장</button>
+              <button type="button" onClick="{{ r.del }}" style="background:none;border:0;color:#6e7379;font:inherit;font-size:12px;cursor:pointer;padding:2px" style-hover="color:#b42318">삭제</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <p style="font-size:12px;color:#6e7379;margin:0">번호가 틀리면 칸에서 바로 고치면 됩니다. 저장 시 저장 확인창이 한 번 뜹니다.</p>
+    </div>
+  </div>
+  <sc-if value="{{ hasToast }}">
+    <div style="position:fixed;bottom:24px;right:24px;background:#16181a;color:#fff;border-radius:10px;padding:12px 16px;font-size:13px;max-width:360px;box-shadow:0 8px 24px #0000002e">{{ toast }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PROMPT = `이 사진은 한국 택배(CJ대한통운 등) 반품 상자 사진입니다. 상자에 운송장 라벨이 1장 이상 붙어 있습니다.
+반품 라벨에는 "운송장번호"(반품 송장)와 별도로 "원운송장번호"(원래 출고 송장) 칸이 있습니다. 보통 라벨 오른쪽 아래, 바코드 바로 위에 "원운송장번호 3020-XXXX-XXXX" 형태로 인쇄되어 있습니다.
+할 일: "원운송장번호" 칸의 숫자를 정확히 읽으세요. "운송장번호"(반품 송장), 주문번호, 전화번호와 혼동하지 마세요.
+원운송장번호 칸이 없거나 안 보이면 original은 빈 문자열로 두고, 라벨에 보이는 운송장번호를 waybill에 넣으세요.
+숫자만(하이픈 없이) 적으세요. 확실하지 않은 자리가 있으면 confident를 false로.
+JSON만 출력: {"original":"숫자","waybill":"숫자","confident":true,"note":"짧은 메모(한국어)"}`;
+const digits = s => String(s || '').replace(/\D/g, '');
+const valid = n => /^\d{10,13}$/.test(n);
+const ext = name => { const m = /\.[^.]+$/.exec(name); return m ? m[0] : '.jpg'; };
+const CHIP = { busy: ['#f8f7f4', '#6e7379', '읽는 중…'], ok: ['#e6f0ec', '#1f6f5c', '인식됨'], warn: ['#fff3d6', '#7a5a12', '확인 필요'], bad: ['#fdecea', '#b42318', '실패'] };
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+async function buildZip(entries) {
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  const d = new Date(), dt = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), dd = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  for (const e of entries) {
+    const data = new Uint8Array(await e.file.arrayBuffer()), name = enc.encode(e.name), crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, dt, true); h.setUint16(12, dd, true); h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true);
+    h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    parts.push(h.buffer, name, data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, dt, true); c.setUint16(14, dd, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true);
+    c.setUint16(28, name.length, true); c.setUint32(42, off, true);
+    central.push(c.buffer, name);
+    off += 30 + name.length + data.length;
+  }
+  const csize = central.reduce((s, p) => s + p.byteLength, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true);
+  end.setUint32(12, csize, true); end.setUint32(16, off, true);
+  return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
+}
+const plainDownloads = { save: ({ filename, data }) => new Promise(res => {
+  const blob = data instanceof Blob ? data : new Blob([data]);
+  const u = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = u; a.download = filename; a.hidden = true; document.body.appendChild(a); a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(u); }, 60000); res({ status: 'saved' });
+}) };
+
+class Component extends DCLogic {
+  state = { items: [], prefix: '', notice: '', toast: '', over: false, zipping: false, ready: false };
+  pickerRef = React.createRef();
+  sample = null; downloads = null; canImages = false; uid = 0; queue = []; running = 0;
+
+  loadDb() {
+    const runtime = this._runtime || {};
+    const claim = Object.assign({}, this._claimBaked || {}, runtime), db = {};
+    Object.keys(claim).forEach(k => {
+      const w = claim[k]; if (!w) return;
+      let x = (w.items || []).filter(i => i.product).map(i => ({ n: i.product, q: +i.qty || 1 }));
+      if (!x.length) x = (w.products || []).map(n => ({ n, q: 1 }));
+      if (!x.length && !w.name) return;
+      db[String(k).replace(/[\s\-]/g, '')] = { u: w.name || '', x };
+    });
+    const raw = this._invBase || {};
+    Object.keys(raw).forEach(k => {
+      String(k).split(/[,，]/).map(w => w.replace(/[\s\-]/g, '')).filter(Boolean).forEach(w => {
+        const b = raw[k], c = db[w];
+        db[w] = { u: b.u || (c && c.u) || '', x: b.x && b.x.length ? b.x : (c ? c.x : []) };
+      });
+    });
+    this.db = db; this.setState({ dbSize: Object.keys(db).length });
+  }
+  async componentDidMount() {
+    import('./invoice-db.js').then(m => { this._invBase = m.INVOICE_DB; this.loadDb(); }).catch(() => {});
+    fetch('pages/claims.html').then(r => r.text()).then(t => {
+      const m = t.match(/const EST = (\{.*\});?\s*$/m);
+      if (m) { try { this._claimBaked = JSON.parse(m[1]).waybillCache || {}; } catch (e) {} }
+      this.loadDb();
+    }).catch(() => {});
+    const loadRt = () => window.WbStore && WbStore.load().then(v => { this._runtime = v; this.loadDb(); }).catch(() => {});
+    import('./wb-store.js').then(() => { loadRt(); this._offWb = WbStore.onChange(loadRt); }).catch(() => {});
+    this._onStorage = e => { if (!e || e.key === 'wb_cache_v1') loadRt(); };
+    window.addEventListener('storage', this._onStorage);
+    this.onPaste = e => { const f = [...(e.clipboardData?.files || [])]; if (f.length) this.addFiles(f); };
+    document.addEventListener('paste', this.onPaste);
+    const c = window.claude;
+    if (c && c.use) {
+      [this.sample, this.downloads] = await Promise.all([c.use('sample').catch(() => null), c.use('downloads').catch(() => null)]);
+      if (this.sample) { const lim = await this.sample.limits().catch(() => null); this.canImages = !!lim?.images; }
+    }
+    if (!this.downloads) this.downloads = plainDownloads;
+    const notice = (!this.sample || !this.canImages) ? '자동 인식을 쓸 수 없는 화면입니다. 사진을 넣고 번호를 직접 입력하면 이름을 바꿔 저장합니다.' : '';
+    this.setState({ ready: true, notice });
+  }
+  componentWillUnmount() {
+    document.removeEventListener('paste', this.onPaste);
+    window.removeEventListener('storage', this._onStorage);
+    if (this._offWb) this._offWb();
+    this.state.items.forEach(i => URL.revokeObjectURL(i.url));
+  }
+
+  patch(id, p) { this.setState(s => ({ items: s.items.map(i => i.id === id ? { ...i, ...p } : i) })); }
+  showToast(msg) { clearTimeout(this._t); this.setState({ toast: msg }); this._t = setTimeout(() => this.setState({ toast: '' }), 2600); }
+
+  names() {
+    const prefix = this.state.prefix.trim(), counts = {}, seen = {}, out = {};
+    const items = this.state.items;
+    items.forEach(it => { if (valid(it.num)) counts[it.num] = (counts[it.num] || 0) + 1; });
+    items.forEach(it => {
+      if (!valid(it.num)) { out[it.id] = null; return; }
+      const base = prefix + it.num;
+      if (counts[it.num] === 1) out[it.id] = base + ext(it.file.name);
+      else { seen[it.num] = (seen[it.num] || 0) + 1; out[it.id] = `${base}(${seen[it.num]})${ext(it.file.name)}`; }
+    });
+    return out;
+  }
+
+  addFiles(files) {
+    const imgs = [...files].filter(f => /^image\//.test(f.type));
+    if (!imgs.length) { this.showToast('이미지 파일만 넣을 수 있어요'); return; }
+    imgs.sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }));
+    const auto = !!(this.sample && this.canImages);
+    const add = imgs.map(f => ({ id: ++this.uid, file: f, url: URL.createObjectURL(f), num: '', status: auto ? 'busy' : 'warn', unsure: false, note: auto ? '' : '자동 인식 사용 불가' }));
+    this.setState(s => ({ items: [...s.items, ...add] }));
+    if (auto) { this.queue.push(...add); this.pump(); }
+  }
+  pump() {
+    while (this.running < 2 && this.queue.length) {
+      const it = this.queue.shift(); this.running++;
+      this.recognize(it).finally(() => { this.running--; this.pump(); });
+    }
+  }
+  async recognize(it) {
+    if (!this.state.items.some(i => i.id === it.id)) return;
+    if (!this.sample || !this.canImages) { this.patch(it.id, { status: 'warn', note: '자동 인식 사용 불가' }); return; }
+    try {
+      const r = await this.sample.json(PROMPT, { images: it.file });
+      const o = digits(r && r.original), w = digits(r && r.waybill);
+      if (valid(o)) this.patch(it.id, { num: o, status: 'ok', unsure: r.confident === false, note: r.confident === false ? '일부 숫자 불확실' : (r.note || '') });
+      else this.patch(it.id, { num: '', status: 'warn', note: '원운송장번호 못 찾음' + (valid(w) ? ` (반품송장 ${w})` : '') });
+    } catch (e) {
+      const note = e && e.code === 'image_rejected' ? '이미지 형식/크기 문제' : e && e.code === 'rate_limited' ? '요청 많음, 잠시 후 번호 직접 입력' : '인식 실패';
+      this.patch(it.id, { status: 'bad', note });
+      if (e && e.code === 'not_granted') { this.sample = null; this.setState({ notice: '자동 인식 권한이 거부되어 번호를 직접 입력해야 합니다.' }); }
+    }
+  }
+
+  async saveOne(it) {
+    const n = this.names()[it.id]; if (!n || !this.downloads) return;
+    try { await this.downloads.save({ filename: n, data: it.file }); this.showToast('저장: ' + n); }
+    catch (e) { if (e.code !== 'declined') this.showToast('저장 안 됨: ' + (e.message || e.code)); }
+  }
+  async saveZip() {
+    const nm = this.names(), items = this.state.items;
+    const entries = items.filter(i => nm[i.id]).map(i => ({ name: nm[i.id], file: i.file }));
+    const skipped = items.length - entries.length;
+    this.setState({ zipping: true });
+    try {
+      const blob = await buildZip(entries);
+      const d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+      await this.downloads.save({ filename: `return_photos_${stamp}.zip`, data: blob });
+      this.showToast(`${entries.length}장 저장` + (skipped ? ` · 번호 없는 ${skipped}장 제외` : ''));
+    } catch (e) { if (e.code !== 'declined') this.showToast('저장 안 됨: ' + (e.message || e.code)); }
+    finally { this.setState({ zipping: false }); }
+  }
+
+  renderVals() {
+    const s = this.state, nm = this.names(), dl = !!this.downloads;
+    const rows = s.items.map((it, i) => {
+      const st = it.status === 'ok' && it.unsure ? 'warn' : it.status;
+      const [bg, fg, label] = CHIP[st];
+      const manual = it.status === 'ok' && it.note === '직접 입력';
+      const hit = valid(it.num) && this.db ? this.db[it.num] : null;
+      const prods = hit ? hit.x.map(p => p.n.replace(/^\[[^\]]*\]\s*/, '') + (p.q > 1 ? ' ×' + p.q : '')).join(', ') : '';
+      const info = !valid(it.num) ? '' : !this.db ? '통합내역 불러오는 중…' : hit ? (hit.u || '수취인 없음') + (prods ? ' · ' + prods : '') : '통합내역에 없는 번호';
+      return {
+        info, hasInfo: !!info, infoStyle: `font-size:12px;${hit ? 'color:#16181a' : 'color:#b42318;font-weight:600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis`,
+        url: it.url, name: it.file.name, num: it.num, note: it.note || '',
+        border: i === 0 ? '0' : '1px solid #efede8',
+        busy: it.status === 'busy', ph: it.status === 'busy' ? '읽는 중…' : '번호 입력',
+        chip: manual ? '직접 입력' : label,
+        chipStyle: `font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;background:${bg};color:${fg}`,
+        fname: nm[it.id] ? '→ ' + nm[it.id] : (it.status === 'busy' ? '' : '→ 번호를 입력하세요' + (it.note && it.note !== '직접 입력' ? ' · ' + it.note : '')),
+        saveDisabled: !nm[it.id] || !dl, saveOpacity: (!nm[it.id] || !dl) ? 0.45 : 1,
+        onNum: e => { const n = digits(e.target.value); this.patch(it.id, { num: n, status: valid(n) ? 'ok' : 'warn', unsure: false, note: '직접 입력' }); },
+        save: () => this.saveOne(it),
+        del: () => { URL.revokeObjectURL(it.url); this.queue = this.queue.filter(q => q.id !== it.id); this.setState(x => ({ items: x.items.filter(y => y.id !== it.id) })); },
+      };
+    });
+    const zipDisabled = s.zipping || !dl || !s.items.some(i => valid(i.num)) || s.items.some(i => i.status === 'busy');
+    return {
+      rows, isEmpty: s.items.length === 0,
+      dbLabel: s.dbSize ? `통합내역 ${s.dbSize.toLocaleString()}건 연결됨` : '통합내역 불러오는 중…',
+      cMiss: this.db ? s.items.filter(i => valid(i.num) && !this.db[i.num]).length : 0,
+      cTotal: s.items.length,
+      cOk: s.items.filter(i => valid(i.num)).length,
+      cWarn: s.items.filter(i => i.status !== 'busy' && (!valid(i.num) || i.unsure)).length,
+      prefix: s.prefix, onPrefix: e => this.setState({ prefix: e.target.value }),
+      hasNotice: !!s.notice, notice: s.notice,
+      hasToast: !!s.toast, toast: s.toast,
+      zipDisabled, zipOpacity: zipDisabled ? 0.45 : 1, zipLabel: s.zipping ? '묶는 중…' : '전체 ZIP 저장',
+      saveZip: () => this.saveZip(),
+      clearAll: () => { s.items.forEach(i => URL.revokeObjectURL(i.url)); this.queue = []; this.setState({ items: [] }); },
+      pickerRef: this.pickerRef,
+      onPick: e => { this.addFiles(e.target.files); e.target.value = ''; },
+      onDropKey: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.pickerRef.current?.click(); } },
+      onDragOver: e => { e.preventDefault(); if (!s.over) this.setState({ over: true }); },
+      onDragLeave: e => { e.preventDefault(); this.setState({ over: false }); },
+      onDrop: e => { e.preventDefault(); this.setState({ over: false }); this.addFiles(e.dataTransfer.files); },
+      dropStyle: `border:1.5px dashed ${s.over ? '#1f6f5c' : '#d6d3cc'};border-radius:12px;background:${s.over ? '#f8f7f4' : '#fff'};padding:28px 18px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;cursor:pointer`,
+    };
+  }
+}
+</script>
+</body>
+</html>
