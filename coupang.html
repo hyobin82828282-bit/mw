@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>쿠팡 출고 유통기한 검수</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  body{margin:0;background:#F4F3EF;color:#16181A;font-family:Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:#1F6F5C}a:hover{color:#16503F}
+  input,select,button,textarea{font-family:inherit}
+  .hd{padding:26px 32px 18px;background:#fff;border-bottom:1px solid #E3E1DC}
+  .eyebrow{font-size:12px;color:#8A8F96;font-weight:600}
+  h1{margin:6px 0 0;font-size:22px;letter-spacing:-0.4px}
+  .desc{margin-top:8px;font-size:13px;color:#585D64;line-height:1.6;max-width:760px}
+  .wrap{padding:24px 32px 48px;display:flex;flex-direction:column;gap:20px;max-width:1280px}
+  .card{background:#fff;border:1px solid #E3E1DC;border-radius:12px;overflow:hidden}
+  .ch{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:15px 20px;border-bottom:1px solid #F0EEE9}
+  .ch h2{margin:0;font-size:14.5px;font-weight:700;letter-spacing:-0.2px}
+  .ch .sub{font-size:12px;color:#8A8F96}
+  .ups{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;padding:18px 20px}
+  .drop{border:1.5px dashed #D0CCC4;border-radius:10px;background:#FAF9F6;padding:18px;display:flex;flex-direction:column;gap:8px;cursor:pointer;min-height:150px;box-sizing:border-box}
+  .drop.over{border-color:#1F6F5C;background:#EEF5F2}
+  .drop .n{font-size:11.5px;font-weight:700;color:#1F6F5C}
+  .drop h3{margin:0;font-size:14px}
+  .drop p{margin:0;font-size:12px;color:#6E7379;line-height:1.55}
+  .drop .st{font-size:12px;font-weight:600;color:#3D4248}
+  textarea{width:100%;box-sizing:border-box;min-height:70px;border:1px solid #D9D6D0;border-radius:8px;padding:9px 11px;font-size:12.5px;resize:vertical;background:#fff}
+  .btn{height:36px;padding:0 14px;border:1px solid #D9D6D0;border-radius:8px;background:#FAF9F6;font-size:12.5px;font-weight:600;color:#3D4248;cursor:pointer}
+  .btn:hover{border-color:#B9B5AD}
+  .btn.pri{background:#1F6F5C;border-color:#1F6F5C;color:#fff}
+  .btn.pri:hover{background:#16503F}
+  .btn:disabled{opacity:.45;cursor:default}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-weight:600;color:#6E7379;background:#FAF9F6;padding:9px 12px;border-bottom:1px solid #E3E1DC;white-space:nowrap}
+  td{padding:8px 12px;border-bottom:1px solid #F3F1EC;vertical-align:middle}
+  td input,td select{height:30px;border:1px solid #D9D6D0;border-radius:6px;padding:0 8px;font-size:12.5px;background:#fff;max-width:100%;box-sizing:border-box}
+  .tw{overflow-x:auto}
+  .empty{padding:30px 20px;text-align:center;font-size:12.5px;color:#9A9EA5}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap}
+  .ok{background:#E8F1ED;color:#16503F}.bad{background:#FBEAE8;color:#8C1D18}.warn{background:#FFF6E0;color:#8A5A00}
+  .msg{padding:11px 14px;border-radius:9px;font-size:12.5px;line-height:1.5}
+  .msg.ok{border:1px solid #BEDACF}.msg.bad{border:1px solid #EFC5C0}.msg.warn{border:1px solid #F0DFB0}
+  details summary{cursor:pointer;padding:15px 20px;font-size:14px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="hd">
+  <div class="eyebrow">아워박스 오산센터 · 쿠팡 쉽먼트</div>
+  <h1>출고 유통기한 검수</h1>
+</div>
+<div class="wrap">
+  <div class="card">
+    <div class="ch"><h2>파일 올리기</h2><span class="sub" id="status">파일을 올려 주세요</span></div>
+    <div class="ups">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <label class="drop" id="dropM">
+          <span class="n">1 · 동봉문서</span>
+          <h3>쿠팡 동봉문서 압축파일</h3>
+          <p>shipment_ManiFest_document…pdf 가 들어 있는 .zip (PDF 여러 개를 직접 올려도 됩니다)</p>
+          <span class="st" id="stM"></span>
+          <input type="file" id="fileM" accept=".zip,.pdf,application/pdf,application/zip" multiple style="display:none">
+        </label>
+        <label class="drop" id="dropL">
+          <span class="n">1-2 · 쉽먼트 라벨</span>
+          <h3>쉽먼트 라벨 압축파일</h3>
+          <p>라벨 PDF가 들어 있는 .zip (PDF 여러 개를 직접 올려도 됩니다). 검수와 상관없이 PDF 1개로 합쳐 드립니다.</p>
+          <span class="st" id="stL"></span>
+          <input type="file" id="fileL" accept=".zip,.pdf,application/pdf,application/zip" multiple style="display:none">
+        </label>
+        <div style="display:flex;justify-content:flex-end">
+          <button class="btn pri" id="btnLabel" disabled>라벨 PDF 1개로 합치기</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label class="drop" id="dropP">
+          <span class="n">2 · 피킹리스트</span>
+          <h3>피킹리스트</h3>
+          <p>WMS 화면 캡처(이미지)나 엑셀. 캡처 후 이 페이지에서 Ctrl+V 해도 됩니다.</p>
+          <span class="st" id="stP"></span>
+          <input type="file" id="fileP" accept="image/*,.xlsx,.xls,.csv" style="display:none">
+        </label>
+        <textarea id="pasteP" style="min-height:70px" placeholder="WMS 표를 복사해서 붙여넣으세요"></textarea>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn" id="btnClear">전체 초기화</button>
+          <button class="btn" id="btnPaste">붙여넣은 표 읽기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="verdict"></div>
+
+  <div class="card">
+    <div class="ch"><h2>확인 필요</h2><span class="sub" id="issueCnt"></span></div>
+    <div class="tw"><table><thead><tr><th>구분</th><th>품목</th><th>피킹 유통기한</th><th>동봉문서 유통기한</th><th>쉽먼트 · 센터</th><th>할 일</th></tr></thead><tbody id="tIssue"></tbody></table></div>
+    <div class="empty" id="eIssue">비교할 데이터가 없습니다</div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><h2>피킹리스트 대조표</h2><span class="sub">유통기한·매칭이 틀리면 여기서 바로 고치세요</span></div>
+    <div class="tw"><table><thead><tr><th>피킹 상품명</th><th>업체품목코드</th><th>수량</th><th>피킹 유통기한</th><th>동봉문서 품목</th><th>동봉문서 유통기한</th><th>결과</th></tr></thead><tbody id="tPick"></tbody></table></div>
+    <div class="empty" id="ePick">피킹리스트를 올려 주세요</div>
+  </div>
+
+  <div class="card">
+    <details id="detM">
+      <summary>동봉문서 박스 목록 <span class="sub" id="mCnt" style="font-weight:500;color:#8A8F96"></span></summary>
+      <div class="tw"><table><thead><tr><th>쉽먼트번호</th><th>센터</th><th>박스</th><th>상품번호</th><th>상품명</th><th>수량</th><th>유통기한</th></tr></thead><tbody id="tMan"></tbody></table></div>
+      <div class="empty" id="eMan">동봉문서를 올려 주세요</div>
+    </details>
+  </div>
+</div>
+
+<script>
+(function(){
+const STORE = "mw_coupang_check_v1";
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const S = { pdfs: [], man: [], picks: [], status: "" };
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+try { const v = JSON.parse(localStorage.getItem(STORE) || "null"); if (v) { S.man = v.man || []; S.picks = v.picks || []; S.status = v.status || ""; } } catch(e) {}
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify({ man: S.man, picks: S.picks, status: S.status })); } catch(e) {} };
+
+function claude() {
+  const c = window.claude || (window.parent && window.parent !== window && (() => { try { return window.parent.claude; } catch(e) { return null; } })());
+  if (!c) throw new Error("AI 읽기 기능을 사용할 수 없습니다. 엑셀이나 표 붙여넣기를 이용해 주세요.");
+  return c;
+}
+async function ask(body, tries) {
+  tries = tries || 3;
+  for (let i = 0; i < tries; i++) {
+    try { return await claude().complete(body); }
+    catch (e) { if (i === tries - 1) throw e; await new Promise(r => setTimeout(r, 4000 * (i + 1))); }
+  }
+}
+function jsonArr(t) {
+  const a = t.indexOf("["), b = t.lastIndexOf("]");
+  if (a < 0 || b < a) return [];
+  try { const v = JSON.parse(t.slice(a, b + 1)); return Array.isArray(v) ? v : []; } catch(e) { return []; }
+}
+function normDate(v) {
+  if (v == null || v === "") return "";
+  if (typeof v === "number" && v > 30000 && v < 80000) { const d = new Date(Math.round((v - 25569) * 864e5)); return d.toISOString().slice(0, 10); }
+  const s = String(v).trim();
+  let m = s.match(/(20\d{2})\D{0,3}(\d{1,2})\D{0,3}(\d{1,2})/);
+  if (m) return m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0");
+  m = s.match(/^(\d{2})[.\-\/](\d{1,2})[.\-\/](\d{1,2})$/);
+  if (m) return "20" + m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0");
+  m = s.match(/^(\d{2})(\d{2})(\d{2})$/);
+  if (m) return "20" + m[1] + "-" + m[2] + "-" + m[3];
+  return s;
+}
+const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s || "");
+const normName = s => String(s || "").toLowerCase().replace(/\[[^\]]*\]|\([^)]*\)/g, " ").replace(/[^0-9a-z가-힣]/g, "");
+function dice(a, b) {
+  a = normName(a); b = normName(b);
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const bg = s => { const o = {}; for (let i = 0; i < s.length - 1; i++) { const k = s.substr(i, 2); o[k] = (o[k] || 0) + 1; } return o; };
+  const A = bg(a), B = bg(b); let inter = 0, na = 0, nb = 0;
+  for (const k in A) { na += A[k]; if (B[k]) inter += Math.min(A[k], B[k]); }
+  for (const k in B) nb += B[k];
+  return na + nb ? 2 * inter / (na + nb) : 0;
+}
+const setStatus = t => { S.status = t; $("status").textContent = t || "파일을 올려 주세요"; };
+
+/* ---------- 동봉문서 ---------- */
+async function collectPdfs(files) {
+  const pdfs = [];
+  for (const f of files) {
+    if (/\.zip$/i.test(f.name) || f.type.includes("zip")) {
+      const zip = await JSZip.loadAsync(f);
+      const ents = Object.values(zip.files).filter(z => !z.dir && /\.pdf$/i.test(z.name) && !/__MACOSX/.test(z.name));
+      for (const z of ents) pdfs.push({ name: z.name.split("/").pop(), bytes: await z.async("uint8array") });
+    } else if (/\.pdf$/i.test(f.name) || f.type === "application/pdf") {
+      pdfs.push({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) });
+    }
+  }
+  if (!pdfs.length) throw new Error("PDF 파일을 찾지 못했습니다.");
+  return pdfs.sort((a, b) => a.name.localeCompare(b.name, "ko", { numeric: true }));
+}
+async function mergePdfs(pdfs, prefix) {
+  const out = await PDFLib.PDFDocument.create();
+  for (const p of pdfs) {
+    const src = await PDFLib.PDFDocument.load(p.bytes, { ignoreEncryption: true });
+    (await out.copyPages(src, src.getPageIndices())).forEach(pg => out.addPage(pg));
+  }
+  const blob = new Blob([await out.save()], { type: "application/pdf" });
+  const d = new Date(); const tag = (d.getMonth() + 1) + "월" + d.getDate() + "일";
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = prefix + "_" + tag + "_" + pdfs.length + "건.pdf";
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+S.labels = [];
+async function loadManifest(files) {
+  const pdfs = [];
+  for (const f of files) {
+    if (/\.zip$/i.test(f.name) || f.type.includes("zip")) {
+      const zip = await JSZip.loadAsync(f);
+      const ents = Object.values(zip.files).filter(z => !z.dir && /\.pdf$/i.test(z.name) && !/__MACOSX/.test(z.name));
+      for (const z of ents) pdfs.push({ name: z.name.split("/").pop(), bytes: await z.async("uint8array") });
+    } else if (/\.pdf$/i.test(f.name) || f.type === "application/pdf") {
+      pdfs.push({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) });
+    }
+  }
+  if (!pdfs.length) throw new Error("PDF 파일을 찾지 못했습니다.");
+  pdfs.sort((a, b) => a.name.localeCompare(b.name, "ko", { numeric: true }));
+  S.pdfs = pdfs;
+  $("stM").textContent = "PDF " + pdfs.length + "개 · 텍스트 읽는 중…";
+  const texts = [];
+  for (const p of pdfs) {
+    const doc = await pdfjsLib.getDocument({ data: p.bytes.slice() }).promise;
+    let t = "";
+    for (let i = 1; i <= doc.numPages; i++) {
+      const pg = await doc.getPage(i);
+      const c = await pg.getTextContent();
+      let lastY = null;
+      for (const it of c.items) { const y = Math.round(it.transform[5]); if (lastY !== null && Math.abs(y - lastY) > 2) t += "\n"; else if (lastY !== null) t += " "; t += it.str; lastY = y; }
+      t += "\n";
+    }
+    texts.push({ name: p.name, text: t.replace(/[ \t]+/g, " ").trim() });
+  }
+  const batches = []; let cur = [], len = 0;
+  for (const t of texts) { const body = "### FILE: " + t.name + "\n" + t.text.slice(0, 9000); if (len + body.length > 10000 && cur.length) { batches.push(cur); cur = []; len = 0; } cur.push(body); len += body.length; }
+  if (cur.length) batches.push(cur);
+  const rows = [];
+  for (let i = 0; i < batches.length; i++) {
+    $("stM").textContent = "PDF " + pdfs.length + "개 · 품목 정리 중 (" + (i + 1) + "/" + batches.length + ")";
+    const out = await ask({
+      max_tokens: 6000,
+      system: "너는 쿠팡 쉽먼트 동봉문서(Manifest) 텍스트를 표로 정리한다. 반드시 JSON 배열만 출력한다.",
+      messages: [{ role: "user", content: "아래는 쿠팡 동봉문서 PDF에서 뽑은 텍스트다. 박스에 담긴 품목을 한 줄씩 JSON 배열로 출력해라.\n형식: [{\"file\":\"파일명\",\"shipment\":\"쉽먼트번호\",\"center\":\"입고센터명\",\"box\":\"박스번호\",\"productNo\":\"상품번호/바코드/SKU ID\",\"name\":\"상품명\",\"qty\":숫자,\"expiry\":\"YYYY-MM-DD\"}]\n값이 없으면 빈 문자열. 유통기한(소비기한/EXP)은 YYYY-MM-DD로 바꿔라. 설명 없이 JSON만.\n\n" + batches[i].join("\n\n") }]
+    });
+    jsonArr(out).forEach(r => rows.push({ file: r.file || "", shipment: String(r.shipment || ""), center: String(r.center || ""), box: String(r.box || ""), productNo: String(r.productNo || ""), name: String(r.name || ""), qty: Number(r.qty) || 0, expiry: normDate(r.expiry) }));
+  }
+  S.man = rows;
+  $("stM").textContent = "PDF " + pdfs.length + "개 · 품목 " + rows.length + "줄";
+  if (!rows.length) throw new Error("동봉문서에서 품목을 읽지 못했습니다. PDF가 맞는지 확인해 주세요.");
+}
+
+/* ---------- 피킹리스트 ---------- */
+const HEAD = {
+  name: /상품명|품명|품목명|상품 명/,
+  code: /업체품목코드|품목코드|상품코드|업체코드|SKU|바코드/i,
+  qty: /수량|피킹수량|출고수량|EA/i,
+  expiry: /유통기한|소비기한|유효기간|EXP/i
+};
+function rowsToPicks(rows) {
+  rows = rows.filter(r => r && r.some(c => String(c == null ? "" : c).trim() !== ""));
+  let hi = rows.findIndex(r => r.some(c => HEAD.name.test(String(c))) && r.some(c => HEAD.expiry.test(String(c))));
+  if (hi < 0) return null;
+  const h = rows[hi].map(c => String(c == null ? "" : c).trim());
+  const col = {};
+  for (const k of ["expiry", "code", "name", "qty"]) col[k] = h.findIndex((c, i) => HEAD[k].test(c) && !Object.values(col).includes(i));
+  const out = [];
+  for (const r of rows.slice(hi + 1)) {
+    const name = col.name >= 0 ? String(r[col.name] == null ? "" : r[col.name]).trim() : "";
+    if (!name) continue;
+    out.push({ name, code: col.code >= 0 ? String(r[col.code] == null ? "" : r[col.code]).trim() : "", qty: col.qty >= 0 ? Number(String(r[col.qty]).replace(/,/g, "")) || 0 : 0, expiry: normDate(col.expiry >= 0 ? r[col.expiry] : "") });
+  }
+  return out;
+}
+async function aiPicksFromText(text) {
+  const out = await ask({ max_tokens: 4000, system: "WMS 피킹리스트를 표로 정리한다. 반드시 JSON 배열만 출력한다.",
+    messages: [{ role: "user", content: "아래 피킹리스트에서 품목 행만 JSON 배열로 출력해라. 형식: [{\"name\":\"상품명\",\"code\":\"업체품목코드\",\"qty\":숫자,\"expiry\":\"YYYY-MM-DD\"}]. 설명 없이 JSON만.\n\n" + text.slice(0, 12000) }] });
+  return jsonArr(out);
+}
+async function loadPickImage(file) {
+  const b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(",")[1]); fr.onerror = rej; fr.readAsDataURL(file); });
+  const mt = /png|jpeg|jpg|gif|webp/.test(file.type) ? (file.type === "image/jpg" ? "image/jpeg" : file.type) : "image/png";
+  const out = await ask({ model: "claude-sonnet-4-5", max_tokens: 4000, system: "WMS 피킹리스트 화면 캡처를 읽어 표로 정리한다. 반드시 JSON 배열만 출력한다.",
+    messages: [{ role: "user", content: [
+      { type: "image", source: { type: "base64", media_type: mt, data: b64 } },
+      { type: "text", text: "이 피킹리스트의 품목 행을 모두 JSON 배열로 출력해라. 형식: [{\"name\":\"상품명\",\"code\":\"업체품목코드\",\"qty\":숫자,\"expiry\":\"YYYY-MM-DD\"}]. 글자를 정확히 옮기고, 설명 없이 JSON만." }
+    ] }] });
+  return jsonArr(out);
+}
+function setPicks(arr, src) {
+  S.picks = arr.map((r, i) => ({ id: "p" + Date.now() + i, name: String(r.name || "").trim(), code: String(r.code || "").trim(), qty: Number(r.qty) || 0, expiry: normDate(r.expiry), match: null, manual: false })).filter(r => r.name);
+  autoMatch();
+  $("stP").textContent = src + " · " + S.picks.length + "줄";
+  if (!S.picks.length) throw new Error("피킹리스트에서 품목을 읽지 못했습니다.");
+}
+async function loadPickFile(file) {
+  $("stP").textContent = file.name + " 읽는 중…";
+  if (/^image\//.test(file.type)) return setPicks(await loadPickImage(file), "이미지");
+  const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: false });
+  for (const sn of wb.SheetNames) {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: true, defval: "" });
+    const p = rowsToPicks(rows);
+    if (p && p.length) return setPicks(p, "엑셀");
+  }
+  const csv = wb.SheetNames.map(sn => XLSX.utils.sheet_to_csv(wb.Sheets[sn])).join("\n");
+  setPicks(await aiPicksFromText(csv), "엑셀");
+}
+async function loadPickText(text) {
+  const rows = text.split(/\r?\n/).map(l => l.split(/\t|,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(c => c.replace(/^"|"$/g, "").trim()));
+  const p = rowsToPicks(rows);
+  if (p && p.length) return setPicks(p, "붙여넣기");
+  setPicks(await aiPicksFromText(text), "붙여넣기");
+}
+
+/* ---------- 매칭 / 판정 ---------- */
+function manItems() {
+  const map = {};
+  for (const r of S.man) {
+    const k = r.productNo || normName(r.name);
+    if (!k) continue;
+    const o = map[k] || (map[k] = { key: k, name: r.name, productNo: r.productNo, expiries: [], rows: [] });
+    if (isDate(r.expiry)) o.expiries.push(r.expiry);
+    o.rows.push(r);
+  }
+  return Object.values(map).map(o => ({ ...o, maxExp: o.expiries.sort().slice(-1)[0] || "", minExp: o.expiries.sort()[0] || "" }));
+}
+function autoMatch() {
+  const items = manItems();
+  for (const p of S.picks) {
+    if (p.manual && items.some(i => i.key === p.match)) continue;
+    let best = null, bs = 0;
+    for (const it of items) {
+      let sc = 0;
+      if (p.code && (it.productNo === p.code || it.name.includes(p.code))) sc = 1;
+      else sc = dice(p.name, it.name);
+      if (sc > bs) { bs = sc; best = it; }
+    }
+    p.match = best && bs >= 0.35 ? best.key : null;
+    p.manual = false;
+  }
+}
+function judge() {
+  const items = manItems(); const byKey = {}; items.forEach(i => byKey[i.key] = i);
+  const issues = []; const res = {};
+  for (const p of S.picks) {
+    const it = p.match ? byKey[p.match] : null;
+    let r;
+    if (!it) r = { cls: "warn", label: "매칭 없음" };
+    else if (!isDate(p.expiry)) r = { cls: "warn", label: "피킹 유통기한 없음" };
+    else if (!it.maxExp) r = { cls: "warn", label: "동봉문서 유통기한 없음" };
+    else if (p.expiry < it.maxExp) r = { cls: "bad", label: "짧음" };
+    else r = { cls: "ok", label: "정상" };
+    res[p.id] = { ...r, it };
+    if (r.cls !== "ok") issues.push({ p, it, r });
+  }
+  const matched = new Set(S.picks.map(p => p.match).filter(Boolean));
+  if (S.picks.length) for (const it of items) if (!matched.has(it.key)) issues.push({ p: null, it, r: { cls: "warn", label: "피킹 없음" } });
+  return { items, byKey, issues, res };
+}
+const TODO = { "짧음": "유통기한이 긴 재고로 다시 피킹", "매칭 없음": "대조표에서 동봉문서 품목 선택", "피킹 유통기한 없음": "대조표에 유통기한 입력", "동봉문서 유통기한 없음": "동봉문서 확인", "피킹 없음": "피킹 누락 여부 확인" };
+
+/* ---------- 렌더 ---------- */
+function render() {
+  setStatus(S.status);
+  const { items, byKey, issues, res } = judge();
+  const shipOf = it => it ? [...new Set(it.rows.map(r => [r.shipment, r.center].filter(Boolean).join(" · ")))].filter(Boolean).join(", ") : "";
+  $("tIssue").innerHTML = issues.map(x => '<tr><td><span class="pill ' + x.r.cls + '">' + esc(x.r.label) + '</span></td><td>' + esc(x.p ? x.p.name : x.it.name) + '</td><td>' + esc(x.p ? x.p.expiry : "") + '</td><td>' + esc(x.it ? x.it.maxExp : "") + '</td><td>' + esc(shipOf(x.it)) + '</td><td>' + esc(TODO[x.r.label] || "") + '</td></tr>').join("");
+  $("eIssue").style.display = issues.length ? "none" : "block";
+  $("eIssue").textContent = S.picks.length && S.man.length ? "문제 없는 품목만 있습니다" : "비교할 데이터가 없습니다";
+  $("issueCnt").textContent = issues.length ? issues.length + "건" : "";
+  const opts = '<option value="">— 선택 —</option>' + items.map(i => '<option value="' + esc(i.key) + '">' + esc(i.name + (i.productNo ? " (" + i.productNo + ")" : "")) + '</option>').join("");
+  $("tPick").innerHTML = S.picks.map(p => { const r = res[p.id]; return '<tr data-id="' + p.id + '">' +
+    '<td>' + esc(p.name) + '</td><td>' + esc(p.code) + '</td><td style="text-align:right">' + (p.qty || "") + '</td>' +
+    '<td><input data-f="expiry" value="' + esc(p.expiry) + '" placeholder="YYYY-MM-DD" style="width:118px"></td>' +
+    '<td><select data-f="match" style="width:260px">' + opts.replace('value="' + esc(p.match || "") + '"', 'value="' + esc(p.match || "") + '" selected') + '</select></td>' +
+    '<td>' + esc(r.it ? r.it.maxExp : "") + '</td><td><span class="pill ' + r.cls + '">' + esc(r.label) + '</span></td></tr>'; }).join("");
+  $("ePick").style.display = S.picks.length ? "none" : "block";
+  $("tMan").innerHTML = S.man.map(r => '<tr><td>' + esc(r.shipment) + '</td><td>' + esc(r.center) + '</td><td>' + esc(r.box) + '</td><td>' + esc(r.productNo) + '</td><td>' + esc(r.name) + '</td><td style="text-align:right">' + (r.qty || "") + '</td><td>' + esc(r.expiry) + '</td></tr>').join("");
+  $("eMan").style.display = S.man.length ? "none" : "block";
+  $("mCnt").textContent = S.man.length ? "· " + S.man.length + "줄" : "";
+  const v = $("verdict");
+  if (!S.man.length || !S.picks.length) { v.innerHTML = ""; }
+  else {
+    const bad = issues.filter(x => x.r.cls === "bad").length, warn = issues.length - bad;
+    const can = S.pdfs.length > 0;
+    const btn = '<button class="btn pri" id="btnMerge"' + (can ? "" : " disabled") + '>동봉문서 PDF 1개로 합치기</button>';
+    const note = can ? "" : '<div style="margin-top:6px;font-size:12px;color:#585D64">합치려면 동봉문서 압축파일을 다시 올려 주세요. (새로고침 후에는 PDF 원본이 남아 있지 않습니다)</div>';
+    if (bad) v.innerHTML = '<div class="msg bad">유통기한이 짧은 품목이 ' + bad + '건 있습니다. 재피킹 후 피킹리스트를 다시 올려 주세요.' + (warn ? " (확인 필요 " + warn + "건 별도)" : "") + '</div>';
+    else if (warn) v.innerHTML = '<div class="msg warn" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div>짧은 품목은 없지만 확인 필요 ' + warn + '건이 있습니다. 확인 후 합쳐 주세요.' + note + '</div>' + btn + '</div>';
+    else v.innerHTML = '<div class="msg ok" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div>모든 품목 유통기한이 동봉문서보다 같거나 깁니다.' + note + '</div>' + btn + '</div>';
+    const b = $("btnMerge"); if (b) b.onclick = merge;
+  }
+  save();
+}
+async function merge() {
+  const b = $("btnMerge"); b.disabled = true; b.textContent = "합치는 중…";
+  try {
+    await mergePdfs(S.pdfs, "쿠팡_동봉문서");
+    b.textContent = "다운로드 완료 · 다시 받기";
+  } catch (e) { alert("PDF 합치기 실패: " + (e.message || e)); b.textContent = "동봉문서 PDF 1개로 합치기"; }
+  b.disabled = false;
+}
+
+/* ---------- 이벤트 ---------- */
+async function run(fn, label) {
+  setStatus(label + " 처리 중…");
+  try { await fn(); setStatus(stamp()); }
+  catch (e) { setStatus("오류: " + (e.message || e)); alert(e.message || e); }
+  render();
+}
+const stamp = () => { const d = new Date(); return (d.getMonth() + 1) + "/" + d.getDate() + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0") + " 결과를 보여주는 중"; };
+function bindDrop(el, input, handler) {
+  ["dragenter", "dragover"].forEach(ev => el.addEventListener(ev, e => { e.preventDefault(); el.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(ev => el.addEventListener(ev, e => { e.preventDefault(); el.classList.remove("over"); }));
+  el.addEventListener("drop", e => { const fs = [...(e.dataTransfer.files || [])]; if (fs.length) handler(fs); });
+  input.addEventListener("change", () => { const fs = [...input.files]; input.value = ""; if (fs.length) handler(fs); });
+}
+bindDrop($("dropM"), $("fileM"), fs => run(async () => { await loadManifest(fs); autoMatch(); }, "동봉문서"));
+bindDrop($("dropP"), $("fileP"), fs => run(() => loadPickFile(fs[0]), "피킹리스트"));
+bindDrop($("dropL"), $("fileL"), async fs => {
+  $("stL").textContent = "읽는 중…";
+  try { S.labels = await collectPdfs(fs); $("stL").textContent = "PDF " + S.labels.length + "개"; $("btnLabel").disabled = false; }
+  catch (e) { S.labels = []; $("stL").textContent = "오류: " + (e.message || e); $("btnLabel").disabled = true; }
+});
+$("btnLabel").onclick = async () => {
+  const b = $("btnLabel"); if (!S.labels.length) return;
+  b.disabled = true; b.textContent = "합치는 중…";
+  try { await mergePdfs(S.labels, "쿠팡_쉽먼트라벨"); b.textContent = "다운로드 완료 · 다시 받기"; }
+  catch (e) { alert("PDF 합치기 실패: " + (e.message || e)); b.textContent = "라벨 PDF 1개로 합치기"; }
+  b.disabled = false;
+};
+$("btnPaste").onclick = () => { const t = $("pasteP").value.trim(); if (!t) return alert("표를 붙여넣어 주세요."); run(() => loadPickText(t), "피킹리스트"); };
+$("btnClear").onclick = () => { if (!confirm("올린 파일과 결과를 모두 지울까요?")) return; S.pdfs = []; S.man = []; S.picks = []; S.labels = []; S.status = ""; $("stM").textContent = ""; $("stL").textContent = ""; $("btnLabel").disabled = true; $("btnLabel").textContent = "라벨 PDF 1개로 합치기"; $("stP").textContent = ""; $("pasteP").value = ""; render(); };
+document.addEventListener("paste", e => {
+  const items = [...((e.clipboardData && e.clipboardData.items) || [])];
+  const img = items.find(i => i.type && i.type.startsWith("image/"));
+  if (img) { e.preventDefault(); const f = img.getAsFile(); run(() => loadPickFile(new File([f], "캡처.png", { type: f.type || "image/png" })), "피킹리스트"); }
+});
+$("tPick").addEventListener("change", e => {
+  const tr = e.target.closest("tr"); if (!tr) return;
+  const p = S.picks.find(x => x.id === tr.dataset.id); if (!p) return;
+  if (e.target.dataset.f === "expiry") p.expiry = normDate(e.target.value);
+  if (e.target.dataset.f === "match") { p.match = e.target.value || null; p.manual = true; }
+  render();
+});
+if (S.man.length) $("stM").textContent = "이전 결과 · 품목 " + S.man.length + "줄";
+if (S.picks.length) $("stP").textContent = "이전 결과 · " + S.picks.length + "줄";
+render();
+})();
+</script>
+</body>
+</html>
