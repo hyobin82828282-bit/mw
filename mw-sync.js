@@ -122,7 +122,30 @@
     if ((await sha(pin)) !== mirror.ownerPin) return { ok: false, msg: "비밀번호가 맞지 않습니다" };
     queue("owner", dev); queue("ownerName", name()); notify(); return { ok: true };
   }
+  // 반품사진: 실시간 스트림(/mw) 밖 별도 경로에 두고 필요할 때만 주고받음
+  async function photoGet(id) {
+    const b = base(); if (!b) return { ok: false, list: [] };
+    try {
+      const r = await fetch(b + "/mwphotos/" + enc(id) + ".json");
+      if (r.status === 401 || r.status === 403) return { ok: false, list: [], msg: "사진 읽기 권한이 없습니다. 데이터베이스 규칙에 mwphotos를 추가해 주세요" };
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const v = await r.json();
+      const list = Array.isArray(v) ? v.filter(Boolean) : (v && typeof v === "object" ? Object.keys(v).sort((a, c) => a - c).map(k => v[k]).filter(Boolean) : []);
+      return { ok: true, list };
+    } catch (e) { return { ok: false, list: [], msg: "사진 불러오기 실패 (" + e.message + ")" }; }
+  }
+  async function photoPut(id, list) {
+    const b = base(); if (!b) return { ok: false };
+    try {
+      const u = b + "/mwphotos/" + enc(id) + ".json";
+      const r = list && list.length ? await fetch(u, { method: "PUT", body: JSON.stringify(list) }) : await fetch(u, { method: "DELETE" });
+      if (r.status === 401 || r.status === 403) return { ok: false, msg: "사진 저장 권한이 없습니다. 데이터베이스 규칙에 mwphotos를 추가해 주세요" };
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return { ok: true };
+    } catch (e) { return { ok: false, msg: "사진 공유 저장 실패 (" + e.message + ")" }; }
+  }
   window.MwSync = {
+    photoGet, photoPut,
     start, configure, disconnect, claimOwner, setPin, takeOwner, put, del, list, tombs,
     hasPin: () => !!mirror.ownerPin, ownerName: () => mirror.ownerName || "", putBlob, blob, putMap, map,
     url: base, name, dev: () => dev, isOwner, ready: () => ready, status: () => st,

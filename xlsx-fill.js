@@ -40,6 +40,36 @@ async function zip(files) {
   return new Blob([...parts, ...cen, new Uint8Array(end.buffer)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 
+// 표 데이터를 새 xlsx로: 숫자 문자열은 숫자로, 열 너비 자동
+export async function makeXlsx(head, body, sheetName = "Sheet1") {
+  const x = v => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+  const cs = n => { let s = ""; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+  const all = [head, ...body], w = [];
+  const len = t => [...String(t)].reduce((a, ch) => a + (ch.charCodeAt(0) > 255 ? 2 : 1), 0);
+  const rows = all.map((r, ri) => "<row r=\"" + (ri + 1) + "\">" + r.map((v, ci) => {
+    const t = v == null ? "" : String(v).trim(), ref = cs(ci + 1) + (ri + 1);
+    w[ci] = Math.max(w[ci] || 0, len(t));
+    if (t === "") return "";
+    if (ri > 0 && /^-?(0|[1-9]\d{0,14})(\.\d+)?$/.test(t.replace(/,/g, ""))) {
+      const n = t.replace(/,/g, ""), big = /^-?\d{8,}$/.test(n);
+      return "<c r=\"" + ref + "\"" + (big ? " s=\"2\"" : "") + "><v>" + n + "</v></c>";
+    }
+    return "<c r=\"" + ref + "\" t=\"inlineStr\"" + (ri === 0 ? " s=\"1\"" : "") + "><is><t xml:space=\"preserve\">" + x(t) + "</t></is></c>";
+  }).join("") + "</row>").join("");
+  const cols = "<cols>" + w.map((n, i) => "<col min=\"" + (i + 1) + "\" max=\"" + (i + 1) + "\" width=\"" + Math.min(60, Math.max(6, n + 2)) + "\" customWidth=\"1\"/>").join("") + "</cols>";
+  const sheet = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetViews><sheetView workbookViewId=\"0\"><pane ySplit=\"1\" topLeftCell=\"A2\" activePane=\"bottomLeft\" state=\"frozen\"/></sheetView></sheetViews>" + cols + "<sheetData>" + rows + "</sheetData></worksheet>";
+  const S = s => ({ data: enc.encode("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" + s) });
+  const files = [
+    { name: "[Content_Types].xml", ...S("<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/><Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/><Override PartName=\"/xl/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml\"/></Types>") },
+    { name: "_rels/.rels", ...S("<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/></Relationships>") },
+    { name: "xl/workbook.xml", ...S("<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><sheets><sheet name=\"" + x(String(sheetName).replace(/[\[\]:*?\/\\']/g, "").slice(0, 31) || "Sheet1") + "\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>") },
+    { name: "xl/_rels/workbook.xml.rels", ...S("<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/><Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/></Relationships>") },
+    { name: "xl/styles.xml", ...S("<styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><fonts count=\"2\"><font><sz val=\"11\"/><name val=\"맑은 고딕\"/></font><font><b/><sz val=\"11\"/><name val=\"맑은 고딕\"/></font></fonts><fills count=\"2\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill></fills><borders count=\"1\"><border/></borders><cellStyleXfs count=\"1\"><xf/></cellStyleXfs><cellXfs count=\"3\"><xf/><xf fontId=\"1\" applyFont=\"1\"/><xf numFmtId=\"1\" applyNumberFormat=\"1\"/></cellXfs></styleSheet>") },
+    { name: "xl/worksheets/sheet1.xml", data: enc.encode(sheet) }
+  ];
+  return zip(files);
+}
+
 const colNum = s => [...s].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
 const colStr = n => { let s = ""; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
 const parseRef = r => { const m = /^([A-Z]+)(\d+)$/.exec(r); return { c: colNum(m[1]), r: +m[2] }; };
