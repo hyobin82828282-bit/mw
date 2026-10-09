@@ -1940,13 +1940,39 @@ class Component extends DCLogic {
   }
 
   syncInit() {
-    import("./mw-sync.js").then(() => {
+    import("./mw-sync.js?v=20261009b").then(() => {
       const S = window.MwSync;
       S.onStatus(st => this.setState({ syncSt: st }));
       S.onData((keys, initial) => this.applyRemote(keys, initial));
       this.setState({ syncSt: S.status() });
       S.start();
+      setTimeout(() => this.forcePull(), 2500);
     }).catch(() => {});
+  }
+  // 스트림이 막히거나 늦어도 서버 기록을 직접 받아 빠진 건을 채움 (로컬 기록은 지우지 않음)
+  async forcePull() {
+    const S = window.MwSync, b = S && S.url();
+    if (!b) return 0;
+    let added = 0;
+    const patch = {};
+    for (const [f, store, last] of [["records", REC_STORE, "_lastRecords"], ["returns", RET_STORE, "_lastReturns"]]) {
+      try {
+        const r = await fetch(b + "/mw/" + f + ".json?_=" + Date.now(), { cache: "no-store" });
+        if (!r.ok) continue;
+        const o = (await r.json()) || {};
+        const all = Object.values(o).map(v => { try { return JSON.parse(v.j); } catch (e) { return null; } }).filter(Boolean);
+        const remote = all.filter(x => !x._del);
+        const local = this.state[f] || [], ids = new Set(local.map(x => x.id));
+        const miss = remote.filter(x => !ids.has(x.id));
+        if (!miss.length) continue;
+        const out = local.concat(miss);
+        added += miss.length;
+        this[last] = out; patch[f] = out;
+        try { localStorage.setItem(store, JSON.stringify(out)); } catch (e) {}
+      } catch (e) {}
+    }
+    if (Object.keys(patch).length) { this._skipWrite = true; this.setState(patch); }
+    return added;
   }
   applyRemote(keys, initial) {
     const S = window.MwSync, jk = S.joinKey(), join = initial && !localStorage.getItem(jk);
@@ -2046,7 +2072,12 @@ class Component extends DCLogic {
         if (!S || s.syncBusy) return;
         if (!String(s.syncNameDraft || "").trim()) return this.setState({ syncErr: "이름을 입력하세요" });
         this.setState({ syncBusy: true, syncErr: "" });
-        S.configure(s.syncUrlDraft, s.syncNameDraft).then(r => this.setState(r.ok ? { syncBusy: false, syncOpen: false } : { syncBusy: false, syncErr: r.msg }));
+        S.configure(s.syncUrlDraft, s.syncNameDraft).then(async r => {
+          if (!r.ok) return this.setState({ syncBusy: false, syncErr: r.msg });
+          const n = await this.forcePull();
+          this.setState({ syncBusy: false, syncOpen: false });
+          if (n) alert("서버에서 빠진 기록 " + n + "건을 받아왔습니다.");
+        });
       },
       syncDisconnect: () => { if (S && confirm("공유를 끊습니다. 이 컴퓨터의 데이터는 그대로 남습니다.")) { S.disconnect(); this.setState({ syncOpen: false }); } }
     };
