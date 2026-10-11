@@ -422,7 +422,7 @@ const F_MAP = [[0,'days','n'],[1,'mall'],[2,'recv','d'],[3,'ship','d'],[4,'waybi
 const isBlank = v => v === undefined || v === null || String(v).trim() === '';
 const wbKey = v => String(v ?? '').replace(/[\s\-]/g, '').replace(/\.0+$/, '');
 function fromCell(v, t) {
-  if (isBlank(v)) return '';
+  if (isBlank(v) || /^#(N\/A|VALUE!|REF!|DIV\/0!|NAME\?|NULL!|NUM!)/.test(String(v))) return '';
   if (t === 'n') { const n = parseFloat(String(v).replace(/,/g, '')); return isNaN(n) ? '' : n; }
   if (t === 'd' && typeof v === 'number') { const i = XLSX.SSF.parse_date_code(v); if (i) return String(i.m).padStart(2, '0') + '/' + String(i.d).padStart(2, '0'); }
   return String(v).trim();
@@ -470,11 +470,11 @@ async function runSync() {
     let app = []; try { app = JSON.parse(localStorage.getItem(key) || '[]') || []; } catch {}
     // 클레임 관리가 다른 사이트에서 열려도 같은 데이터를 쓰도록 공유 서버 값을 기준으로 사용
     const base = syncBase(), rkey = id => String(id).replace(/[.#$\[\]\/%]/g, '_');
-    let remoteOk = false;
+    let remoteOk = false; const delRows = [];
     if (base) {
       try {
         const rm = await (await fetch(base + '/mw/claims/' + ym + '.json')).json() || {};
-        const rows = []; Object.values(rm).forEach(v => { if (v && v.j && !v.del) try { rows.push(JSON.parse(v.j)); } catch {} });
+        const rows = []; Object.values(rm).forEach(v => { if (!v || !v.j) return; try { (v.del ? delRows : rows).push(JSON.parse(v.j)); } catch {} });
         if (rows.length) { app = rows; remoteOk = true; }
       } catch {}
     }
@@ -485,8 +485,17 @@ async function runSync() {
     const snapOf = a => { const o = {}; F_MAP.forEach(([, f]) => { o[f] = sv(a[f]); }); return o; };
     const k = o => wbKey(o.waybill) + '|' + norm(o.product);
     const pool = new Map(); app.forEach(a => { const kk = k(a); if (!pool.has(kk)) pool.set(kk, []); pool.get(kk).push(a); });
-    const matched = new Set(), fromXl = new Set(), rowWrites = [];
-    let addApp = 0, fillApp = 0, addXl = 0, fillXl = 0, idBase = Date.now() * 100;
+    const matched = new Set(), fromXl = new Set(), rowWrites = [], rowDeletes = [];
+    let addApp = 0, fillApp = 0, addXl = 0, fillXl = 0, delXl = 0, idBase = Date.now() * 100;
+    // 클레임 관리에서 삭제한 건: 서버 삭제 표시(마지막 내용 포함) + 지난 동기화엔 있었는데 지금 없는 건
+    if (remoteOk) { const ids = new Set(app.map(a => String(a.id))), dIds = new Set(delRows.map(d => String(d.id))); Object.keys(snap).forEach(id => { if (!ids.has(id) && !dIds.has(id)) delRows.push(Object.assign({}, snap[id], { id, _snap: 1 })); }); }
+    const takeDeleted = o => {
+      const w = wbKey(o.waybill), p = norm(o.product), c = String(o.productCode || '').trim();
+      const i = delRows.findIndex(d => wbKey(d.waybill) === w && (norm(d.product) === p || (c && String(d.productCode || '').trim() === c)));
+      return i < 0 ? null : delRows.splice(i, 1)[0];
+    };
+    // 입력값 칸: 엑셀에 수식(통합내역 조회 등)이 있어도 결과가 비어 있으면 클레임 관리 값을 적음
+    const INPUT = new Set(['mall','recv','ship','waybill','name','type','reason','productCode','product','qty','reship','courierOk','stockAdjDate','note','price','claimDelivery','workType','boxCode']);
     const ACC = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송'];
     for (const r of xl) {
       const row = vals[r], obj = {}; F_MAP.forEach(([c, f, t]) => obj[f] = fromCell(row[c], t));
@@ -498,6 +507,7 @@ async function runSync() {
         const pick = (code && rest.find(([, a]) => String(a.productCode || '').trim() === code)) || (rest.length === 1 ? rest[0] : null);
         if (pick) { hit = pick[1]; pick[0].splice(pick[0].indexOf(hit), 1); }
       }
+      if (!hit) { const d = takeDeleted(obj); if (d) { rowDeletes.push(r); delete snap[d.id]; continue; } }
       if (!hit) {
         const n = { id: idBase++, ...obj, productList: obj.product, excluded: false };
         if (!n.missingCode && obj.reason === '누락') n.missingCode = obj.productCode;
@@ -514,7 +524,11 @@ async function runSync() {
         const placeholder = f === 'reship' && !isBlank(av) && !/\d{6,}/.test(String(av)) && /\d{6,}/.test(String(xv ?? ''));
         // 지난 동기화 이후 어느 쪽이 바뀌었는지 보고 바뀐 쪽 값을 반영 (기록이 없으면 클레임 관리 기준)
         const xlChanged = b !== undefined ? (same(av, b) && !same(xv, b)) : (isBlank(av) || placeholder);
-        if (xlChanged || isF(r, c)) { if (!isBlank(xv) || !isF(r, c)) { hit[f] = isBlank(xv) ? '' : xv; fillApp++; } }
+        if (isF(r, c)) {
+          if (INPUT.has(f)) { if (isBlank(av)) { hit[f] = xv; fillApp++; } else if (isBlank(xv)) { out[c] = av; changed = true; fillXl++; } }
+          else if (!isBlank(xv)) { hit[f] = xv; fillApp++; }
+        }
+        else if (xlChanged) { hit[f] = isBlank(xv) ? '' : xv; fillApp++; }
         else if (!isF(r, c) && !(isBlank(av) && b === undefined)) { out[c] = isBlank(av) ? '' : av; changed = true; fillXl++; }
       });
       snap[hit.id] = snapOf(derived(hit));
@@ -526,26 +540,34 @@ async function runSync() {
     for (const a of appOnly) {
       while (r < vals.length && (vals[r] || []).some((v, c) => !isF(r, c) && !isBlank(v))) r++;
       const out = [];
+      const d = derived(a);
       for (let c = 0; c < endCol; c++) {
-        if (r < vals.length && isF(r, c)) out.push(fms[r][c]);
-        else if (r >= vals.length && isF(last, c)) out.push(Engine.shiftFormula(fms[last][c], 0, r - last));
-        else { const m = F_MAP.find(x => x[0] === c), d = derived(a); out.push(m && !isBlank(d[m[1]]) ? d[m[1]] : ''); }
+        const m = F_MAP.find(x => x[0] === c), v = m ? d[m[1]] : '';
+        if (m && INPUT.has(m[1]) && !isBlank(v)) out.push(v);
+        else if (r < vals.length && isF(r, c)) out.push(fms[r][c]);
+        else if (isF(last, c)) out.push(Engine.shiftFormula(fms[last][c], 0, r - last));
+        else out.push(isBlank(v) ? '' : v);
       }
       rowWrites.push({ r, out }); addXl++; r++;
     }
-    for (const w of rowWrites) await g(rangeUrl(ref, sheet, `A${w.r + 1}:${col(endCol)}${w.r + 1}`), { method: 'PATCH', body: JSON.stringify({ formulas: [w.out] }) });
-    appOnly.forEach(a => { snap[a.id] = snapOf(derived(a)); }); fromXl.forEach(a => { snap[a.id] = snapOf(a); });
+    // 일시적인 오류(요청 많음 등)로 중간에 멈추지 않도록 재시도
+    const gw = async (p, o) => { for (let i = 0; ; i++) { try { return await g(p, o); } catch (e) { if (i >= 3) throw e; await new Promise(res => setTimeout(res, 1200 * (i + 1))); } } };
+    for (const w of rowWrites) await gw(rangeUrl(ref, sheet, `A${w.r + 1}:${col(endCol)}${w.r + 1}`), { method: 'PATCH', body: JSON.stringify({ formulas: [w.out] }) });
+    // 삭제는 아래 행부터 (위 행 번호가 밀리지 않게)
+    for (const dr of rowDeletes.sort((a, b) => b - a)) { await gw(rangeUrl(ref, sheet, `${dr + 1}:${dr + 1}`) + '/delete', { method: 'POST', body: JSON.stringify({ shift: 'Up' }) }); delXl++; }
+    appOnly.forEach(a => { snap[a.id] = snapOf(derived(a)); });
     try { localStorage.setItem(SNAP_KEY, JSON.stringify(snap)); } catch {}
     if (addApp || fillApp) {
       localStorage.setItem(key, JSON.stringify(app));
       if (base && (remoteOk || !before.size)) for (const a of app) {
         const s = JSON.stringify(a); if (before.get(a.id) === s) continue;
-        try { await fetch(base + '/mw/claims/' + ym + '/' + rkey(a.id) + '.json', { method: 'PUT', body: JSON.stringify({ j: s, at: Date.now(), by: '엑셀동기화' }) }); } catch {}
+        try { const res = await fetch(base + '/mw/claims/' + ym + '/' + rkey(a.id) + '.json', { method: 'PUT', body: JSON.stringify({ j: s, at: Date.now(), by: '엑셀동기화' }) }); if (res.ok && fromXl.has(a)) snap[a.id] = snapOf(a); } catch {}
       }
+      try { localStorage.setItem(SNAP_KEY, JSON.stringify(snap)); } catch {}
     }
     const t = new Date().toTimeString().slice(0, 5);
-    set({ syncMsg: `${SYNC_MIN}분마다 자동 동기화 · 마지막 ${t} · 엑셀→클레임 관리 추가 ${addApp}·채움 ${fillApp} / 클레임 관리→엑셀 추가 ${addXl}·채움 ${fillXl}` });
-    if (rowWrites.length) { const book = Engine.load(await downloadWorkbook(ref)); if (book.byName[S.sheetName]) set({ wb: book }); }
+    set({ syncMsg: `${SYNC_MIN}분마다 자동 동기화 · 마지막 ${t} · 엑셀→클레임 관리 추가 ${addApp}·채움 ${fillApp} / 클레임 관리→엑셀 추가 ${addXl}·채움 ${fillXl}·삭제 ${delXl}` });
+    if (rowWrites.length || rowDeletes.length) { const book = Engine.load(await downloadWorkbook(ref)); if (book.byName[S.sheetName]) set({ wb: book }); }
   } catch (err) { set({ syncMsg: '동기화 실패: ' + err.message }); }
   finally { syncing = false; }
 }
