@@ -519,6 +519,12 @@ async function runSync() {
       F_MAP.forEach(([c, f]) => {
         const xv = obj[f], av = derived(hit)[f];
         if (same(av, xv)) return;
+        // 접수일은 한 번 정해지면 동기화로 바꾸지 않음 (빈 칸만 채움)
+        if (f === 'recv') {
+          if (isBlank(av) && !isBlank(xv)) { hit[f] = xv; fillApp++; }
+          else if (!isBlank(av) && isBlank(xv) && !isF(r, c)) { out[c] = av; changed = true; fillXl++; }
+          return;
+        }
         const b = snap[hit.id] ? snap[hit.id][f] : undefined;
         // 재출고송장 칸의 '재출고' 같은 표시 글자는 엑셀의 실제 송장번호로 교체
         const placeholder = f === 'reship' && !isBlank(av) && !/\d{6,}/.test(String(av)) && /\d{6,}/.test(String(xv ?? ''));
