@@ -560,6 +560,11 @@ window.claimSync = (() => {
   const base = (localStorage.getItem('mw_sync_url') || '').trim().replace(/\/+$/, '');
   const who = localStorage.getItem('mw_sync_name') || '';
   let es = null, remote = {}, synced = {}, ready = false, month = null, timer = null;
+  const hash = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = (h * 33 ^ s.charCodeAt(i)) >>> 0; return h.toString(36) + ':' + s.length; };
+  const sk = () => 'claims_synced_' + month;
+  const saveSynced = () => { try { localStorage.setItem(sk(), JSON.stringify(synced)); } catch (e) {} };
+  const blank = v => v === '' || v == null;
+  const fill = (to, from) => { Object.keys(from || {}).forEach(f => { if (blank(to[f]) && !blank(from[f])) to[f] = from[f]; }); return to; };
   const key = id => String(id).replace(/[.#$\[\]\/%]/g, '_');
   const url = p => base + '/mw/claims/' + month + (p ? '/' + p : '') + '.json';
   const setAt = (parts, v) => {
@@ -569,18 +574,22 @@ window.claimSync = (() => {
   };
   const sp = p => String(p || '').split('/').filter(Boolean);
   function apply() {
-    const out = [], seen = new Set();
+    const out = [], seen = new Set(), keep = new Set();
     data.forEach(r => {
       const k = key(r.id), rr = remote[k], s = JSON.stringify(r);
-      const pending = synced[k] !== undefined && synced[k] !== s;
-      if (rr && !pending) {
-        seen.add(k);
-        if (rr.del) return;
-        try { out.push(JSON.parse(rr.j)); } catch (e) { out.push(r); }
-      } else { out.push(r); seen.add(k); }
+      // 마지막 동기화 이후 로컬(엑셀 동기화 등)에서 바뀐 행은 서버 값으로 덮지 않음
+      const pending = synced[k] !== undefined ? synced[k] !== hash(s) : null;
+      seen.add(k);
+      if (rr && rr.del && pending !== true) return;
+      let rv = null; if (rr && rr.j) { try { rv = JSON.parse(rr.j); } catch (e) {} }
+      if (!rv) { out.push(r); return; }
+      if (pending === false) out.push(rv);
+      else if (pending === null) out.push(fill(rv, r));      // 기록 없음: 서버 값 + 로컬에만 있는 값 보충
+      else { out.push(fill({ ...r }, rv)); keep.add(k); }    // 로컬 변경 우선, 빈 칸만 서버 값
     });
     Object.keys(remote).forEach(k => { const rr = remote[k]; if (seen.has(k) || !rr || rr.del || !rr.j) return; try { out.push(JSON.parse(rr.j)); } catch (e) {} });
-    Object.keys(remote).forEach(k => { const rr = remote[k]; if (rr && rr.j && !rr.del) synced[k] = rr.j; });
+    Object.keys(remote).forEach(k => { const rr = remote[k]; if (rr && rr.j && !rr.del && !keep.has(k)) synced[k] = hash(rr.j); });
+    saveSynced();
     const changed = JSON.stringify(out) !== JSON.stringify(data);
     if (changed) {
       data = out;
@@ -596,8 +605,9 @@ window.claimSync = (() => {
       const now = new Set();
       for (const r of data) {
         const k = key(r.id), s = JSON.stringify(r); now.add(k);
-        if (synced[k] === s) continue;
-        synced[k] = s;
+        const hs = hash(s);
+        if (synced[k] === hs) continue;
+        synced[k] = hs;
         try { await fetch(url(k), { method: 'PUT', body: JSON.stringify({ j: s, at: Date.now(), by: who }) }); } catch (e) { delete synced[k]; }
       }
       for (const k of Object.keys(synced)) {
@@ -605,6 +615,7 @@ window.claimSync = (() => {
         delete synced[k];
         try { await fetch(url(k), { method: 'PUT', body: JSON.stringify({ del: true, at: Date.now(), by: who }) }); } catch (e) {}
       }
+      saveSynced();
     }, 300);
   }
   function connect() {
@@ -612,6 +623,7 @@ window.claimSync = (() => {
     remote = {}; synced = {}; ready = false;
     if (!base || !window.EventSource) return;
     month = currentMonth;
+    try { synced = JSON.parse(localStorage.getItem(sk()) || '{}') || {}; } catch (e) { synced = {}; }
     es = new EventSource(url());
     const on = (kind, raw) => {
       let m; try { m = JSON.parse(raw); } catch (e) { return; }
