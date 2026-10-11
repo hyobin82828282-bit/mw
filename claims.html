@@ -628,6 +628,12 @@ window.claimSync = (() => {
   return { connect, push, on: () => !!base };
 })();
 
+// 클레임 운임 조회(OneDrive 자동 동기화)가 저장하면 바로 반영
+window.addEventListener('storage', e => {
+  if (e.key !== getStorageKey() || !e.newValue) return;
+  try { data = JSON.parse(e.newValue); render(); if (window.claimSync) claimSync.push(); } catch (err) {}
+});
+
 function switchMonth(ym) {
   saveData(); // 현재 월 데이터 저장
   currentMonth = ym;
