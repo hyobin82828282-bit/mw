@@ -68,6 +68,7 @@
           <div style="position:absolute;left:0;right:0;bottom:40px;box-sizing:border-box;padding:6px;background:#202326;border:1px solid #2C2F33;border-radius:9px;box-shadow:0 10px 28px rgba(0,0,0,0.4);display:flex;flex-direction:column;gap:2px;z-index:20">
             <button onClick="{{ exportCsv }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:8px 10px;border:none;border-radius:6px;background:none;font-size:12.5px;color:#E9E7E2;cursor:pointer;text-align:left" style-hover="background:#2C2F33">📥 엑셀 내보내기<span style="font-size:11px;color:#8E9299">{{ csvHint }}</span></button>
             <button onClick="{{ backupDownload }}" style="display:flex;align-items:center;width:100%;padding:8px 10px;border:none;border-radius:6px;background:none;font-size:12.5px;color:#E9E7E2;cursor:pointer;text-align:left" style-hover="background:#2C2F33">💾 전체 백업 파일 받기</button>
+            <button onClick="{{ recoverLost }}" style="display:flex;align-items:center;width:100%;padding:8px 10px;border:none;border-radius:6px;background:none;font-size:12.5px;color:#E9E7E2;cursor:pointer;text-align:left" style-hover="background:#2C2F33">🔎 사라진 기록 찾기 (자동 백업)</button>
             <label style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:8px 10px;border-radius:6px;box-sizing:border-box;font-size:12.5px;color:#E9E7E2;cursor:pointer" style-hover="background:#2C2F33">♻️ 백업 파일로 복원<span style="font-size:11px;color:#8E9299">{{ backupHint }}</span><input type="file" accept=".json" onChange="{{ backupRestore }}" style="display:none"></input></label>
           </div>
         </sc-if>
@@ -89,6 +90,7 @@
       <div>
         <div style="font-size:11.5px;font-weight:600;color:#8A8F96;letter-spacing:0.06em">차량출고</div>
         <h1 style="margin:5px 0 0;font-size:24px;font-weight:700;letter-spacing:-0.5px">차량출고 입력</h1>
+        <sc-if value="{{ isEditingRec }}"><div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:6px 10px;border-radius:7px;background:#FDF0DD;border:1px solid #F0D9AE;font-size:12.5px;color:#7A4A06">✏️ 목록 기록 수정 중 · 저장하면 기존 기록이 바뀝니다<button onClick="{{ cancelRecEdit }}" style="height:24px;padding:0 9px;border:1px solid #E3C88F;border-radius:6px;background:#fff;color:#7A4A06;font-size:12px;font-weight:600;cursor:pointer">수정 취소</button></div></sc-if>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div style="display:flex;align-items:center;gap:7px;padding:7px 12px;border:1px solid #E3E1DC;border-radius:7px;background:#FAF9F6;font-size:12.5px;color:#585D64">
@@ -320,6 +322,7 @@
           <button onClick="{{ onSave }}" style="flex:1;height:44px;border:none;border-radius:9px;background:#1F6F5C;color:#fff;font-size:14px;font-weight:700;cursor:pointer" style-hover="background:#18594A">💾 저장</button>
           <button onClick="{{ onReset }}" style="flex:0 0 110px;height:44px;border:1px solid #D9D6D0;border-radius:9px;background:#fff;color:#585D64;font-size:13.5px;font-weight:600;cursor:pointer" style-hover="border-color:#B3261E;color:#B3261E">↩ 초기화</button>
         </div>
+        <button onClick="{{ onOms }}" style="height:40px;border:1px solid #1F6F5C;border-radius:9px;background:#fff;color:#1F6F5C;font-size:13.5px;font-weight:700;cursor:pointer" style-hover="background:#E8F1ED">📄 OMS 주문등록 엑셀 받기</button>
         <sc-if value="{{ saved }}">
           <div style="padding:11px 14px;border-radius:9px;background:#E8F1ED;border:1px solid #BEDACF;font-size:12.5px;color:#16503F">저장되었습니다. 차량출고 목록에서 확인하세요.</div>
         </sc-if>
@@ -2097,6 +2100,28 @@ class Component extends DCLogic {
     const key = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + p(d.getMinutes()) + (tag ? " " + tag : "");
     this.backupCollect().then(data => this.openSnapDb().then(db => { db.transaction("snaps", "readwrite").objectStore("snaps").put(data, key); })).catch(() => {});
   }
+  // 이 브라우저의 자동 백업(IndexedDB)·_bak·_pre_restore에서 현재 목록에 없는 출고/반품 기록을 찾아 되살림
+  async recoverLost() {
+    const srcs = [];
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^mw_(records|returns)_v1(_bak|_pre_restore)$/.test(k)) srcs.push({ [k.replace(/(_bak|_pre_restore)$/, "")]: localStorage.getItem(k) }); }
+    try {
+      const db = await this.openSnapDb();
+      const all = await new Promise(r => { const g = db.transaction("snaps").objectStore("snaps").getAll(); g.onsuccess = () => r(g.result || []); g.onerror = () => r([]); });
+      all.forEach(x => x && x.localStorage && srcs.push(x.localStorage));
+    } catch (e) {}
+    const found = { records: [], returns: [] };
+    [["records", REC_STORE], ["returns", RET_STORE]].forEach(([f, store]) => {
+      const ids = new Set((this.state[f] || []).map(x => x.id)), add = new Map();
+      srcs.forEach(ls => { let a = []; try { a = JSON.parse(ls[store] || "[]"); } catch (e) {} (Array.isArray(a) ? a : []).forEach(x => { if (x && x.id != null && !ids.has(x.id) && !add.has(x.id)) add.set(x.id, x); }); });
+      found[f] = [...add.values()];
+    });
+    const nr = found.records.length, nt = found.returns.length;
+    if (!nr && !nt) return alert("이 컴퓨터의 자동 백업(" + srcs.length + "개)에서 사라진 기록을 찾지 못했습니다.\n10월 기록을 입력했던 다른 컴퓨터·브라우저에서 이 버튼을 눌러보세요.");
+    const prev = found.records.slice(0, 15).map(x => "· " + x.info).join("\n");
+    if (!confirm("자동 백업에서 찾은 기록\n차량출고 " + nr + "건 · 반품 " + nt + "건\n\n" + prev + (nr > 15 ? "\n…" : "") + "\n\n목록에 되살릴까요? (공유 중이면 서버에도 올라갑니다)")) return;
+    this.setState(p => ({ records: p.records.concat(found.records), returns: p.returns.concat(found.returns) }));
+    alert("되살렸습니다. 차량출고 목록을 확인하세요.");
+  }
   dailySnapshot() {
     const d0 = new Date(), p0 = n => String(n).padStart(2, "0");
     const day = d0.getFullYear() + "-" + p0(d0.getMonth() + 1) + "-" + p0(d0.getDate());
@@ -3111,13 +3136,44 @@ class Component extends DCLogic {
         closedStyle: (r.closed ? TAG_DONE : TAG_PEND) + ";cursor:pointer",
         onToggleClosed: () => this.setState(p => ({ records: p.records.map(x => x.id === r.id ? Object.assign({}, x, { closed: !x.closed }) : x) })),
         note: r.note || "—",
-        onEdit: () => this.setState({ edit: { kind: "rec", draft: Object.assign({}, r, { name: (r.items && r.items[0] && r.items[0].name) || r.name || "" }) } }),
+        onEdit: () => this.loadRecToInput(r),
         onDelete: () => this.setState(p => ({ records: p.records.filter(x => x.id !== r.id) }))
       })),
       noRows: rows.length === 0, rowCount: rows.length,
       sumBox: fmt(sum("box_total")), sumIce: fmt(sum("ice_total")), sumOther: fmt(sum("other_total")),
       sumWork: fmt(sum("work_all")), sumMov: fmt(sum("mov_total")), sumAll: fmt(sum("total"))
     };
+  }
+
+  async omsDownload() {
+    const s = this.state, info = s.shipInfo.trim();
+    const items = s.items.filter(it => it.name.trim() && num(it.qty) > 0);
+    if (!info || !items.length) { this.setState({ submitted: true, saved: false }); return; }
+    const m = info.match(/(\d{1,2})\/(\d{1,2})/);
+    if (!m) return alert("출고정보 맨 앞에 날짜(예: 10/7)를 넣어 주세요.");
+    const y = new Date().getFullYear(), mm = m[1].padStart(2, "0"), dd = m[2].padStart(2, "0");
+    const miss = items.filter(it => !this.lookupItem(it.name));
+    if (miss.length && !confirm("품목코드를 찾지 못한 품목이 있습니다 (K열 빈칸).\n\n" + miss.map(x => "· " + x.name).join("\n") + "\n\n계속할까요?")) return;
+    try {
+      const [res, XF] = await Promise.all([fetch("./oms-vehicle-template.xlsx"), import("./xlsx-fill.js")]);
+      if (!res.ok) throw new Error("양식 파일(oms-vehicle-template.xlsx)을 찾지 못했습니다");
+      const cells = {};
+      items.forEach((it, i) => {
+        const r = i + 2, hit = this.lookupItem(it.name);
+        Object.assign(cells, {
+          ["A" + r]: y + "-" + mm + "-" + dd, ["C" + r]: 12345, ["D" + r]: info,
+          ["E" + r]: "010-0000-0000", ["F" + r]: info, ["G" + r]: "010-0000-0000",
+          ["H" + r]: 18137, ["I" + r]: "경기 오산시 오산로 149 7층",
+          ["K" + r]: hit ? hit.c : "", ["L" + r]: it.name.trim(), ["M" + r]: num(it.qty),
+          ["N" + r]: "차량출고", ["Q" + r]: Number("" + y + mm + dd)
+        });
+      });
+      const blob = await XF.fillXlsx(await res.arrayBuffer(), cells);
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+      a.download = "OMS_차량출고 주문등록_" + info.replace(/[\\/:*?"<>|]/g, "").trim() + ".xlsx";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    } catch (e) { alert("OMS 엑셀 만들기 실패: " + e.message); }
   }
 
   lookupItem(name) {
@@ -3179,6 +3235,24 @@ class Component extends DCLogic {
       box_total: box * boxUnit, ice_total: iceTotal, other_total: box * otherUnit,
       work_all, mov_total: plt ? plt * PRICES.mov_slip : 0, car_fee,
       d: { iceM: num(iceMVal), iceL: num(s.iceL), pcm: num(s.pcm), dry: num(dryVal), boxUnit, otherUnit, workUnit } };
+  }
+
+  loadRecToInput(r) {
+    const f = r.form || {}, d = r.d || {}, sv = v => v == null || v === 0 || v === "" ? "" : String(v);
+    const ourbox = f.ourbox != null ? f.ourbox : (Object.keys(BOX_PRICES).find(k => BOX_PRICES[k] === d.boxUnit && d.boxUnit) || "");
+    const material = f.material != null ? f.material : d.otherUnit === PRICES.eerp && d.otherUnit ? "에어캡" : d.otherUnit === PRICES.airp && d.otherUnit ? "에어팩" : "";
+    const items = (r.items && r.items.length ? r.items : [{ name: r.name || "", qty: String(r.qty || "") }]).map(it => ({ name: it.name || "", qty: it.qty == null ? "" : String(it.qty), box: it.box == null ? "" : String(it.box) }));
+    const iceM = f.iceM != null ? f.iceM : sv(d.iceM), dryIce = f.dryIce != null ? f.dryIce : sv(d.dry);
+    this.setState({
+      editingId: r.id, shipInfo: r.info || "", items,
+      boxQty: f.boxQty != null ? f.boxQty : sv(r.box), pltQty: f.pltQty != null ? f.pltQty : sv(r.plt),
+      ourbox, material, iceM, iceL: f.iceL != null ? f.iceL : sv(d.iceL), dryIce, pcm: f.pcm != null ? f.pcm : sv(d.pcm),
+      work: f.work ? f.work.slice() : ["", "", "", ""],
+      manualCoolant: f.manualCoolant || { iceM: iceM !== "", dryIce: dryIce !== "" },
+      vehicleFee: f.vehicleFee != null ? f.vehicleFee : sv(r.car_fee), memo: r.note || "", closing: !!r.closed,
+      saved: false, submitted: false
+    });
+    this.go("input");
   }
 
   go(t) {
@@ -3546,6 +3620,7 @@ class Component extends DCLogic {
       ...this.syncVals(),
       ...this.itemVals(),
       backupHint: s.backupHint || "하루 한 번 자동 백업 (14일 보관)",
+      recoverLost: () => this.recoverLost(),
       backupDownload: () => this.backupCollect().then(data => {
         const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
         const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
@@ -3568,13 +3643,18 @@ class Component extends DCLogic {
       dateArrow: s.sortCol === "date" ? (s.sortDir === 1 ? "↓" : "↑") : "",
       totalArrow: s.sortCol === "total" ? (s.sortDir === 1 ? "↓" : "↑") : "",
       ...this.listVals(),
+      onOms: () => this.omsDownload(),
+      isEditingRec: !!s.editingId,
+      cancelRecEdit: () => { this.setState({ shipInfo: "", items: [{ name: "", qty: "" }], boxQty: "", pltQty: "", ourbox: "", material: "", iceM: "", iceL: "", dryIce: "", pcm: "", work: ["","","",""], manualCoolant: {}, vehicleFee: "", memo: "", closing: false, saved: false, submitted: false, editingId: null }); this.go("list"); },
       onSave: () => {
         const ok = s.shipInfo.trim() && s.items.some(it => it.name.trim() && num(it.qty) > 0);
         if (!ok) { this.setState({ submitted: true, saved: false }); return; }
         const c = this.calc();
         const items = s.items.filter(it => it.name.trim());
         const rec = {
-          id: String(Date.now()), ts: Date.now(), info: s.shipInfo.trim(),
+          ...(s.editingId ? (s.records.find(x => x.id === s.editingId) || {}) : {}),
+          id: s.editingId || String(Date.now()), ts: Date.now(), info: s.shipInfo.trim(),
+          form: { ourbox: s.ourbox, material: s.material, work: s.work.slice(), boxQty: s.boxQty, pltQty: s.pltQty, iceM: s.iceM, iceL: s.iceL, dryIce: s.dryIce, pcm: s.pcm, manualCoolant: s.manualCoolant, vehicleFee: s.vehicleFee },
           items, name: items.map(i => i.name).join(" / "),
           qty: items.reduce((a, i) => a + num(i.qty), 0),
           note: s.memo.trim(), closed: s.closing,
@@ -3582,7 +3662,7 @@ class Component extends DCLogic {
           other_total: c.other_total, work_all: c.work_all, mov_total: c.mov_total, car_fee: c.car_fee, total: c.total, d: c.d
         };
         this.setState(p => ({
-          records: p.records.concat(rec), submitted: false, saved: true,
+          records: p.editingId && p.records.some(x => x.id === p.editingId) ? p.records.map(x => x.id === p.editingId ? rec : x) : p.records.concat(rec), editingId: null, submitted: false, saved: true,
           shipInfo: "", items: [{ name: "", qty: "" }], boxQty: "", pltQty: "",
           ourbox: "", material: "", iceM: "", iceL: "", dryIce: "", pcm: "",
           work: ["", "", "", ""], manualCoolant: {}, vehicleFee: "", memo: "", closing: false
@@ -3592,7 +3672,7 @@ class Component extends DCLogic {
         shipInfo: "", items: [{ name: "", qty: "" }],
         boxQty: "", pltQty: "", ourbox: "", material: "",
         iceM: "", iceL: "", dryIce: "", pcm: "", work: ["","","",""],
-        manualCoolant: {}, vehicleFee: "", memo: "", closing: false, saved: false, submitted: false
+        manualCoolant: {}, vehicleFee: "", memo: "", closing: false, saved: false, submitted: false, editingId: null
       })
     };
   }
