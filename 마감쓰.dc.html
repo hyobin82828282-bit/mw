@@ -1057,7 +1057,7 @@
     </sc-if>
     <sc-if value="{{ keepClaimsX }}">
       <div style="display:{{ dispClaimsX }};flex:1;flex-direction:column;min-height:0">
-        <iframe src="https://hyobin82828282-bit.github.io/-/claims.html?v=20261011d" style="flex:1;width:100%;min-height:100vh;border:0;background:#fff"></iframe>
+        <iframe src="{{ claimsXSrc }}" style="flex:1;width:100%;min-height:100vh;border:0;background:#fff"></iframe>
       </div>
     </sc-if>
     <sc-if value="{{ keepRetPhoto }}">
@@ -3502,6 +3502,7 @@ class Component extends DCLogic {
       keepCoupang: keep("coupang"), dispCoupang: disp("coupang"),
       keepClaims: keep("claims"), dispClaims: disp("claims"),
       keepClaimsX: keep("claimsx"), dispClaimsX: disp("claimsx"),
+      claimsXSrc: "https://hyobin82828282-bit.github.io/-/claims.html?v=20261011e" + ((localStorage.getItem("mw_sync_url") || "").trim() ? "#sync=" + encodeURIComponent(localStorage.getItem("mw_sync_url").trim()) : ""),
       keepStock: keep("stock"), dispStock: disp("stock"),
       keepRetPhoto: keep("retphoto") && retOk, dispRetPhoto: disp("retphoto")
     };
