@@ -479,6 +479,10 @@ async function runSync() {
       } catch {}
     }
     const before = new Map(app.map(a => [a.id, JSON.stringify(a)]));
+    const SNAP_KEY = 'claims-excel.snap.' + ym; let snap = {}; try { snap = JSON.parse(localStorage.getItem(SNAP_KEY) || '{}') || {}; } catch {}
+    const sv = v => { const s = String(v ?? '').trim(); return /^-?[\d,]+(\.\d+)?$/.test(s) ? String(+s.replace(/,/g, '')) : s; };
+    const same = (a, b) => sv(a) === sv(b);
+    const snapOf = a => { const o = {}; F_MAP.forEach(([, f]) => { o[f] = sv(a[f]); }); return o; };
     const k = o => wbKey(o.waybill) + '|' + norm(o.product);
     const pool = new Map(); app.forEach(a => { const kk = k(a); if (!pool.has(kk)) pool.set(kk, []); pool.get(kk).push(a); });
     const matched = new Set(), fromXl = new Set(), rowWrites = [];
@@ -504,11 +508,16 @@ async function runSync() {
       const out = fms[r].map((f, c) => isF(r, c) ? f : (row[c] ?? '')); let changed = false;
       F_MAP.forEach(([c, f]) => {
         const xv = obj[f], av = derived(hit)[f];
+        if (same(av, xv)) return;
+        const b = snap[hit.id] ? snap[hit.id][f] : undefined;
         // 재출고송장 칸의 '재출고' 같은 표시 글자는 엑셀의 실제 송장번호로 교체
         const placeholder = f === 'reship' && !isBlank(av) && !/\d{6,}/.test(String(av)) && /\d{6,}/.test(String(xv ?? ''));
-        if ((isBlank(av) || placeholder) && !isBlank(xv)) { hit[f] = xv; fillApp++; }
-        else if (isBlank(xv) && !isBlank(av) && !isF(r, c)) { out[c] = av; changed = true; fillXl++; }
+        // 지난 동기화 이후 어느 쪽이 바뀌었는지 보고 바뀐 쪽 값을 반영 (기록이 없으면 클레임 관리 기준)
+        const xlChanged = b !== undefined ? (same(av, b) && !same(xv, b)) : (isBlank(av) || placeholder);
+        if (xlChanged || isF(r, c)) { if (!isBlank(xv) || !isF(r, c)) { hit[f] = isBlank(xv) ? '' : xv; fillApp++; } }
+        else if (!isF(r, c) && !(isBlank(av) && b === undefined)) { out[c] = isBlank(av) ? '' : av; changed = true; fillXl++; }
       });
+      snap[hit.id] = snapOf(derived(hit));
       if (changed) rowWrites.push({ r, out });
     }
     // 클레임 관리에만 있는 행 → 엑셀 마지막 송장 행 아래 빈 줄에 추가 (수식 칸은 그대로 / 없으면 윗줄 수식 복사)
@@ -525,6 +534,8 @@ async function runSync() {
       rowWrites.push({ r, out }); addXl++; r++;
     }
     for (const w of rowWrites) await g(rangeUrl(ref, sheet, `A${w.r + 1}:${col(endCol)}${w.r + 1}`), { method: 'PATCH', body: JSON.stringify({ formulas: [w.out] }) });
+    appOnly.forEach(a => { snap[a.id] = snapOf(derived(a)); }); fromXl.forEach(a => { snap[a.id] = snapOf(a); });
+    try { localStorage.setItem(SNAP_KEY, JSON.stringify(snap)); } catch {}
     if (addApp || fillApp) {
       localStorage.setItem(key, JSON.stringify(app));
       if (base && (remoteOk || !before.size)) for (const a of app) {
