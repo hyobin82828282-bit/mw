@@ -931,7 +931,8 @@
       }
       return order.length;
     }
-    function buildDisposalSheet(workbook) {
+    function buildDisposalSheet(workbook, convList) {
+      const convRow = new Map((convList || []).map((c) => [c.r, c.conv])), convDest = [];
       const wsRaw = workbook.getWorksheet("Sheet1");
       const exclude = loadExcludeSet(workbook);
       removeIfExists(workbook, "폐기대상");
@@ -947,6 +948,7 @@
         if (!BAD_KEYWORDS.some((kw) => status.includes(kw))) continue;
         if (isKeepImminent(wsRaw, r)) continue; // 유통기한 D+3 이상 불용(임박)은 재고로 둠 (실사표로 감)
         for (let c = 1; c <= nCols; c++) ws.getRow(destRow).getCell(c).value = cellRaw(wsRaw, r, c);
+        if (convRow.get(r)) convDest.push([destRow, convRow.get(r)]);
         destRow++;
       }
       const count = destRow - 2;
@@ -954,6 +956,13 @@
         applyBaseStyle(ws, destRow - 1, nCols);
         for (let c = 1; c <= nCols; c++) ws.getRow(1).getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: ARGB.header } };
         ws.views = [{ state: "frozen", ySplit: 1 }];
+        // 불용(분실·파손) → 가용 전환된 줄: 연한 주황 음영 + L열에 전환수량
+        const lastCol = Math.max(nCols, 12);
+        convDest.forEach(([dr, cv]) => {
+          const row = ws.getRow(dr);
+          row.getCell(12).value = cv; row.getCell(12).numFmt = "#,##0";
+          for (let c = 1; c <= lastCol; c++) row.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFCE4D6" } };
+        });
       }
       return count;
     }
@@ -982,7 +991,7 @@
       const convQty = convList.reduce((a, c) => a + c.conv, 0);
       const overallCount = buildOverallSummary(workbook, convList);
       let disposalCount = null, check = null;
-      if (workbook.getWorksheet("Sheet1")) { disposalCount = buildDisposalSheet(workbook); check = quantityCheckSummary(workbook); }
+      if (workbook.getWorksheet("Sheet1")) { disposalCount = buildDisposalSheet(workbook, convList); check = quantityCheckSummary(workbook); }
       return { shortageCount, moveCount, convCount, convQty, overallCount, disposalCount, check };
     }
     function buildWmsCsv(workbook) {
