@@ -47,7 +47,6 @@
       <div onClick="{{ goItems }}" style="{{ navItems }}">📦 품목현황</div>
       <div onClick="{{ goReturn }}" style="{{ navReturn }}">↩️ 고객반품 입력</div>
       <div onClick="{{ goReturnList }}" style="{{ navReturnList }}">📋 반품 목록</div>
-      <div onClick="{{ goGoodRet }}" style="{{ navGoodRet }}">♻️ 반품양품화</div>
       <div onClick="{{ goExpiry }}" style="{{ navExpiry }}">⏰ 임박재고 알람
         <sc-if value="{{ hasCrit }}"><span style="margin-left:auto;padding:1px 7px;border-radius:999px;background:#B3261E;color:#fff;font-size:11px;font-weight:700">{{ critBadge }}</span></sc-if>
       </div>
@@ -669,7 +668,7 @@
                   <td style="padding:11px 12px;border-bottom:1px solid #F3F1EC">{{ r.qty }}</td>
                   <td style="padding:11px 12px;text-align:left;border-bottom:1px solid #F3F1EC">{{ r.requested }}</td>
                   <td style="padding:11px 12px;text-align:left;border-bottom:1px solid #F3F1EC">{{ r.confirmed }}</td>
-                  <td style="padding:8px 12px;text-align:center;border-bottom:1px solid #F3F1EC"><div style="display:flex;align-items:center;justify-content:center;gap:6px"><span>{{ r.good }}</span><button onClick="{{ r.toGood }}" title="이 반품 내용으로 반품양품화 입력" style="height:26px;padding:0 8px;border:1px solid #BEDACF;border-radius:6px;background:#F1F7F4;color:#16503F;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap" style-hover="background:#E1EFE8">♻️ 양품화</button></div></td>
+                  <td style="padding:8px 12px;text-align:center;border-bottom:1px solid #F3F1EC"><div style="display:flex;align-items:center;justify-content:center;gap:6px"><span>{{ r.good }}</span></div></td>
                   <td style="padding:11px 12px;text-align:center;border-bottom:1px solid #F3F1EC"><span style="{{ r.sharedStyle }}">{{ r.sharedLabel }}</span></td>
                   <td style="padding:11px 12px;text-align:center;border-bottom:1px solid #F3F1EC"><span onClick="{{ r.onToggleClosed }}" title="클릭하여 변경" style="{{ r.closedStyle }}">{{ r.closedLabel }}</span></td>
                   <td style="padding:11px 12px;text-align:center;border-bottom:1px solid #F3F1EC"><span onClick="{{ r.onPhoto }}" title="반품사진 보기 · 추가" style="{{ r.photoStyle }}">📷 {{ r.photoLabel }}</span></td>
@@ -3262,6 +3261,7 @@ class Component extends DCLogic {
   }
 
   go(t) {
+    if (t === "goodret") return;
     this.setState(p => ({ tab: t, openTabs: (p.openTabs || []).includes(t) ? p.openTabs : [...(p.openTabs || []), t] }));
   }
   closeTab(t) {
