@@ -879,8 +879,9 @@
       }
       return list.length;
     }
-    function buildOverallSummary(workbook) {
+    function buildOverallSummary(workbook, convList) {
       const agg = new Map(); const order = [];
+      const convLeft = convByCode(convList || []);
       ["냉동", "상온,냉장"].forEach((name) => {
         const src = workbook.getWorksheet(name);
         if (!src) return;
@@ -896,10 +897,19 @@
           rec.diff += toNum(src.getRow(r).getCell(11).value);
         }
       });
+      // 불용(분실·파손) → 가용 전환분은 재고조정 파일에 반영 완료 → 차이수량에서만 뺌 (가용수량 합계는 Sheet1과 같게 유지)
+      order.forEach((key) => {
+        const rec = agg.get(key), cv = convLeft.get(String(rec.code).trim()) || 0;
+        if (!cv) return;
+        rec.diff -= cv; rec.conv = cv;
+        convLeft.delete(String(rec.code).trim());
+      });
       removeIfExists(workbook, "전체실사요약");
       const ws = workbook.addWorksheet("전체실사요약");
       ws.getRow(1).getCell(1).value = "전체실사요약 (냉동 + 상온,냉장 통합 집계)";
       ws.getRow(1).getCell(1).font = { bold: true, size: 14 };
+      ws.getRow(2).getCell(1).value = "※ 불용(분실·파손) → 가용 전환분 반영됨 (차이수량에서만 뺌 · 가용수량은 그대로)";
+      ws.getRow(2).getCell(1).font = { size: 10, color: { argb: "FF1F6F5C" } };
       const headers = ["품목코드", "품목명", "합계 : 가용수량", "합계 : 실수량", "합계 : 차이수량", "조정수량"];
       headers.forEach((h, i) => {
         const cell = ws.getRow(3).getCell(i + 1);
@@ -970,7 +980,7 @@
       const convList = computeConversions(workbook);
       const convCount = workbook.getWorksheet("실사요약") ? writeConversions(workbook.getWorksheet("실사요약"), convList) : 0;
       const convQty = convList.reduce((a, c) => a + c.conv, 0);
-      const overallCount = buildOverallSummary(workbook);
+      const overallCount = buildOverallSummary(workbook, convList);
       let disposalCount = null, check = null;
       if (workbook.getWorksheet("Sheet1")) { disposalCount = buildDisposalSheet(workbook); check = quantityCheckSummary(workbook); }
       return { shortageCount, moveCount, convCount, convQty, overallCount, disposalCount, check };
@@ -1112,7 +1122,9 @@
       if (!hS) throw new Error("'실사요약' 헤더(품목코드/유통기한/차이수량)를 찾지 못했습니다.");
       const cS = hS.map;
       const cQty = cS["가용수량"] || cS["재고수량"];
-      const conv = convByCode(computeConversions(workbook));
+      // 새 결과 파일은 전체실사요약에 전환분이 이미 빠져 있음 → 예전 파일일 때만 입고에서 뺌
+      const convApplied = String(valOf(wsTot.getRow(2).getCell(1).value) ?? "").includes("가용 전환분 반영됨");
+      const conv = convApplied ? new Map() : convByCode(computeConversions(workbook));
       const cLoc = [cS["로케이션1"] || cS["분류1"], cS["로케이션2"] || cS["분류2"], cS["로케이션3"] || cS["분류3"]];
 
       // 실사요약 행을 품목코드별로 모음

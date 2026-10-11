@@ -1065,7 +1065,7 @@
     </sc-if>
     <sc-if value="{{ keepStock }}">
       <div style="display:{{ dispStock }};flex:1;flex-direction:column;min-height:0">
-        <iframe src="pages/stock.html?v=20261009h" style="flex:1;width:100%;min-height:100vh;border:0;background:#fff"></iframe>
+        <iframe src="pages/stock.html?v=20261011a" style="flex:1;width:100%;min-height:100vh;border:0;background:#fff"></iframe>
       </div>
     </sc-if>
 
@@ -2185,6 +2185,12 @@ class Component extends DCLogic {
     if (s.rType === "쿠팡반품") {
       const f = num(s.rCpFee);
       return { temp, qty, totalKg: 0, box: "", fee: f, retfee: 0, amount: f, isSago: false, isCp: true };
+    }
+    const hb3 = s.rItems.length > 0 && qty === 3 && s.rItems.every(i => normItem(i.name).includes("행복가득3호"));
+    if (hb3) {
+      const retfee = isSago ? 0 : RET_FEE;
+      return { temp, qty, totalKg: Math.round(totalKg * 1000) / 1000, box: "소", fee: 2000, retfee,
+        amount: isSago ? 0 : 2000 + retfee, isSago };
     }
     const fee = BOX_FEES[box] || 0;
     const retfee = isSago ? 0 : RET_FEE;
