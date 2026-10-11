@@ -312,15 +312,15 @@ function render() {
       <button class="btn primary" data-a="build">조회 목록 만들기</button>
       <span class="muted">${esc(S.name)} · ${s.maxR - 1}행</span></div>
     <div class="panel claims-queue">
-      <div class="claims-queue-head"><b>CJ 조회 대기 ${S.queue.length}건</b><div>
+      <div class="claims-queue-head"><b data-a="toggleQueue" style="cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none"><span style="display:inline-block;transition:transform .15s;transform:rotate(${S.queueOpen ? 90 : 0}deg)">▶</span>CJ 조회 대기 ${S.queue.length}건</b><div>
         <button class="btn" data-a="auto" ${!S.queue.length || S.autoBusy ? 'disabled' : ''}>${S.autoBusy ? (S.autoProgress || '조회 중…') : 'CJ 전체 자동 조회'}</button>
         <button class="btn primary" id="saveAll" data-a="saveAll" ${S.busy || !hasDraft ? 'disabled' : ''}>${S.busy ? '저장 중…' : '입력 금액 한 번에 저장'}</button></div></div>
-      ${S.queue.map(r => `<div class="queue-row">
+      ${!S.queueOpen ? '' : S.queue.map(r => `<div class="queue-row">
         <span>행 ${r.row} · ${esc(r.mall)} · ${esc(r.waybill)}</span>
         <button class="btn" data-a="cj" data-row="${r.row}">CJ 조회</button>
         <input class="fare-draft ${S.fareDrafts[r.row] ? 'filled' : ''}" data-fare="${r.row}" inputmode="numeric" placeholder="운임합계" aria-label="${r.row}행 운임합계" value="${esc(S.fareDrafts[r.row] || '')}">
         <button class="btn" data-a="skip" data-row="${r.row}">조회 안 됨 · 건너뛰기</button></div>`).join('')}
-      ${S.queue.length ? '' : '<p class="muted">조회 목록을 만들거나 통합내역을 가져오세요.</p>'}
+      ${S.queue.length || !S.queueOpen ? '' : '<p class="muted">조회 목록을 만들거나 통합내역을 가져오세요.</p>'}
     </div>
     <div class="panel claims-table-wrap"><table class="xl-grid" style="width:${xlTableW(coolantCol, NC)}px"><colgroup><col style="width:40px">${XL_COLS.map(c => `<col data-colw="${c}" style="width:${colW(c)}px">`).join('')}${coolantCol ? '' : '<col style="width:80px">'}${NC ? '' : '<col style="width:160px">'}</colgroup><thead><tr><th class="xl-rh"></th>${XL_COLS.map(c => `<th class="xl-ch">${col(c)}<span class="xl-rs" data-rs="${c}" title="끌어서 너비 조절 · 더블클릭으로 기본값"></span></th>`).join('')}${coolantCol ? '' : '<th class="xl-ch">냉매</th>'}${NC ? '' : '<th class="xl-ch">메모</th>'}</tr>
       <tr class="xl-hdr"><th class="xl-rh">1</th>${XL_COLS.map(c => `<th>${esc(S.wb.display(s, col(c) + 1))}</th>`).join('')}${coolantCol ? '' : '<th></th>'}${NC ? '' : '<th></th>'}</tr></thead><tbody>
@@ -797,7 +797,7 @@ document.addEventListener('click', e => {
     open: () => $('#fileIn').click(), import: () => $('#importIn').click(), export: exportFile, cloud: connectCloud,
     settings: () => set({ settingsOpen: true }), closeSettings: () => set({ settingsOpen: false }), build: buildQueue,
     auto: autoLookup, saveAll: saveAllFares, memo: openMemo,
-    moreRows: () => { xlLimit += XL_PAGE; render(); },
+    moreRows: () => { xlLimit += XL_PAGE; render(); }, toggleQueue: () => set({ queueOpen: !S.queueOpen }),
     memoCancel: () => { $('#memo-overlay').style.display = 'none'; }, memoRun: runMemo,
     memoFile: () => { const f = $('#memo-file'); f.value = ''; f.click(); }, skip: () => set({ queue: S.queue.filter(x => x.row !== row) }),
     cj: () => {
