@@ -1052,7 +1052,7 @@
 
     <sc-if value="{{ keepClaims }}">
       <div style="display:{{ dispClaims }};flex:1;flex-direction:column;min-height:0">
-        <iframe src="pages/claims.html?v=20261011b" style="flex:1;width:100%;min-height:100vh;border:0;background:#fff"></iframe>
+        <iframe src="pages/claims.html?v=20261012a" style="flex:1;width:100%;min-height:100vh;border:0;background:#fff"></iframe>
       </div>
     </sc-if>
     <sc-if value="{{ keepClaimsX }}">
@@ -1835,6 +1835,7 @@ const shNormDate = s => {
   return y + "-" + String(m[2]).padStart(2, "0") + "-" + String(m[3]).padStart(2, "0");
 };
 
+const PREF_KEYS = ["pendOnly", "sortCol", "sortDir", "rUnsharedOnly", "rClosedFilter", "retSortCol", "retSortDir"];
 class Component extends DCLogic {
   state = {
     shipInfo: "",
@@ -1869,6 +1870,7 @@ class Component extends DCLogic {
   };
 
   componentDidMount() {
+    try { const p = JSON.parse(localStorage.getItem("mw_view_prefs_v1") || "null"); if (p) { const o = {}; PREF_KEYS.forEach(k => { if (p[k] !== undefined) o[k] = p[k]; }); this.setState(o); } } catch (e) {}
     this._onPaste = e => {
       const cd = e.clipboardData; if (!cd) return;
       let files = [...(cd.files || [])];
@@ -3069,6 +3071,9 @@ class Component extends DCLogic {
 
   componentDidUpdate() {
     const s = this.state;
+    // 목록 체크·정렬 상태는 새로고침해도 유지
+    const pv = JSON.stringify(PREF_KEYS.map(k => s[k]));
+    if (pv !== this._prefV) { this._prefV = pv; try { const o = {}; PREF_KEYS.forEach(k => { o[k] = s[k]; }); localStorage.setItem("mw_view_prefs_v1", JSON.stringify(o)); } catch (e) {} }
     if (!this._loaded) { this._loaded = true; this._lastRecords = s.records; this._lastReturns = s.returns; this._lastItems = s.itemDb; this._lastExp = s.expFiles; return; }
     const SY = window.MwSync, live = !!(SY && SY.url());
     // 다른 탭/창이 저장한 건은 지우지 않고 합쳐서 저장 (이 화면에서 직접 삭제한 건만 제외)
@@ -3502,7 +3507,7 @@ class Component extends DCLogic {
       keepCoupang: keep("coupang"), dispCoupang: disp("coupang"),
       keepClaims: keep("claims"), dispClaims: disp("claims"),
       keepClaimsX: keep("claimsx"), dispClaimsX: disp("claimsx"),
-      claimsXSrc: "https://hyobin82828282-bit.github.io/-/claims.html?v=20261011e" + ((localStorage.getItem("mw_sync_url") || "").trim() ? "#sync=" + encodeURIComponent(localStorage.getItem("mw_sync_url").trim()) : ""),
+      claimsXSrc: "https://hyobin82828282-bit.github.io/-/claims.html?v=20261011i#month=" + (localStorage.getItem("claims_cur_month") || todayStr().slice(0, 7).replace("-", "")) + ((localStorage.getItem("mw_sync_url") || "").trim() ? "&sync=" + encodeURIComponent(localStorage.getItem("mw_sync_url").trim()) : ""),
       keepStock: keep("stock"), dispStock: disp("stock"),
       keepRetPhoto: keep("retphoto") && retOk, dispRetPhoto: disp("retphoto")
     };
