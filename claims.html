@@ -787,7 +787,7 @@ function renderClaims() {
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;font-size:11px" title="${fmt(dispAccident)}">${fmt(dispAccident)}</td>
       <td class="num">${fmt(dispAccQty)}</td>
       <td class="mono" style="font-size:11px">${fmt(row.reship)}</td>
-      <td style="font-size:11px;text-align:center">${fmt(row.courierOk)}</td>
+      <td style="font-size:11px;text-align:center">${row.type === '아워사고' ? 'X' : fmt(row.courierOk)}</td>
       <td style="font-size:11px;color:var(--muted)">${fmt(row.stockAdjDate)}</td>
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--muted)" title="${fmt(row.note)}">${fmt(row.note)}</td>
       <td class="num">${money(row.price)}</td>
@@ -1627,7 +1627,7 @@ document.getElementById('m-save').addEventListener('click', () => {
       accident: document.getElementById('m-accident').value.trim(),
       accQty: +document.getElementById('m-acc-qty').value || '',
       reship: document.getElementById('m-reship').value.trim(),
-      courierOk: document.getElementById('m-courier-ok').value.trim(),
+      courierOk: (() => { const t = document.getElementById('m-type').value, v = document.getElementById('m-courier-ok').value.trim(); return t === '아워사고' ? 'X' : (t === '택배사고' && (!v || v === 'X') ? '필요' : v); })(),
       price: +document.getElementById('m-price').value || 0,
       claimDelivery: +document.getElementById('m-claim-delivery').value || 0,
       stockAdjDate: document.getElementById('m-stock-adj-date').value.trim(),

@@ -233,6 +233,7 @@ function calcMaterial(boxCode, tempZone) {
     <button class="btn" id="btn-import-wb" title="통합내역 데이터 가져오기">📥 통합내역 가져오기</button>
     <button class="btn" id="btn-export-csv" title="현재 탭·필터 기준 CSV 내보내기">⬇ CSV 내보내기</button>
     <button class="btn" id="btn-reset-data" title="Excel 원본 데이터로 초기화">↺ 초기화</button>
+    <button class="btn danger" id="btn-del-sel" disabled>🗑 선택 삭제 (<span id="sel-count">0</span>)</button>
     <button class="btn primary" id="btn-add">+ 신규 추가</button>
   </div>
 </div>
@@ -241,8 +242,6 @@ function calcMaterial(boxCode, tempZone) {
   <div class="kpi total"><span class="kpi-num" id="kpi-total">0</span><span class="kpi-label">전체</span></div>
   <div class="kpi our"><span class="kpi-num" id="kpi-our">0</span><span class="kpi-label">아워사고</span></div>
   <div class="kpi courier"><span class="kpi-num" id="kpi-courier">0</span><span class="kpi-label">택배사고</span></div>
-  <div class="kpi money"><span class="kpi-num" id="kpi-delivery">0원</span><span class="kpi-label">배송비 합계</span></div>
-  <div class="kpi money"><span class="kpi-num" id="kpi-material">0원</span><span class="kpi-label">부자재 합계</span></div>
 </div>
 
 <div id="main-content">
@@ -255,7 +254,7 @@ function calcMaterial(boxCode, tempZone) {
   <div id="table-wrap">
     <table id="tbl-claims">
       <thead><tr>
-        <th>일수</th><th>쇼핑몰</th><th>접수일</th><th>출고일</th>
+        <th style="width:28px;text-align:center"><input type="checkbox" id="sel-all" title="전체 선택"></th><th>일수</th><th>쇼핑몰</th><th>접수일</th><th>출고일</th>
         <th>운송장번호</th><th style="max-width:70px">수취인</th><th>구분</th><th>사유</th>
         <th>품목코드</th><th>상품명</th><th class="num">수량</th>
         <th>품목코드</th><th>누락제품</th><th class="num">누락수량</th>
@@ -277,9 +276,9 @@ function calcMaterial(boxCode, tempZone) {
     <div id="magang-sum">
       <span>마감 대상: <strong id="count-magang2">0</strong>건</span>
       <span>제외(14일↑): <strong id="excluded-count">0</strong>건</span>
-      <span>배송비 합계: <strong id="sum-delivery">0</strong>원</span>
-      <span>부자재 합계: <strong id="sum-material">0</strong>원</span>
       <span>총변상액 합계: <strong id="sum-total">0</strong>원</span>
+      <span>아워사고 총변상액(VAT 제외): <strong id="sum-our-novat">0</strong>원</span>
+      <span>택배사고 총변상액(VAT 제외): <strong id="sum-courier-novat">0</strong>원</span>
     </div>
     <table id="tbl-magang">
       <thead><tr>
@@ -365,7 +364,7 @@ function calcMaterial(boxCode, tempZone) {
         <input id="m-name" type="text">
       </div>
       <div class="field">
-        <label class="fl">접수일 (클레임 · 오늘 자동)</label>
+        <label class="fl" id="m-recv-label">접수일 (클레임 · 오늘 자동)</label>
         <input id="m-recv" class="editable-auto" type="text" placeholder="MM/DD">
       </div>
       <div class="field">
@@ -383,7 +382,7 @@ function calcMaterial(boxCode, tempZone) {
       <div class="field full">
         <label class="fl">사유</label>
         <select id="m-reason">
-          <option>누락</option><option>오배송</option><option>파손수령</option>
+          <option>누락</option><option>오배송</option><option>오출고</option><option>파손수령</option>
           <option>파손반송</option><option>배송지연</option><option>송장흐름없음</option>
           <option>송장오부착</option><option>아이스팩파손</option><option>아이스팩터짐</option>
           <option>PCM터짐</option>
@@ -411,6 +410,11 @@ function calcMaterial(boxCode, tempZone) {
       <div class="field">
         <label class="fl">재출고/환불</label>
         <input id="m-reship" type="text">
+      </div>
+      <div class="field">
+        <label class="fl">택배사고접수 (S열 · 택배사고 '필요' / 아워사고 'X' 자동)</label>
+        <input id="m-courier-ok" class="editable-auto" type="text" list="courier-ok-list" placeholder="필요 / O">
+        <datalist id="courier-ok-list"><option value="필요"></option><option value="O"></option><option value="X"></option></datalist>
       </div>
 
       <div class="field full section-label">📋 누락/사고 정보 <span style="font-size:10px;font-weight:400;color:var(--muted)">· 사유 선택 시 자동입력 (직접 수정 가능)</span></div>
@@ -523,6 +527,7 @@ function calcMaterial(boxCode, tempZone) {
 // ===== STATE =====
 let data;
 let editingId = null;
+const selIds = new Set();
 let currentView = 'claims';
 let currentMonth = (() => {
   try { const s = localStorage.getItem('claims_cur_month'); if (/^\d{6}$/.test(s || '')) return s; } catch(e) {}
@@ -559,7 +564,12 @@ function saveData() {
 window.claimSync = (() => {
   const base = (localStorage.getItem('mw_sync_url') || '').trim().replace(/\/+$/, '');
   const who = localStorage.getItem('mw_sync_name') || '';
-  let es = null, remote = {}, synced = {}, ready = false, month = null, timer = null;
+  let es = null, remote = {}, synced = {}, ready = false, month = null, timer = null, lastJ = {};
+  const hash = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = (h * 33 ^ s.charCodeAt(i)) >>> 0; return h.toString(36) + ':' + s.length; };
+  const sk = () => 'claims_synced_' + month;
+  const saveSynced = () => { try { localStorage.setItem(sk(), JSON.stringify(synced)); } catch (e) {} };
+  const blank = v => v === '' || v == null;
+  const fill = (to, from) => { Object.keys(from || {}).forEach(f => { if (blank(to[f]) && !blank(from[f])) to[f] = from[f]; }); return to; };
   const key = id => String(id).replace(/[.#$\[\]\/%]/g, '_');
   const url = p => base + '/mw/claims/' + month + (p ? '/' + p : '') + '.json';
   const setAt = (parts, v) => {
@@ -569,18 +579,22 @@ window.claimSync = (() => {
   };
   const sp = p => String(p || '').split('/').filter(Boolean);
   function apply() {
-    const out = [], seen = new Set();
+    const out = [], seen = new Set(), keep = new Set();
     data.forEach(r => {
       const k = key(r.id), rr = remote[k], s = JSON.stringify(r);
-      const pending = synced[k] !== undefined && synced[k] !== s;
-      if (rr && !pending) {
-        seen.add(k);
-        if (rr.del) return;
-        try { out.push(JSON.parse(rr.j)); } catch (e) { out.push(r); }
-      } else { out.push(r); seen.add(k); }
+      // 마지막 동기화 이후 로컬(엑셀 동기화 등)에서 바뀐 행은 서버 값으로 덮지 않음
+      const pending = synced[k] !== undefined ? synced[k] !== hash(s) : null;
+      seen.add(k);
+      if (rr && rr.del && pending !== true) return;
+      let rv = null; if (rr && rr.j) { try { rv = JSON.parse(rr.j); } catch (e) {} }
+      if (!rv) { out.push(r); return; }
+      if (pending === false) out.push(rv);
+      else if (pending === null) out.push(fill(rv, r));      // 기록 없음: 서버 값 + 로컬에만 있는 값 보충
+      else { out.push(fill({ ...r }, rv)); keep.add(k); }    // 로컬 변경 우선, 빈 칸만 서버 값
     });
     Object.keys(remote).forEach(k => { const rr = remote[k]; if (seen.has(k) || !rr || rr.del || !rr.j) return; try { out.push(JSON.parse(rr.j)); } catch (e) {} });
-    Object.keys(remote).forEach(k => { const rr = remote[k]; if (rr && rr.j && !rr.del) synced[k] = rr.j; });
+    Object.keys(remote).forEach(k => { const rr = remote[k]; if (rr && rr.j && !rr.del) lastJ[k] = rr.j; if (rr && rr.j && !rr.del && !keep.has(k)) synced[k] = hash(rr.j); });
+    saveSynced();
     const changed = JSON.stringify(out) !== JSON.stringify(data);
     if (changed) {
       data = out;
@@ -595,16 +609,19 @@ window.claimSync = (() => {
     timer = setTimeout(async () => {
       const now = new Set();
       for (const r of data) {
-        const k = key(r.id), s = JSON.stringify(r); now.add(k);
-        if (synced[k] === s) continue;
-        synced[k] = s;
+        const k = key(r.id), s = JSON.stringify(r); now.add(k); lastJ[k] = s;
+        const hs = hash(s);
+        if (synced[k] === hs) continue;
+        synced[k] = hs;
         try { await fetch(url(k), { method: 'PUT', body: JSON.stringify({ j: s, at: Date.now(), by: who }) }); } catch (e) { delete synced[k]; }
       }
       for (const k of Object.keys(synced)) {
         if (now.has(k)) continue;
         delete synced[k];
-        try { await fetch(url(k), { method: 'PUT', body: JSON.stringify({ del: true, at: Date.now(), by: who }) }); } catch (e) {}
+        // 삭제 표시에 마지막 내용을 함께 남겨 엑셀 동기화가 같은 행을 찾아 지울 수 있게 함
+        try { await fetch(url(k), { method: 'PUT', body: JSON.stringify(Object.assign({ del: true, at: Date.now(), by: who }, lastJ[k] ? { j: lastJ[k] } : {})) }); } catch (e) {}
       }
+      saveSynced();
     }, 300);
   }
   function connect() {
@@ -612,6 +629,7 @@ window.claimSync = (() => {
     remote = {}; synced = {}; ready = false;
     if (!base || !window.EventSource) return;
     month = currentMonth;
+    try { synced = JSON.parse(localStorage.getItem(sk()) || '{}') || {}; } catch (e) { synced = {}; }
     es = new EventSource(url());
     const on = (kind, raw) => {
       let m; try { m = JSON.parse(raw); } catch (e) { return; }
@@ -704,8 +722,6 @@ function updateKPI(filtered) {
   document.getElementById('kpi-total').textContent = filtered.length;
   document.getElementById('kpi-our').textContent = our;
   document.getElementById('kpi-courier').textContent = cou;
-  document.getElementById('kpi-delivery').textContent = del.toLocaleString()+'원';
-  document.getElementById('kpi-material').textContent = mat.toLocaleString()+'원';
 }
 
 // ===== RENDER CLAIMS =====
@@ -719,7 +735,8 @@ function renderClaims() {
   const tbody = document.getElementById('tbody-claims');
   tbody.innerHTML = '';
   if(!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="19" class="empty-state">조건에 맞는 데이터가 없습니다</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="32" class="empty-state">조건에 맞는 데이터가 없습니다</td></tr>';
+    updateSelUI(filtered);
     return;
   }
   // 중복 송장 그룹 색상 지정
@@ -741,7 +758,7 @@ function renderClaims() {
     const typeCls = row.type==='아워사고'?'type-our':'type-courier';
     // 공식 자동계산 (사유 기반)
     const isNulak = row.reason==='누락';
-    const isAcc = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송'].includes(row.reason);
+    const isAcc = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송','오출고'].includes(row.reason);
     // 저장된(수정한) 값 우선, 비어 있을 때만 사유 기반 자동값
     const has = v => v !== '' && v != null;
     const dispMisCode = has(row.missingCode) ? row.missingCode : (isNulak ? (row.productCode||'') : '');
@@ -751,6 +768,7 @@ function renderClaims() {
     const dispAccident= has(row.accident) ? row.accident : (isAcc ? row.product : '');
     const dispAccQty  = has(row.accQty) ? row.accQty : (isAcc ? row.qty : '');
     tr.innerHTML = `
+      <td style="text-align:center"><input type="checkbox" data-sel="${row.id}" ${selIds.has(row.id) ? 'checked' : ''}></td>
       <td class="num ${daysCls}">${fmt(row.days)}</td>
       <td>${fmt(row.mall)}</td>
       <td>${fmt(row.recv)}</td>
@@ -769,7 +787,7 @@ function renderClaims() {
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;font-size:11px" title="${fmt(dispAccident)}">${fmt(dispAccident)}</td>
       <td class="num">${fmt(dispAccQty)}</td>
       <td class="mono" style="font-size:11px">${fmt(row.reship)}</td>
-      <td style="font-size:11px;text-align:center">${fmt(row.courierOk)}</td>
+      <td style="font-size:11px;text-align:center">${row.type === '아워사고' ? 'X' : fmt(row.courierOk)}</td>
       <td style="font-size:11px;color:var(--muted)">${fmt(row.stockAdjDate)}</td>
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--muted)" title="${fmt(row.note)}">${fmt(row.note)}</td>
       <td class="num">${money(row.price)}</td>
@@ -787,6 +805,20 @@ function renderClaims() {
   tbody.querySelectorAll('[data-edit]').forEach(btn => {
     btn.addEventListener('click', () => openEdit(+btn.dataset.edit));
   });
+  tbody.querySelectorAll('[data-sel]').forEach(cb => {
+    cb.addEventListener('change', () => { const id = +cb.dataset.sel; cb.checked ? selIds.add(id) : selIds.delete(id); updateSelUI(filtered); });
+  });
+  updateSelUI(filtered);
+}
+function updateSelUI(filtered) {
+  const ids = new Set(data.map(r => r.id));
+  [...selIds].forEach(id => { if (!ids.has(id)) selIds.delete(id); });
+  document.getElementById('sel-count').textContent = selIds.size;
+  document.getElementById('btn-del-sel').disabled = !selIds.size;
+  const all = document.getElementById('sel-all');
+  const vis = (filtered || []).filter(r => selIds.has(r.id)).length;
+  all.checked = !!filtered && filtered.length > 0 && vis === filtered.length;
+  all.indeterminate = vis > 0 && vis < (filtered || []).length;
 }
 
 // ===== RENDER MAGANG =====
@@ -796,10 +828,10 @@ function renderMagang() {
   document.getElementById('count-magang').textContent = rows.length;
   document.getElementById('count-magang2').textContent = rows.length;
   document.getElementById('excluded-count').textContent = filtered.length - rows.length;
-  const delSum = rows.reduce((s,r)=>s+(+r.delivery||0),0);
-  const matSum = rows.reduce((s,r)=>s+(+r.material||0),0);
-  document.getElementById('sum-delivery').textContent = delSum.toLocaleString();
-  document.getElementById('sum-material').textContent = matSum.toLocaleString();
+  const comp = r => (+r.delivery||0)+(+r.material||0)+(+r.price||0);
+  const noVat = type => Math.round(rows.filter(r => r.type === type).reduce((s,r)=>s+comp(r),0) / 1.1);
+  document.getElementById('sum-our-novat').textContent = noVat('아워사고').toLocaleString();
+  document.getElementById('sum-courier-novat').textContent = noVat('택배사고').toLocaleString();
   document.getElementById('sum-total').textContent = rows.reduce((s,r)=>s+(+r.delivery||0)+(+r.material||0)+(+r.price||0),0).toLocaleString();
 
   const tbody = document.getElementById('tbody-magang');
@@ -810,7 +842,7 @@ function renderMagang() {
     const tr = document.createElement('tr');
     const has = v => v !== '' && v != null;
     const isNulak = row.reason==='누락';
-    const isAcc = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송'].includes(row.reason)
+    const isAcc = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송','오출고'].includes(row.reason)
       || (!isNulak && !has(row.missing) && !has(row.accident) && has(row.product));
     const misCode = has(row.missingCode) ? row.missingCode : (isNulak ? (row.productCode||'') : '');
     const mis = has(row.missing) ? row.missing : (isNulak ? row.product : '');
@@ -846,7 +878,34 @@ function renderMagang() {
   }
 }
 
-function render() { renderClaims(); renderMagang(); }
+// 택배비(AB)·작업료(AC)·포장박스가 들어오면 배송비(Z)·부자재(AA)를 수정 버튼 없이 자동 계산
+function autoFees() {
+  let changed = false;
+  (data || []).forEach(r => {
+    const blank = v => v === '' || v == null;
+    if (r.type === '택배사고' && blank(r.courierOk)) { r.courierOk = '필요'; changed = true; }
+    if (r.type === '아워사고' && r.courierOk !== 'X') { r.courierOk = 'X'; changed = true; }
+    if (blank(r.deliveryCalc) && r.boxCode && deliveryMap[r.boxCode]) { r.deliveryCalc = deliveryMap[r.boxCode]; changed = true; }
+    if (blank(r.workCalc) && r.workType && workMap[r.workType]) { r.workCalc = workMap[r.workType]; changed = true; }
+    if (!blank(r.deliveryCalc) || !blank(r.workCalc)) {
+      const d = (+r.deliveryCalc || 0) + (+r.workCalc || 0);
+      if (+r.delivery !== d) { r.delivery = d; changed = true; }
+    }
+    // 부자재는 자주 바뀌므로 직접 입력된 값은 유지, 비어 있을 때만 견적서 값으로 채움
+    if (r.boxCode && (blank(r.material) || +r.material === 0)) {
+      const tz = r.tempZone || detectTempZone((r.missing || '') + (r.accident || ''));
+      let m = calcMaterial(r.boxCode, tz).total;
+      const sc = detectSetCooling((r.missing || '') + (r.accident || '') || r.product);
+      if (sc) m = (boxMap[r.boxCode] || 0) + sc.unit * (((+r.misQty || 0) + (+r.accQty || 0)) || +r.qty || 1);
+      if (+r.material !== m) { r.material = m; changed = true; }
+    }
+  });
+  return changed;
+}
+function render() {
+  if (autoFees()) { try { localStorage.setItem(getStorageKey(), JSON.stringify(data)); } catch (e) {} if (window.claimSync) claimSync.push(); }
+  renderClaims(); renderMagang();
+}
 
 function exportClaimsCsv() {
   const magang = currentView === 'magang';
@@ -1054,7 +1113,7 @@ document.getElementById('excel-file-input').addEventListener('change', function(
         const productCode = toStr(r[8]);
         const product = toStr(r[9]);
         const qty = toNum(r[10]);
-        const ACCIDENT = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송'];
+        const ACCIDENT = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송','오출고'];
         const isNulak = reason === '누락';
         const isAcc = ACCIDENT.includes(reason);
         imported.push({
@@ -1291,6 +1350,13 @@ document.getElementById('m-multi-all').addEventListener('click', () => {
   syncMultiToForm();
 });
 document.getElementById('m-ship').addEventListener('input', calcDays);
+// 구분이 택배사고면 택배사고접수 '필요' 자동 (비어 있을 때만)
+['change','input'].forEach(ev => document.getElementById('m-type').addEventListener(ev, e => {
+  const el = document.getElementById('m-courier-ok');
+  if (e.target.value === '택배사고' && (!el.value.trim() || el.value.trim() === 'X')) el.value = '필요';
+  else if (e.target.value === '아워사고') el.value = 'X';
+  else if (el.value.trim() === '필요' || el.value.trim() === 'X') el.value = '';
+}));
 ['m-boxcode','m-worktype','m-tempzone'].forEach(id => {
   document.getElementById(id).addEventListener('change', recalcFees);
 });
@@ -1311,7 +1377,7 @@ document.getElementById('m-reason').addEventListener('change', () => recalcFormu
 document.getElementById('m-product-code').addEventListener('input', () => recalcFormulaFields(false));
 
 // ===== FORMULA AUTO-FILL (사유 기반) =====
-const ACCIDENT_REASONS = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송'];
+const ACCIDENT_REASONS = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송','오출고'];
 // forceOverwrite=true: 사유 변경 시 기존 값 덮어쓰기 / false: 빈 필드만 채움
 function recalcFormulaFields(forceOverwrite) {
   const reason = document.getElementById('m-reason').value;
@@ -1388,6 +1454,7 @@ function openAdd() {
   document.getElementById('m-mall').value = '';
   document.getElementById('m-name').value = '';
   const now = new Date();
+  document.getElementById('m-recv-label').textContent = '접수일 (클레임 · 오늘 자동)';
   document.getElementById('m-recv').value = String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
   document.getElementById('m-ship').value = '';
   document.getElementById('m-days').value = '';
@@ -1399,6 +1466,7 @@ function openAdd() {
   document.getElementById('m-qty').value = 1;
   document.getElementById('m-product-code').value = '';
   document.getElementById('m-reship').value = '';
+  document.getElementById('m-courier-ok').value = '';
   document.getElementById('m-missing-code').value = '';
   document.getElementById('m-missing').value = '';
   document.getElementById('m-mis-qty').value = '';
@@ -1429,6 +1497,7 @@ function openEdit(id) {
   document.getElementById('m-mall').value = row.mall || '';
   document.getElementById('m-name').value = row.name || '';
   document.getElementById('m-recv').value = row.recv || '';
+  document.getElementById('m-recv-label').textContent = '접수일 (수정해도 그대로 유지)';
   document.getElementById('m-ship').value = row.ship || '';
   document.getElementById('m-days').value = row.days !== '' ? row.days : '';
   document.getElementById('m-type').value = row.type || '';
@@ -1452,6 +1521,7 @@ function openEdit(id) {
   document.getElementById('m-acc-qty').value = row.accQty || '';
   recalcFormulaFields(false); // 빈 필드만 자동채움 (저장값 보존)
   document.getElementById('m-reship').value = row.reship || '';
+  document.getElementById('m-courier-ok').value = row.type === '아워사고' ? 'X' : (row.courierOk || (row.type === '택배사고' ? '필요' : ''));
   document.getElementById('m-price').value = row.price || '';
   document.getElementById('m-claim-delivery').value = row.claimDelivery || '';
   document.getElementById('m-stock-adj-date').value = row.stockAdjDate || '';
@@ -1506,7 +1576,8 @@ document.getElementById('m-save').addEventListener('click', () => {
     row.waybill = waybill;
     row.mall = document.getElementById('m-mall').value.trim();
     row.name = document.getElementById('m-name').value.trim();
-    row.recv = document.getElementById('m-recv').value.trim();
+    const recvIn = document.getElementById('m-recv').value.trim();
+    if (recvIn && recvIn !== row.recv) row.recv = recvIn;
     row.ship = document.getElementById('m-ship').value.trim();
     row.days = daysVal !== '' ? +daysVal : '';
     row.type = document.getElementById('m-type').value;
@@ -1521,6 +1592,9 @@ document.getElementById('m-save').addEventListener('click', () => {
     row.accident = document.getElementById('m-accident').value.trim();
     row.accQty = +document.getElementById('m-acc-qty').value || '';
     row.reship = document.getElementById('m-reship').value.trim();
+    row.courierOk = document.getElementById('m-courier-ok').value.trim();
+    if (row.type === '아워사고') row.courierOk = 'X';
+    else if (row.type === '택배사고' && (!row.courierOk || row.courierOk === 'X')) row.courierOk = '필요';
     row.price = +document.getElementById('m-price').value || 0;
     row.claimDelivery = +document.getElementById('m-claim-delivery').value || 0;
     row.stockAdjDate = document.getElementById('m-stock-adj-date').value.trim();
@@ -1553,7 +1627,7 @@ document.getElementById('m-save').addEventListener('click', () => {
       accident: document.getElementById('m-accident').value.trim(),
       accQty: +document.getElementById('m-acc-qty').value || '',
       reship: document.getElementById('m-reship').value.trim(),
-      courierOk: '',
+      courierOk: (() => { const t = document.getElementById('m-type').value, v = document.getElementById('m-courier-ok').value.trim(); return t === '아워사고' ? 'X' : (t === '택배사고' && (!v || v === 'X') ? '필요' : v); })(),
       price: +document.getElementById('m-price').value || 0,
       claimDelivery: +document.getElementById('m-claim-delivery').value || 0,
       stockAdjDate: document.getElementById('m-stock-adj-date').value.trim(),
@@ -1625,6 +1699,19 @@ document.getElementById('modal-overlay').addEventListener('click', e => {
 
 // ===== ADD BUTTON =====
 document.getElementById('btn-add').addEventListener('click', openAdd);
+document.getElementById('sel-all').addEventListener('change', e => {
+  const f = getFiltered();
+  f.forEach(r => e.target.checked ? selIds.add(r.id) : selIds.delete(r.id));
+  renderClaims();
+});
+document.getElementById('btn-del-sel').addEventListener('click', () => {
+  if (!selIds.size) return;
+  if (!confirm(`선택한 ${selIds.size}건을 삭제하시겠습니까?`)) return;
+  data = data.filter(r => !selIds.has(r.id));
+  selIds.clear();
+  saveData();
+  render();
+});
 
 // ===== IMPORT WAYBILL CACHE =====
 const WB_CACHE_KEY = 'wb_cache_v1';
