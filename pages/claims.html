@@ -927,7 +927,15 @@ function autoFees() {
 // ===== RENDER 택배사고접수 =====
 const isCourierPending = r => String(r.courierOk || '').trim() === '필요';
 function renderCourier() {
-  const rows = (data || []).filter(isCourierPending);
+  // 같은 송장은 한 줄로 (판매내역서금액은 합계)
+  const wk = r => String(r.waybill || '').replace(/\D/g, '') || ('id' + r.id);
+  const groups = new Map();
+  (data || []).filter(isCourierPending).forEach(r => { const k = wk(r); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+  const rows = [...groups.values()].map(list => Object.assign({}, list[0], {
+    price: list.reduce((s, x) => s + (+x.price || 0), 0),
+    claimDelivery: list.map(x => +x.claimDelivery || 0).find(Boolean) || list[0].claimDelivery,
+    note: [...new Set(list.map(x => x.note).filter(Boolean))].join(' / ')
+  }));
   document.getElementById('count-courier').textContent = rows.length;
   document.getElementById('count-courier2').textContent = rows.length;
   const tbody = document.getElementById('tbody-courier');
@@ -952,14 +960,16 @@ function renderCourier() {
 document.getElementById('tbody-courier').addEventListener('change', e => {
   const el = e.target.closest('[data-cf]'); if (!el) return;
   const row = data.find(r => String(r.id) === el.dataset.id); if (!row) return;
-  const v = el.value.trim();
-  row[el.dataset.cf] = el.dataset.cf === 'retFee' ? (v === '' ? '' : (+v.replace(/,/g, '') || 0)) : v;
+  const v = el.value.trim(), wb = String(row.waybill || '');
+  const val = el.dataset.cf === 'retFee' ? (v === '' ? '' : (+v.replace(/,/g, '') || 0)) : v;
+  data.filter(r => r === row || (wb && String(r.waybill || '') === wb)).forEach(r => { r[el.dataset.cf] = val; });
   saveData(); render();
 });
 document.getElementById('tbody-courier').addEventListener('click', e => {
   const b = e.target.closest('[data-cdone]'); if (!b) return;
   const row = data.find(r => String(r.id) === b.dataset.cdone); if (!row) return;
-  row.courierOk = 'O';
+  const wb = String(row.waybill || '');
+  data.filter(r => r === row || (wb && String(r.waybill || '') === wb && isCourierPending(r))).forEach(r => { r.courierOk = 'O'; });
   saveData(); render();
 });
 function render() {
