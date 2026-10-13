@@ -425,7 +425,7 @@ function calcMaterial(boxCode, tempZone) {
       </div>
       <div class="field">
         <label class="fl">누락제품 (M열)</label>
-        <input id="m-missing" class="editable-auto" type="text" placeholder="누락된 상품명 입력">
+        <input id="m-missing" class="editable-auto" type="text" list="item-name-list" autocomplete="off" placeholder="품목명 검색 · 선택하면 코드 자동">
       </div>
       <div class="field">
         <label class="fl">누락수량 (N열)</label>
@@ -438,7 +438,8 @@ function calcMaterial(boxCode, tempZone) {
       </div>
       <div class="field">
         <label class="fl">오배송/사고제품 (P열)</label>
-        <input id="m-accident" class="editable-auto" type="text" placeholder="잘못 나간 상품명 입력">
+        <input id="m-accident" class="editable-auto" type="text" list="item-name-list" autocomplete="off" placeholder="품목명 검색 · 선택하면 코드 자동">
+        <datalist id="item-name-list"></datalist>
       </div>
       <div class="field">
         <label class="fl">사고수량 (Q열)</label>
@@ -1350,6 +1351,27 @@ document.getElementById('m-multi-all').addEventListener('click', () => {
   syncMultiToForm();
 });
 document.getElementById('m-ship').addEventListener('input', calcDays);
+// 품목 DB (차량출고와 같은 품목 목록): 누락/사고제품 품목명 선택 → 품목코드 자동
+let ITEM_LIST = [];
+function setItemList(arr) {
+  if (!Array.isArray(arr) || !arr.length) return;
+  ITEM_LIST = arr.filter(x => x && x.n);
+  const dl = document.getElementById('item-name-list');
+  dl.innerHTML = '';
+  const seen = new Set();
+  ITEM_LIST.forEach(x => { if (seen.has(x.n)) return; seen.add(x.n); const o = document.createElement('option'); o.value = x.n; if (x.c) o.label = x.c; dl.appendChild(o); });
+}
+try { setItemList(JSON.parse(localStorage.getItem('mw_items_v1') || 'null')); } catch (e) {}
+if (!ITEM_LIST.length) import('../items-db.js').then(m => { if (!ITEM_LIST.length) setItemList(m.ITEM_DB); }).catch(() => {});
+window.addEventListener('storage', e => { if (e.key === 'mw_items_v1') try { setItemList(JSON.parse(e.newValue || 'null')); } catch (err) {} });
+[['m-missing','m-missing-code'],['m-accident','m-accident-code']].forEach(([nameId, codeId]) => {
+  const pick = () => {
+    const v = document.getElementById(nameId).value.trim();
+    const it = v && ITEM_LIST.find(x => x.n === v);
+    if (it && it.c) { const c = document.getElementById(codeId); c.value = it.c; c.dataset.auto = ''; }
+  };
+  ['input','change'].forEach(ev => document.getElementById(nameId).addEventListener(ev, pick));
+});
 // 구분이 택배사고면 택배사고접수 '필요' 자동 (비어 있을 때만)
 ['change','input'].forEach(ev => document.getElementById('m-type').addEventListener(ev, e => {
   const el = document.getElementById('m-courier-ok');
