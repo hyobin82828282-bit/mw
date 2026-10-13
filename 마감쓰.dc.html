@@ -721,6 +721,62 @@
           </div>
         </sc-if>
       </div>
+      <section style="margin-top:22px;background:#fff;border:1px solid #E3E1DC;border-radius:12px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid #EFEDE8">
+          <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <h2 style="margin:0;font-size:15px;font-weight:700;letter-spacing:-0.2px">🚀 로켓프레시 내역</h2>
+            <span style="font-size:12px;color:#8A8F96">지출결의서 · 15일(1차: 1~15일) / 말일(2차: 16일~말일)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input type="month" value="{{ rfMonth }}" onChange="{{ onRfMonth }}" style="height:34px;padding:0 10px;border:1px solid #D9D6D0;border-radius:8px;background:#FAF9F6;font-size:12.5px;font-family:inherit;outline:none">
+            <div style="display:flex;border:1px solid #D9D6D0;border-radius:8px;overflow:hidden">
+              <button onClick="{{ rfHalf1 }}" style="{{ rfHalf1Style }}">1차 (1~15일)</button>
+              <button onClick="{{ rfHalf2 }}" style="{{ rfHalf2Style }}">2차 (16일~말일)</button>
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#585D64">택배사
+              <input type="text" value="{{ rfCarrier }}" onChange="{{ onRfCarrier }}" style="width:84px;height:34px;padding:0 8px;border:1px solid #D9D6D0;border-radius:8px;font-size:12.5px;outline:none">
+            </label>
+            <button onClick="{{ rfExport }}" style="height:34px;padding:0 14px;border:none;border-radius:8px;background:#1F6F5C;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer" style-hover="background:#18594A">⬇ 지출결의서 엑셀</button>
+          </div>
+        </div>
+        <sc-if value="{{ rfMsg }}"><div style="padding:9px 20px;background:#F1F7F4;border-bottom:1px solid #E3E1DC;font-size:12.5px;color:#16503F">{{ rfMsg }}</div></sc-if>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap">
+            <thead>
+              <tr style="background:#FAF9F6;color:#585D64">
+                <th style="padding:10px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E3E1DC">NO</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E3E1DC">센터입고일</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E3E1DC">송장번호</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E3E1DC">품목명</th>
+                <th style="padding:10px 12px;text-align:right;font-weight:600;border-bottom:1px solid #E3E1DC">택배비</th>
+                <th style="padding:10px 12px;text-align:center;font-weight:600;border-bottom:1px solid #E3E1DC">사진</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E3E1DC">비고</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ rfRows }}" as="f" hint-placeholder-count="0">
+                <tr>
+                  <td style="padding:10px 12px;color:#9A9EA5;border-bottom:1px solid #F3F1EC">{{ f.no }}</td>
+                  <td style="padding:10px 12px;border-bottom:1px solid #F3F1EC">{{ f.date }}</td>
+                  <td style="padding:10px 12px;font-weight:600;border-bottom:1px solid #F3F1EC">{{ f.invoice }}</td>
+                  <td style="padding:10px 12px;color:#585D64;border-bottom:1px solid #F3F1EC"><div title="{{ f.itemName }}" style="max-width:300px;overflow:hidden;text-overflow:ellipsis">{{ f.itemName }}</div></td>
+                  <td style="padding:10px 12px;text-align:right;border-bottom:1px solid #F3F1EC">{{ f.fee }}</td>
+                  <td style="padding:10px 12px;text-align:center;border-bottom:1px solid #F3F1EC"><span onClick="{{ f.onPhoto }}" style="{{ f.photoStyle }}">📷 {{ f.photoLabel }}</span></td>
+                  <td style="padding:6px 12px;border-bottom:1px solid #F3F1EC"><input type="text" value="{{ f.note }}" onChange="{{ f.onNote }}" placeholder="예: 화주사(목우촌) 청구예정" style="width:220px;height:30px;padding:0 8px;border:1px solid #D9D6D0;border-radius:6px;font-size:12.5px;font-family:inherit;outline:none" style-focus="border-color:#1F6F5C;box-shadow:0 0 0 3px #E8F1ED"></td>
+                </tr>
+              </sc-for>
+            </tbody>
+            <tfoot>
+              <tr style="background:#FAF9F6;font-weight:700">
+                <td colspan="4" style="padding:11px 12px;border-top:1px solid #E3E1DC">합계 · {{ rfCount }}건</td>
+                <td style="padding:11px 12px;text-align:right;border-top:1px solid #E3E1DC">{{ rfSum }}원</td>
+                <td colspan="2" style="border-top:1px solid #E3E1DC"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <sc-if value="{{ rfEmpty }}"><div style="padding:30px 20px;text-align:center;font-size:13px;color:#9A9EA5">이 기간의 로켓프레시 반품이 없습니다</div></sc-if>
+      </section>
     </div>
     </sc-if>
 
@@ -2210,15 +2266,7 @@ class Component extends DCLogic {
     const dbN = Object.keys(s.invoiceDb || {}).length;
     const noHit = s.rDrop && q.length >= 10 && !matches.length;
     const rq = s.rFilterText.trim().toLowerCase();
-    const rows = s.returns
-      .filter(r => !rq || (r.invoice + r.customer + r.itemName).toLowerCase().includes(rq))
-      .filter(r => !s.rUnsharedOnly || r.shared !== "true")
-      .filter(r => (s.rClosedFilter || "all") === "all" || (s.rClosedFilter === "yes") === (String(r.closed) === "true"))
-      .filter(r => !s.rMonth || String(r.requested || "").slice(0, 7) === s.rMonth)
-      .sort((a, b) => {
-        const va = a[s.retSortCol] || "", vb = b[s.retSortCol] || "";
-        return s.retSortDir * (vb < va ? -1 : vb > va ? 1 : 0);
-      });
+    const rows = this.retFiltered();
     return {
       rInvoice: s.rInvoice, rCustomer: s.rCustomer, rType: s.rType,
       onRInvoice: e => this.setState({ rInvoice: e.target.value, rDrop: true }),
@@ -2336,9 +2384,122 @@ class Component extends DCLogic {
         onPhoto: () => this.openPhotoView(r),
         onDelete: () => { this.photoPut(r.id, []); this.setState(p => ({ returns: p.returns.filter(x => x.id !== r.id) })); }
       })),
+      ...(() => {
+        const rf = this.rfList(), HB = "height:32px;padding:0 12px;border:none;font-size:12px;font-weight:700;cursor:pointer;";
+        const half = this.rfHalf();
+        return {
+          rfMonth: this.rfMonth(), onRfMonth: e => this.setState({ rfMonth: e.target.value, rfMsg: "" }),
+          rfHalf1: () => this.setState({ rfHalf: 1, rfMsg: "" }), rfHalf2: () => this.setState({ rfHalf: 2, rfMsg: "" }),
+          rfHalf1Style: HB + (half === 1 ? "background:#1F6F5C;color:#fff" : "background:#FAF9F6;color:#585D64"),
+          rfHalf2Style: HB + (half === 2 ? "background:#1F6F5C;color:#fff" : "background:#FAF9F6;color:#585D64"),
+          rfCarrier: s.rfCarrier ?? (localStorage.getItem("mw_rf_carrier") || "롯데택배"),
+          onRfCarrier: e => { const v = e.target.value; try { localStorage.setItem("mw_rf_carrier", v); } catch (x) {} this.setState({ rfCarrier: v }); },
+          rfExport: () => this.rfExportXlsx(),
+          rfMsg: s.rfMsg || "",
+          rfRows: rf.map((r, i) => ({ no: i + 1, date: r._d, invoice: r.invoice, itemName: r.itemName || "—",
+            fee: fmt(r.amount || r.fee || 0) + "원", photoLabel: r.photos ? String(r.photos) : "",
+            photoStyle: "display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 8px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid " + (r.photos ? "#BEDACF;background:#F1F7F4;color:#16503F;font-weight:700" : "#E3E1DC;background:#fff;color:#8A8F96"),
+            onPhoto: () => this.openPhotoView(r),
+            note: r.rfNote || "",
+            onNote: e => { const v = e.target.value; this.setState(p => ({ returns: p.returns.map(x => x.id === r.id ? Object.assign({}, x, { rfNote: v }) : x) })); } })),
+          rfCount: rf.length, rfSum: fmt(rf.reduce((a, r) => a + (r.amount || r.fee || 0), 0)), rfEmpty: !rf.length
+        };
+      })(),
       noRetRows: rows.length === 0, retCount: rows.length,
       retSumAmount: fmt(rows.reduce((a, r) => a + (r.amount || 0), 0))
     };
+  }
+
+  retFiltered() {
+    const s = this.state, rq = (s.rFilterText || "").trim().toLowerCase();
+    return (s.returns || [])
+      .filter(r => !rq || (r.invoice + r.customer + r.itemName).toLowerCase().includes(rq))
+      .filter(r => !s.rUnsharedOnly || r.shared !== "true")
+      .filter(r => (s.rClosedFilter || "all") === "all" || (s.rClosedFilter === "yes") === (String(r.closed) === "true"))
+      .filter(r => !s.rMonth || String(r.requested || "").slice(0, 7) === s.rMonth)
+      .sort((a, b) => {
+        const va = a[s.retSortCol] || "", vb = b[s.retSortCol] || "";
+        return s.retSortDir * (vb < va ? -1 : vb > va ? 1 : 0);
+      });
+  }
+  rfMonth() { return this.state.rfMonth || todayStr().slice(0, 7); }
+  rfHalf() { return this.state.rfHalf || (Number(todayStr().slice(8, 10)) <= 15 ? 1 : 2); }
+  rfList() {
+    const m = this.rfMonth(), h = this.rfHalf();
+    return (this.state.returns || [])
+      .filter(r => r.type === "쿠팡반품" || String(r.customer || "").includes("로켓프레시"))
+      .map(r => Object.assign({}, r, { _d: String(r.confirmed || r.requested || "").slice(0, 10) }))
+      .filter(r => r._d.slice(0, 7) === m && (Number(r._d.slice(8, 10)) <= 15 ? 1 : 2) === h)
+      .sort((a, b) => a._d < b._d ? -1 : a._d > b._d ? 1 : 0);
+  }
+  async rfExportXlsx() {
+    const rows = this.rfList();
+    if (!rows.length) return this.setState({ rfMsg: "이 기간의 로켓프레시 반품이 없습니다." });
+    if (!window.ExcelJS) return this.setState({ rfMsg: "엑셀 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도하세요." });
+    this.setState({ rfMsg: "엑셀 만드는 중... (사진 불러오는 중)" });
+    try {
+      const carrier = this.state.rfCarrier ?? (localStorage.getItem("mw_rf_carrier") || "롯데택배");
+      const toDate = d => { const [y, mo, da] = d.split("-").map(Number); return y ? new Date(Date.UTC(y, mo - 1, da)) : null; };
+      const wb = new ExcelJS.Workbook();
+      const thin = { style: "thin", color: { argb: "FF000000" } }, BOX = { top: thin, left: thin, bottom: thin, right: thin };
+      const F10 = { name: "맑은 고딕", size: 10 }, F10B = { name: "맑은 고딕", size: 10, bold: true };
+      const C = { horizontal: "center", vertical: "middle" };
+      const fill = argb => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
+      const NUM = '_-* #,##0_-;\\-* #,##0_-;_-* "-"_-;_-@_-';
+      const ws = wb.addWorksheet("내역", { views: [{ showGridLines: false }], pageSetup: { paperSize: 9, orientation: "portrait" } });
+      ws.columns = [{ width: 3.125 }, { width: 11.75 }, { width: 15.375 }, { width: 14.625 }, { width: 11 }, { width: 25.25 }];
+      ws.mergeCells("B1:F2");
+      const t = ws.getCell("B1"); t.value = "택배 착불 송장 내역"; t.font = { name: "맑은 고딕", size: 16, bold: true }; t.alignment = C;
+      ws.getRow(2).height = 26.25;
+      ["B", "C", "D", "E", "F"].forEach(c => { ws.getCell(c + "2").border = { bottom: thin }; });
+      ["택배사", "센터입고일", "송장번호", "금액", "비고"].forEach((h, i) => {
+        const c = ws.getRow(3).getCell(i + 2); c.value = h; c.font = F10B; c.alignment = C; c.border = BOX; c.fill = fill("FFD0CECE");
+      });
+      rows.forEach((r, i) => {
+        const row = ws.getRow(4 + i);
+        const vals = [carrier, toDate(r._d), String(r.invoice || ""), Number(r.amount || r.fee || 0), String(r.rfNote || "")];
+        vals.forEach((v, j) => { const c = row.getCell(j + 2); c.value = v; c.font = F10; c.alignment = C; c.border = BOX; });
+        row.getCell(3).numFmt = "yyyy-mm-dd"; row.getCell(5).numFmt = NUM;
+      });
+      const sr = 4 + rows.length;
+      ws.mergeCells("B" + sr + ":D" + sr);
+      ["B", "C", "D", "F"].forEach(c => { const x = ws.getCell(c + sr); x.fill = fill("FFD0CECE"); x.border = BOX; x.alignment = C; });
+      const sc = ws.getCell("E" + sr);
+      sc.value = { formula: "SUM(E4:E" + (sr - 1) + ")", result: rows.reduce((a, r) => a + Number(r.amount || r.fee || 0), 0) };
+      sc.numFmt = NUM; sc.font = F10B; sc.fill = fill("FFD0CECE"); sc.border = BOX;
+      ws.autoFilter = "B3:F" + sr;
+
+      const ps = wb.addWorksheet("저온 상세", { views: [{ showGridLines: false, zoomScale: 70 }], pageSetup: { paperSize: 9, orientation: "portrait" } });
+      ps.columns = [{ width: 3.625 }, { width: 34.5 }, { width: 34.5 }];
+      const pics = [];
+      for (const r of rows) {
+        const g = await this.photoGet(r.id);
+        (g.list || []).forEach(src => pics.push({ d: r._d, src }));
+      }
+      const dims = src => new Promise(res => { const im = new Image(); im.onload = () => res([im.naturalWidth, im.naturalHeight]); im.onerror = () => res([4, 3]); im.src = src; });
+      const PW = 240, PH = 305;
+      for (let i = 0; i < pics.length; i++) {
+        const col = i % 2, hr = 2 + Math.floor(i / 2) * 2, p = pics[i];
+        const hc = ps.getRow(hr).getCell(col + 2);
+        hc.value = toDate(p.d); hc.numFmt = "yyyy-mm-dd"; hc.font = F10B; hc.alignment = C; hc.border = BOX; hc.fill = fill("FFD9D9D9");
+        ps.getRow(hr + 1).height = 237;
+        ps.getRow(hr + 1).getCell(col + 2).border = BOX;
+        const m = /^data:image\/(\w+);base64,(.*)$/.exec(p.src || "");
+        if (!m) continue;
+        const [w, h] = await dims(p.src), k = Math.min(PW / w, PH / h);
+        const id = wb.addImage({ base64: m[2], extension: m[1] === "png" ? "png" : "jpeg" });
+        ps.addImage(id, { tl: { col: col + 1 + 0.02, row: hr + 0.02 }, ext: { width: Math.round(w * k), height: Math.round(h * k) }, editAs: "oneCell" });
+      }
+      const buf = await wb.xlsx.writeBuffer();
+      const name = "첨부 택배 회송 리스트_오산센터_" + Number(this.rfMonth().slice(5)) + "월_ " + this.rfHalf() + "차.xlsx";
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+      a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      this.setState({ rfMsg: "저장했습니다: " + name + " · " + rows.length + "건 · 사진 " + pics.length + "장" });
+    } catch (e) {
+      this.setState({ rfMsg: "엑셀 저장 실패: " + (e && (e.message || e) || "") });
+    }
   }
 
   retSortBy(col) {
@@ -2506,7 +2667,7 @@ class Component extends DCLogic {
     }
     if (s.tab === "returnlist" || s.tab === "return") {
       return { name: "반품목록", head: ["NO","원송장번호","고객명","품목코드","품목명","구분","수량","출고박스","택배비","반품택배비","금액","반품확인일","회수요청일","양품화","목우촌공유","마감반영"],
-        body: s.returns.map((r, i) => [i+1, r.invoice, r.customer, this.retCode(r), r.itemName, r.type, r.qty, BOX_LABELS[r.box] || r.box || "", r.fee, r.retfee, r.amount, r.confirmed, r.requested, r.good, r.shared === "true" ? "공유완료" : "미공유", String(r.closed) === "true" ? "반영완료" : "미반영"]) };
+        body: this.retFiltered().map((r, i) => [i+1, r.invoice, r.customer, this.retCode(r), r.itemName, r.type, r.qty, BOX_LABELS[r.box] || r.box || "", r.fee, r.retfee, r.amount, r.confirmed, r.requested, r.good, r.shared === "true" ? "공유완료" : "미공유", String(r.closed) === "true" ? "반영완료" : "미반영"]) };
     }
     if (s.tab === "items") {
       return { name: "품목현황", head: ["품목코드","품목명","보관온도","입수량","무게(kg)","총수량","BOX수량"],
