@@ -123,14 +123,16 @@ const save = () => { try { localStorage.setItem(STORE, JSON.stringify({ man: S.m
 
 function claude() {
   const c = window.claude || (window.parent && window.parent !== window && (() => { try { return window.parent.claude; } catch(e) { return null; } })());
-  if (!c) throw new Error("AI 읽기 기능을 사용할 수 없습니다. 엑셀이나 표 붙여넣기를 이용해 주세요.");
+  if (!c || typeof c.complete !== "function") throw new Error("NOAI");
   return c;
 }
+const hasAI = () => { try { claude(); return true; } catch(e) { return false; } };
+const NOAI_MSG = "이 컴퓨터(웹페이지 주소로 연 화면)에서는 AI 읽기 기능이 없어 동봉문서 PDF를 읽을 수 없습니다. Claude 프로젝트 안에서 열어 사용해 주세요.";
 async function ask(body, tries) {
   tries = tries || 3;
   for (let i = 0; i < tries; i++) {
-    try { return await claude().complete(body); }
-    catch (e) { if (i === tries - 1) throw e; await new Promise(r => setTimeout(r, 4000 * (i + 1))); }
+    try { return await Promise.race([claude().complete(body), new Promise((_, rj) => setTimeout(() => rj(new Error("응답 시간 초과")), 120000))]); }
+    catch (e) { if (e.message === "NOAI") throw new Error(NOAI_MSG); if (i === tries - 1) throw e; await new Promise(r => setTimeout(r, 4000 * (i + 1))); }
   }
 }
 function jsonArr(t) {
@@ -152,7 +154,10 @@ function normDate(v) {
 }
 const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s || "");
 const normName = s => String(s || "").toLowerCase().replace(/\[[^\]]*\]|\([^)]*\)/g, " ").replace(/[^0-9a-z가-힣]/g, "");
+const coreName = s => normName(String(s || "").replace(/목우촌/g, "").replace(/\d+(\.\d+)?\s*(kg|g|ml|l|개|입|ea)\b/gi, ""));
 function dice(a, b) {
+  const ca = coreName(a), cb = coreName(b);
+  if (ca && cb && ca.length >= 3 && cb.length >= 3 && (ca === cb || ca.includes(cb) || cb.includes(ca))) return ca === cb ? 0.98 : 0.9;
   a = normName(a); b = normName(b);
   if (!a || !b) return 0;
   if (a === b) return 1;
@@ -190,6 +195,30 @@ async function mergePdfs(pdfs, prefix) {
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = prefix + "_" + tag + "_" + pdfs.length + "건.pdf";
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
+
+function parseManPage(its, file) {
+  const find = re => its.find(i => re.test(i.s));
+  const below = (lab, dx) => { if (!lab) return ""; const c = its.filter(i => i.y < lab.y - 5 && i.y > lab.y - 25 && Math.abs(i.x - lab.x) < (dx || 40)).sort((a, b) => b.y - a.y)[0]; return c ? c.s : ""; };
+  const hName = find(/상품명/), hQty = find(/^수량$/), hExp = find(/소비기한|유통기한/);
+  if (!hName || !hQty) return [];
+  const boxIt = find(/^박스\s*\d/); const box = boxIt ? boxIt.s.replace(/^박스\s*/, "") : "";
+  const shipment = below(find(/^쉽먼트번호$/)).replace(/\D/g, "");
+  const ctrIt = its.filter(i => i.y > (boxIt ? boxIt.y - 15 : 720) && i.x < 300 && !/동봉문서|박스/.test(i.s)).sort((a, b) => b.y - a.y)[0];
+  const center = ctrIt ? ctrIt.s : "";
+  const body = its.filter(i => i.y < hName.y - 5);
+  const anchors = body.filter(i => /^\d{8,14}$/.test(i.s) && i.x < hName.x - 100).sort((a, b) => b.y - a.y || a.x - b.x).filter((i, k, arr) => !arr.some((j, m) => m < k && Math.abs(j.y - i.y) < 4));
+  const out = [];
+  anchors.forEach((an, k) => {
+    const top = an.y + 12, bot = k + 1 < anchors.length ? anchors[k + 1].y + 12 : an.y - 30;
+    const zone = body.filter(i => i.y <= top && i.y > bot);
+    const pno = zone.find(i => /^\d{5,12}$/.test(i.s) && i.x > an.x + 40 && i.x < hName.x - 20);
+    const name = zone.filter(i => i.x >= hName.x - 80 && i.x < hQty.x - 8 && i !== pno).sort((a, b) => b.y - a.y || a.x - b.x).map(i => i.s).join(" ").replace(/\s+/g, " ").trim();
+    const q = zone.find(i => /^\d{1,5}$/.test(i.s) && Math.abs(i.x - hQty.x) < 25);
+    const ex = zone.map(i => i.s).find(s => /유통기한|소비기한|EXP/i.test(s) && /20\d{2}/.test(s)) || zone.filter(i => hExp && i.x > hQty.x + 20).map(i => i.s).filter(s => /20\d{2}/.test(s) && !/제조/.test(s)).pop() || "";
+    if (name) out.push({ file, shipment, center, box, barcode: an.s, productNo: pno ? pno.s : an.s, name, qty: q ? +q.s : 0, expiry: normDate(ex.replace(/[^0-9\-.\/]/g, "")) });
+  });
+  return out;
+}
 S.labels = [];
 async function loadManifest(files) {
   const pdfs = [];
@@ -205,32 +234,37 @@ async function loadManifest(files) {
   if (!pdfs.length) throw new Error("PDF 파일을 찾지 못했습니다.");
   pdfs.sort((a, b) => a.name.localeCompare(b.name, "ko", { numeric: true }));
   S.pdfs = pdfs;
-  $("stM").textContent = "PDF " + pdfs.length + "개 · 텍스트 읽는 중…";
-  const texts = [];
+  const texts = [], rows = [];
   for (const p of pdfs) {
     const doc = await pdfjsLib.getDocument({ data: p.bytes.slice() }).promise;
-    let t = "";
+    let t = "", got = 0;
     for (let i = 1; i <= doc.numPages; i++) {
       const pg = await doc.getPage(i);
       const c = await pg.getTextContent();
+      const its = c.items.filter(it => it.str.trim()).map(it => ({ s: it.str.trim(), x: it.transform[4], y: it.transform[5] }));
+      const pr = parseManPage(its, p.name); got += pr.length; pr.forEach(r => rows.push(r));
       let lastY = null;
       for (const it of c.items) { const y = Math.round(it.transform[5]); if (lastY !== null && Math.abs(y - lastY) > 2) t += "\n"; else if (lastY !== null) t += " "; t += it.str; lastY = y; }
       t += "\n";
     }
-    texts.push({ name: p.name, text: t.replace(/[ \t]+/g, " ").trim() });
+    if (!got) texts.push({ name: p.name, text: t.replace(/[ \t]+/g, " ").trim() });
   }
-  const batches = []; let cur = [], len = 0;
-  for (const t of texts) { const body = "### FILE: " + t.name + "\n" + t.text.slice(0, 9000); if (len + body.length > 10000 && cur.length) { batches.push(cur); cur = []; len = 0; } cur.push(body); len += body.length; }
-  if (cur.length) batches.push(cur);
-  const rows = [];
-  for (let i = 0; i < batches.length; i++) {
-    $("stM").textContent = "PDF " + pdfs.length + "개 · 품목 정리 중 (" + (i + 1) + "/" + batches.length + ")";
-    const out = await ask({
-      max_tokens: 6000,
-      system: "너는 쿠팡 쉽먼트 동봉문서(Manifest) 텍스트를 표로 정리한다. 반드시 JSON 배열만 출력한다.",
-      messages: [{ role: "user", content: "아래는 쿠팡 동봉문서 PDF에서 뽑은 텍스트다. 박스에 담긴 품목을 한 줄씩 JSON 배열로 출력해라.\n형식: [{\"file\":\"파일명\",\"shipment\":\"쉽먼트번호\",\"center\":\"입고센터명\",\"box\":\"박스번호\",\"productNo\":\"상품번호/바코드/SKU ID\",\"name\":\"상품명\",\"qty\":숫자,\"expiry\":\"YYYY-MM-DD\"}]\n값이 없으면 빈 문자열. 유통기한(소비기한/EXP)은 YYYY-MM-DD로 바꿔라. 설명 없이 JSON만.\n\n" + batches[i].join("\n\n") }]
-    });
-    jsonArr(out).forEach(r => rows.push({ file: r.file || "", shipment: String(r.shipment || ""), center: String(r.center || ""), box: String(r.box || ""), productNo: String(r.productNo || ""), name: String(r.name || ""), qty: Number(r.qty) || 0, expiry: normDate(r.expiry) }));
+  if (texts.length) {
+    if (!hasAI()) { if (!rows.length) { $("stM").textContent = "PDF " + pdfs.length + "개 · 읽기 불가"; throw new Error("동봉문서 양식을 읽지 못했습니다 (" + texts.length + "개 파일)."); } }
+    else {
+      const batches = []; let cur = [], len = 0;
+      for (const t of texts) { const body = "### FILE: " + t.name + "\n" + t.text.slice(0, 9000); if (len + body.length > 10000 && cur.length) { batches.push(cur); cur = []; len = 0; } cur.push(body); len += body.length; }
+      if (cur.length) batches.push(cur);
+      for (let i = 0; i < batches.length; i++) {
+        $("stM").textContent = "PDF " + pdfs.length + "개 · 품목 정리 중 (" + (i + 1) + "/" + batches.length + ")";
+        const out = await ask({
+          max_tokens: 6000,
+          system: "너는 쿠팡 쉽먼트 동봉문서(Manifest) 텍스트를 표로 정리한다. 반드시 JSON 배열만 출력한다.",
+          messages: [{ role: "user", content: "아래는 쿠팡 동봉문서 PDF에서 뽑은 텍스트다. 박스에 담긴 품목을 한 줄씩 JSON 배열로 출력해라.\n형식: [{\"file\":\"파일명\",\"shipment\":\"쉽먼트번호\",\"center\":\"입고센터명\",\"box\":\"박스번호\",\"productNo\":\"상품번호/바코드/SKU ID\",\"name\":\"상품명\",\"qty\":숫자,\"expiry\":\"YYYY-MM-DD\"}]\n값이 없으면 빈 문자열. 유통기한(소비기한/EXP)은 YYYY-MM-DD로 바꿔라. 설명 없이 JSON만.\n\n" + batches[i].join("\n\n") }]
+        });
+        jsonArr(out).forEach(r => rows.push({ file: r.file || "", shipment: String(r.shipment || ""), center: String(r.center || ""), box: String(r.box || ""), productNo: String(r.productNo || ""), name: String(r.name || ""), qty: Number(r.qty) || 0, expiry: normDate(r.expiry) }));
+      }
+    }
   }
   S.man = rows;
   $("stM").textContent = "PDF " + pdfs.length + "개 · 품목 " + rows.length + "줄";
@@ -366,7 +400,7 @@ function autoMatch() {
     let best = null, bs = 0;
     for (const it of items) {
       let sc = 0;
-      if (p.code && (it.productNo === p.code || it.name.includes(p.code))) sc = 1;
+      if (p.code && (it.productNo === p.code || it.rows.some(r => r.barcode === p.code) || it.name.includes(p.code))) sc = 1;
       else sc = dice(p.name, it.name);
       if (sc > bs) { bs = sc; best = it; }
     }
