@@ -903,10 +903,14 @@ function renderMagang() {
 // 택배비(AB)·작업료(AC)·포장박스가 들어오면 배송비(Z)·부자재(AA)를 수정 버튼 없이 자동 계산
 function autoFees() {
   let changed = false;
+  // 같은 송장의 2번째 행부터 구분이 비어 있으면 첫 행 구분을 따라감
+  const wbType = {};
+  (data || []).forEach(r => { const w = String(r.waybill || '').replace(/\D/g, ''); if (w && r.type && !wbType[w]) wbType[w] = r.type; });
   (data || []).forEach(r => {
     const blank = v => v === '' || v == null;
-    if (r.type === '택배사고' && blank(r.courierOk)) { r.courierOk = '필요'; changed = true; }
-    if (r.type === '아워사고' && r.courierOk !== 'X') { r.courierOk = 'X'; changed = true; }
+    const type = r.type || wbType[String(r.waybill || '').replace(/\D/g, '')] || '';
+    if (type === '택배사고' && blank(r.courierOk)) { r.courierOk = '필요'; changed = true; }
+    if (type === '아워사고' && r.courierOk !== 'X') { r.courierOk = 'X'; changed = true; }
     if (blank(r.deliveryCalc) && r.boxCode && deliveryMap[r.boxCode]) { r.deliveryCalc = deliveryMap[r.boxCode]; changed = true; }
     if (blank(r.workCalc) && r.workType && workMap[r.workType]) { r.workCalc = workMap[r.workType]; changed = true; }
     if (!blank(r.deliveryCalc) || !blank(r.workCalc)) {
