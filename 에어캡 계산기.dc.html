@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
+<script src="./closing-import.js?v=8"></script>
+<script src="./aircap.js?v=4"></script>
+<style>
+  html,body{margin:0;background:#F4F3EF;font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;color:#16181A}
+  a{color:#1F6F5C;text-decoration:none}
+  a:hover{color:#16503F;text-decoration:underline}
+  input,button{font-family:inherit}
+</style>
+</helmet>
+<div style="max-width:1080px;margin:0 auto;padding:28px 20px 60px;display:flex;flex-direction:column;gap:16px">
+  <header style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-size:22px;font-weight:700">에어캡 · 세트 확인</div>
+      <div style="font-size:13px;color:#6E7379;text-wrap:pretty">출고 완료 파일을 넣고 '일별 건수 파일에 넣기'를 누르면 날짜 시트(1001 등)가 채워진 파일을 받아요.</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label style="font-size:12px;color:#6E7379">비밀번호</label>
+      <input value="{{ pw }}" onChange="{{ pwChange }}" style="width:90px;height:34px;padding:0 10px;border:1px solid #D6D3CC;border-radius:8px;font-size:13px;box-sizing:border-box">
+      <sc-if value="{{ hasDays }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ clearAll }}" style="height:34px;padding:0 14px;border:1px solid #D6D3CC;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#16181A">모두 지우기</button>
+        <label style="display:flex;align-items:center;height:34px;padding:0 14px;border:1px solid #16181A;border-radius:8px;background:#16181A;color:#fff;font-size:13px;font-weight:600;cursor:pointer;box-sizing:border-box">
+          <input type="file" accept=".xlsx,.xlsm" onChange="{{ onDaily }}" style="display:none">
+          일별 건수 파일에 넣기
+        </label>
+      </sc-if>
+    </div>
+  </header>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px">
+    <label onDragOver="{{ dz1.over }}" onDragLeave="{{ dz1.leave }}" onDrop="{{ dz1.drop }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:22px 20px;border:1.5px dashed {{ dz1.border }};border-radius:12px;background:#fff;cursor:pointer;text-align:center">
+      <input type="file" accept=".xlsx" multiple onChange="{{ dz1.pick }}" style="display:none">
+      <div style="font-size:15px;font-weight:600">{{ dz1.text }}</div>
+      <div style="font-size:12px;color:#6E7379">하루치 여러 개나 한 달치 1개 · 같은 날짜는 새 파일로 바뀌어요</div>
+    </label>
+  </div>
+
+  <sc-if value="{{ hasDays }}" hint-placeholder-val="{{ false }}">
+    <section style="background:#fff;border:1px solid #E3E1DC;border-radius:12px;overflow:auto">
+      <div style="min-width:620px">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,minmax(0,1fr));padding:10px 20px;border-bottom:1px solid #E3E1DC;font-size:12px;font-weight:600;color:#6E7379">
+          <div>출고일</div><div style="text-align:right">송장</div><div style="text-align:right">에어<div style="font-weight:500;color:#9A9EA3">→ 에어캡</div></div><div style="text-align:right">세트<div style="font-weight:500;color:#9A9EA3">→ 작업료_세트/홈쇼핑</div></div><div style="text-align:right">세트(40건↑)</div><div style="text-align:right">선물세트</div>
+        </div>
+        <sc-for list="{{ days }}" as="d" hint-placeholder-count="3">
+          <div onClick="{{ d.pick }}" style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,minmax(0,1fr));padding:10px 20px;border-bottom:1px solid #EFEDE8;font-size:14px;cursor:pointer;background:{{ d.bg }};font-variant-numeric:tabular-nums" style-hover="background:#F7F6F2">
+            <div style="font-weight:600">{{ d.label }}</div>
+            <div style="text-align:right">{{ d.invoices }}</div>
+            <div style="text-align:right;font-weight:700">{{ d.air }}</div>
+            <div style="text-align:right">{{ d.set }}</div>
+            <div style="text-align:right">{{ d.set40 }}</div>
+            <div style="text-align:right">{{ d.gift }}</div>
+          </div>
+        </sc-for>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,minmax(0,1fr));padding:12px 20px;font-size:14px;font-weight:700;background:#FAF9F6;font-variant-numeric:tabular-nums">
+          <div>합계</div><div style="text-align:right">{{ sum.invoices }}</div><div style="text-align:right;color:#1F6F5C">{{ sum.air }}</div><div style="text-align:right">{{ sum.set }}</div><div style="text-align:right">{{ sum.set40 }}</div><div style="text-align:right">{{ sum.gift }}</div>
+        </div>
+      </div>
+    </section>
+
+    <section style="background:#fff;border:1px solid #E3E1DC;border-radius:12px;overflow:hidden">
+      <div style="padding:12px 20px;border-bottom:1px solid #E3E1DC;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <div style="font-size:15px;font-weight:700">박스수량</div>
+        <div style="font-size:12px;color:#6E7379">'목우촌 박스 건수' 시트 O~AE열과 같은 계산 · 폴리 입수량은 {{ rulesSrc }}</div>
+      </div>
+      <div style="overflow:auto">
+        <div style="min-width:1240px">
+          <div style="display:grid;grid-template-columns:56px repeat(18,minmax(0,1fr));gap:6px;padding:10px 20px;border-bottom:1px solid #E3E1DC;font-size:11.5px;font-weight:600;color:#6E7379;line-height:1.35">
+            <div>출고일</div>
+            <sc-for list="{{ boxHead }}" as="h" hint-placeholder-count="11">
+              <div style="text-align:right"><div>{{ h.t }}</div><div style="font-weight:500;color:#9A9EA3">{{ h.s }}</div></div>
+            </sc-for>
+          </div>
+          <sc-for list="{{ boxRows }}" as="r" hint-placeholder-count="3">
+            <div onClick="{{ r.pick }}" style="display:grid;grid-template-columns:56px repeat(18,minmax(0,1fr));gap:6px;padding:9px 20px;border-bottom:1px solid #EFEDE8;font-size:14px;cursor:pointer;background:{{ r.bg }};font-variant-numeric:tabular-nums" style-hover="background:#F7F6F2">
+              <div style="font-weight:600">{{ r.label }}</div>
+              <sc-for list="{{ r.vals }}" as="v" hint-placeholder-count="11">
+                <div style="text-align:right;color:{{ v.c }};font-weight:{{ v.w }}">{{ v.v }}</div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="display:grid;grid-template-columns:56px repeat(18,minmax(0,1fr));gap:6px;padding:11px 20px;font-size:14px;font-weight:700;background:#FAF9F6;font-variant-numeric:tabular-nums">
+            <div>합계</div>
+            <sc-for list="{{ boxSum }}" as="v" hint-placeholder-count="11">
+              <div style="text-align:right;color:{{ v.c }}">{{ v.v }}</div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      <sc-if value="{{ hasUnreg }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:12px 20px;border-top:1px solid #E3E1DC;background:#FBEEDC;font-size:13px;line-height:1.55;display:flex;flex-direction:column;gap:4px">
+          <div style="font-weight:700">폴리 미등록 · 분류규칙 시트 H열에 입수량을 넣어 주세요</div>
+          <sc-for list="{{ unreg }}" as="u" hint-placeholder-count="1">
+            <div>{{ u.day }} · {{ u.name }} *{{ u.qty }} · 송장 {{ u.n }}건</div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </section>
+
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="font-size:17px;font-weight:700">{{ curLabel }}</div>
+      <div style="font-size:13px;color:#6E7379">송장 {{ curInvoices }}건 · {{ curLines }}줄</div>
+      <button onClick="{{ copyDay }}" style="margin-left:auto;height:32px;padding:0 14px;border:1px solid #D6D3CC;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#16181A">이 날짜 시트 복사</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;align-items:start">
+      <section style="background:#fff;border:1px solid #E3E1DC;border-radius:12px;overflow:hidden">
+        <div style="padding:12px 20px;border-bottom:1px solid #E3E1DC;display:flex;align-items:baseline;gap:8px">
+          <div style="font-size:15px;font-weight:700">1. 세트확인</div>
+          <div style="font-size:12px;color:#6E7379">송장별 품목 조합 · 송장 수 많은 순 · 40건↑, 세트(냉장·상온·냉동·상온펫 접두어 제외) 주황</div>
+        </div>
+        <div style="padding:10px 20px;border-bottom:1px solid #EFEDE8;display:flex;align-items:center;gap:10px">
+          <input value="{{ q }}" onChange="{{ qChange }}" placeholder="품목명 검색 (예: 보냉세트, 뚝심)" style="flex:1;min-width:0;height:34px;padding:0 12px;border:1px solid #D6D3CC;border-radius:8px;font-size:13px;box-sizing:border-box;outline:none">
+          <sc-if value="{{ hasQ }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12px;color:#6E7379;white-space:nowrap">{{ qInfo }}</div>
+            <button onClick="{{ qClear }}" style="height:34px;padding:0 10px;border:1px solid #D6D3CC;border-radius:8px;background:#fff;font-size:12px;cursor:pointer;color:#16181A">지우기</button>
+          </sc-if>
+        </div>
+        <sc-if value="{{ qEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:20px;font-size:13px;color:#6E7379">검색 결과가 없어요.</div>
+        </sc-if>
+        <div style="max-height:560px;overflow:auto">
+          <sc-for list="{{ pivot }}" as="p" hint-placeholder-count="8">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 56px;gap:12px;padding:8px 20px;border-bottom:1px solid #EFEDE8;font-size:13px;line-height:1.45;background:{{ p.bg }}">
+              <div style="word-break:break-all;white-space:pre-line">{{ p.text }}</div>
+              <div style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">{{ p.n }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section style="background:#fff;border:1px solid #E3E1DC;border-radius:12px;overflow:hidden">
+        <div style="padding:12px 20px;border-bottom:1px solid #E3E1DC;display:flex;align-items:baseline;gap:8px">
+          <div style="font-size:15px;font-weight:700">2. 에어캡 확인</div>
+          <div style="margin-left:auto;font-size:15px;font-weight:700;color:#1F6F5C">{{ curAir }}개</div>
+        </div>
+        <div style="padding:10px 20px;font-size:12px;color:#6E7379;line-height:1.55;border-bottom:1px solid #EFEDE8">냉장·냉동이 섞인 조합은 빼고, 뚝심·장조림·고기 고추장·목우촌참치 수량을 5개당 1개(올림)로 세어 송장 수를 곱해요.</div>
+        <sc-if value="{{ hasAir }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 44px 44px 56px;gap:10px;padding:8px 20px;border-bottom:1px solid #EFEDE8;font-size:12px;font-weight:600;color:#6E7379">
+            <div>조합</div><div style="text-align:right">송장</div><div style="text-align:right">개당</div><div style="text-align:right">에어캡</div>
+          </div>
+          <sc-for list="{{ air }}" as="a" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 44px 44px 56px;gap:10px;padding:8px 20px;border-bottom:1px solid #EFEDE8;font-size:13px;line-height:1.45;font-variant-numeric:tabular-nums">
+              <div style="word-break:break-all;white-space:pre-line">{{ a.text }}</div>
+              <div style="text-align:right">{{ a.n }}</div>
+              <div style="text-align:right">{{ a.per }}</div>
+              <div style="text-align:right;font-weight:700">{{ a.total }}</div>
+            </div>
+          </sc-for>
+        </sc-if>
+        <sc-if value="{{ noAir }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:20px;font-size:13px;color:#6E7379">이 날은 에어캡 대상이 없어요.</div>
+        </sc-if>
+      </section>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);padding:10px 18px;border-radius:10px;background:#16181A;color:#fff;font-size:13px;font-weight:500;max-width:90vw;text-align:center">{{ toast }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  KEY = 'aircap.days.v2';
+  state = { days: {}, hs: {}, cur: null, pw: 'hyobin', busy: '', busy2: '', drag: 0, toast: '' };
+  componentDidMount() {
+    try { const s = JSON.parse(localStorage.getItem(this.KEY) || 'null'); if (s) this.setState({ days: s.days || {}, hs: s.hs || {}, cur: s.cur || null, pw: s.pw || 'hyobin', rules: s.rules || null }); } catch (e) {}
+    this._poll = setInterval(() => { if (window.Aircap && window.Aircap.boxCounts) { clearInterval(this._poll); this.forceUpdate(); } }, 200);
+  }
+  componentWillUnmount() { clearInterval(this._poll); }
+  save() { const { days, hs, cur, pw, rules } = this.state; try { localStorage.setItem(this.KEY, JSON.stringify({ days, hs, cur, pw, rules })); } catch (e) {} }
+  flash(t) { this.setState({ toast: t }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: '' }), 3200); }
+  errMsg(f, e) { return f.name + ': ' + (e.wrongPassword ? '비밀번호가 맞지 않아요' : (e.message || e)); }
+  async load(files) {
+    if (!window.Aircap) return this.flash('계산기를 불러오는 중이에요. 잠시 후 다시 넣어 주세요');
+    const days = { ...this.state.days }; let cur = this.state.cur, n = 0;
+    for (const f of files) {
+      this.setState({ busy: f.name + ' 읽는 중…' });
+      try { const { lines } = await window.Aircap.readOutbound(await f.arrayBuffer(), this.state.pw); for (const d of window.Aircap.byDay(lines)) { days[d.day] = d; cur = d.day; n++; } }
+      catch (e) { this.flash(this.errMsg(f, e)); }
+    }
+    this.setState({ days, cur, busy: '' }, () => this.save());
+    if (n) this.flash(n + '일치 계산했어요');
+  }
+  async loadHs(files) {
+    if (!window.Aircap) return;
+    const hs = { ...this.state.hs }; this._hsRows = this._hsRows || [];
+    for (const f of files) {
+      this.setState({ busy2: f.name + ' 읽는 중…' });
+      try {
+        const r = await window.Aircap.readHomeshop(await f.arrayBuffer(), this.state.pw);
+        const dk = new Set(Object.keys(r.counts)), dc = r.col['출고요청일'];
+        this._hsHead = r.head;
+        this._hsRows = this._hsRows.filter(x => !dk.has(String(x[dc] || '').slice(0, 10))).concat(r.rows);
+        Object.assign(hs, r.counts);
+      } catch (e) { this.flash(this.errMsg(f, e)); }
+    }
+    this.setState({ hs, busy2: '' }, () => this.save());
+  }
+  async fill(file) {
+    const keys = Object.keys(this.state.days).sort(); if (!keys.length) return;
+    this.flash('일별 건수 파일 채우는 중…');
+    try {
+      const ab0 = await file.arrayBuffer();
+      try { const rules = await window.Aircap.readRules(ab0, this.state.pw); if (rules) this.setState({ rules }, () => this.save()); } catch (e) {}
+      const hsData = null;
+      const r = await window.Aircap.fillDaily(ab0, keys.map(k => this.state.days[k]), hsData, this.state.pw);
+      const a = document.createElement('a'); a.href = URL.createObjectURL(r.blob); a.download = file.name.replace(/\.xls[xm]$/i, '') + '_채움.xlsx'; a.click();
+      this.flash(r.done.length + '개 시트 채움' + (r.missing.length ? ' · 없는 시트: ' + r.missing.join(', ') : ''));
+    } catch (e) { this.flash(this.errMsg(file, e)); }
+  }
+  boxVals(keys, days, c, fmt, n) {
+    const A = window.Aircap;
+    if (!A || !A.boxCounts) return { boxHead: [], boxRows: [], boxSum: [], unreg: [], hasUnreg: false, rulesSrc: '' };
+    const cols = A.BOX_COLS, rules = this.state.rules, sum = {}, unreg = [];
+    const cell = (k, v) => ({ v: v ? n(v) : '·', c: k === 'K' && v ? '#B5541C' : (v ? '#16181A' : '#B8BBBF'), w: k === 'K' && v ? 700 : 400 });
+    const boxRows = keys.map(k => {
+      const b = A.boxCounts(days[k].pivot, rules);
+      cols.forEach(([col]) => sum[col] = (sum[col] || 0) + b[col]);
+      b.unreg.forEach(u => unreg.push({ day: fmt(k), ...u }));
+      return { label: fmt(k), bg: c && c.day === k ? '#EEF4F1' : '#fff', vals: cols.map(([col]) => cell(col, b[col])), pick: () => this.setState({ cur: k }, () => this.save()) };
+    });
+    return {
+      boxHead: cols.map(([, t, s]) => ({ t, s })), boxRows,
+      boxSum: cols.map(([col]) => ({ v: n(sum[col]), c: col === 'K' && sum[col] ? '#B5541C' : '#16181A' })),
+      unreg, hasUnreg: unreg.length > 0,
+      rulesSrc: rules ? '일별 건수 파일 분류규칙 기준' : '10월 분류규칙 기준 (일별 건수 파일에 넣으면 그 파일 규칙으로 바뀌어요)'
+    };
+  }
+  dz(id, text, onFiles) {
+    return {
+      text, border: this.state.drag === id ? '#1F6F5C' : '#D6D3CC',
+      over: e => { e.preventDefault(); if (this.state.drag !== id) this.setState({ drag: id }); },
+      leave: () => this.setState({ drag: 0 }),
+      drop: e => { e.preventDefault(); this.setState({ drag: 0 }); onFiles([...e.dataTransfer.files]); },
+      pick: e => { onFiles([...e.target.files]); e.target.value = ''; }
+    };
+  }
+  renderVals() {
+    const { days, hs, cur, busy, busy2, toast, pw } = this.state;
+    const keys = Object.keys(days).sort(), c = days[cur] || days[keys[keys.length - 1]];
+    const fmt = d => { const [, m, dd] = d.split('-'); return dd ? (+m) + '/' + (+dd) : d; };
+    const n = v => (v || 0).toLocaleString();
+    const tot = f => keys.reduce((a, k) => a + (f(days[k]) || 0), 0);
+    const lines = s => s.split(';').join('\n');
+    return {
+      pw, pwChange: e => this.setState({ pw: e.target.value }, () => this.save()),
+      hasDays: keys.length > 0,
+      dz1: this.dz(1, busy || (keys.length ? '목우촌 출고 완료 파일 더 넣기' : '목우촌 출고 완료 상세 현황 파일'), f => this.load(f)),
+      days: keys.map(k => { const d = days[k]; return { label: fmt(k), invoices: n(d.invoices), air: n(d.airTotal), set: n(d.set), set40: n(d.set40), gift: n(d.gift), bg: c && c.day === k ? '#EEF4F1' : '#fff', pick: () => this.setState({ cur: k }, () => this.save()) }; }),
+      sum: { invoices: n(tot(d => d.invoices)), air: n(tot(d => d.airTotal)), set: n(tot(d => d.set)), set40: n(tot(d => d.set40)), gift: n(tot(d => d.gift)) },
+      curLabel: c ? fmt(c.day) + ' 출고' : '',
+      curInvoices: c ? n(c.invoices) : 0, curLines: c ? n(c.lines) : 0, curAir: c ? n(c.airTotal) : 0,
+      ...(() => {
+        const q = (this.state.q || '').trim().toLowerCase(), terms = q.split(/\s+/).filter(Boolean);
+        const list = c ? c.pivot.filter(p => !terms.length || terms.every(t => p.comboI.toLowerCase().includes(t))) : [];
+        return {
+          q: this.state.q || '', qChange: e => this.setState({ q: e.target.value }), qClear: () => this.setState({ q: '' }),
+          hasQ: !!terms.length, qEmpty: !!(terms.length && !list.length),
+          qInfo: list.length + '개 조합 · 송장 ' + n(list.reduce((a, p) => a + p.n, 0)) + '건',
+          pivot: list.map(p => ({ text: lines(p.comboI), n: p.n, bg: (p.n >= 40 || (p.combo.includes('세트') && !['[M냉장]', '[M상온]', '[M냉동]', '[M상온펫]'].some(k => p.combo.startsWith(k)))) ? '#FBEEDC' : '#fff' }))
+        };
+      })(),
+      air: c ? c.pivot.filter(p => p.per > 0).map(p => ({ text: lines(p.comboI), n: p.n, per: p.per, total: p.total })) : [],
+      hasAir: !!(c && c.airTotal), noAir: !!(c && !c.airTotal),
+      onDaily: e => { const f = e.target.files[0]; e.target.value = ''; if (f) this.fill(f); },
+      copyDay: async () => { if (!c) return; try { await navigator.clipboard.writeText(window.Aircap.tsv(window.Aircap.dayGrid(c))); this.flash('복사했어요 · 날짜 시트 A1에 붙여넣기'); } catch (e) { this.flash('복사하지 못했어요'); } },
+      clearAll: () => { this._hsRows = []; this.setState({ days: {}, hs: {}, cur: null }, () => this.save()); },
+      ...this.boxVals(keys, days, c, fmt, n),
+      hasToast: !!toast, toast
+    };
+  }
+}
+</script>
+</body>
+</html>
