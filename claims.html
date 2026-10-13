@@ -1356,7 +1356,10 @@ document.getElementById('m-ship').addEventListener('input', calcDays);
   if (e.target.value === '택배사고' && (!el.value.trim() || el.value.trim() === 'X')) el.value = '필요';
   else if (e.target.value === '아워사고') el.value = 'X';
   else if (el.value.trim() === '필요' || el.value.trim() === 'X') el.value = '';
+  if (ev === 'change') recalcFormulaFields(false);
 }));
+['m-missing-code','m-missing','m-mis-qty','m-accident-code','m-accident','m-acc-qty'].forEach(id =>
+  document.getElementById(id).addEventListener('input', e => { e.target.dataset.auto = ''; }));
 ['m-boxcode','m-worktype','m-tempzone'].forEach(id => {
   document.getElementById(id).addEventListener('change', recalcFees);
 });
@@ -1386,11 +1389,12 @@ function recalcFormulaFields(forceOverwrite) {
   const productCode = document.getElementById('m-product-code').value.trim();
 
   const isNulak = reason === '누락';
-  const isAccident = ACCIDENT_REASONS.includes(reason);
+  const isAccident = ACCIDENT_REASONS.includes(reason) || (!isNulak && document.getElementById('m-type').value === '택배사고');
 
+  // 빈 칸이거나 자동입력된 값이면 계속 따라감 (직접 수정한 값은 유지)
   const setIfEmpty = (id, val) => {
     const el = document.getElementById(id);
-    if (forceOverwrite || el.value === '') el.value = val;
+    if (forceOverwrite || el.value === '' || el.dataset.auto === '1') { el.value = val; el.dataset.auto = '1'; }
   };
 
   // 누락 필드
@@ -1473,6 +1477,7 @@ function openAdd() {
   document.getElementById('m-accident-code').value = '';
   document.getElementById('m-accident').value = '';
   document.getElementById('m-acc-qty').value = '';
+  ['m-missing-code','m-missing','m-mis-qty','m-accident-code','m-accident','m-acc-qty'].forEach(id => document.getElementById(id).dataset.auto = '');
   recalcFormulaFields(true);
   document.getElementById('m-price').value = '';
   document.getElementById('m-claim-delivery').value = '';
@@ -1519,6 +1524,7 @@ function openEdit(id) {
   document.getElementById('m-accident-code').value = row.accidentCode || '';
   document.getElementById('m-accident').value = row.accident || '';
   document.getElementById('m-acc-qty').value = row.accQty || '';
+  ['m-missing-code','m-missing','m-mis-qty','m-accident-code','m-accident','m-acc-qty'].forEach(id => document.getElementById(id).dataset.auto = '');
   recalcFormulaFields(false); // 빈 필드만 자동채움 (저장값 보존)
   document.getElementById('m-reship').value = row.reship || '';
   document.getElementById('m-courier-ok').value = row.type === '아워사고' ? 'X' : (row.courierOk || (row.type === '택배사고' ? '필요' : ''));
