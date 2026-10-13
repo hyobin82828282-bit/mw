@@ -77,13 +77,7 @@
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <label class="drop" id="dropP">
-          <span class="n">2 · 피킹리스트</span>
-          <h3>피킹리스트</h3>
-          <p>WMS 화면 캡처(이미지)나 엑셀. 캡처 후 이 페이지에서 Ctrl+V 해도 됩니다.</p>
-          <span class="st" id="stP"></span>
-          <input type="file" id="fileP" accept="image/*,.xlsx,.xls,.csv" style="display:none">
-        </label>
+        <div class="drop" style="cursor:default"><span class="n">2 · 피킹리스트</span><h3>피킹리스트</h3><p>WMS 표를 드래그 복사해서 아래 칸에 붙여넣으세요.</p><span class="st" id="stP"></span></div>
         <textarea id="pasteP" style="min-height:70px" placeholder="WMS 표를 복사해서 붙여넣으세요"></textarea>
         <div style="display:flex;gap:8px;justify-content:flex-end">
           <button class="btn" id="btnClear">전체 초기화</button>
@@ -245,15 +239,46 @@ async function loadManifest(files) {
 
 /* ---------- 피킹리스트 ---------- */
 const HEAD = {
-  name: /상품명|품명|품목명|상품 명/,
-  code: /업체품목코드|품목코드|상품코드|업체코드|SKU|바코드/i,
-  qty: /수량|피킹수량|출고수량|EA/i,
-  expiry: /유통기한|소비기한|유효기간|EXP/i
+  name: /상품\s*명|품\s*명|품목\s*명|상품이름|제품명|아이템명|ITEM\s*NAME|PRODUCT/i,
+  code: /업체품목코드|품목코드|상품코드|업체코드|제품코드|SKU|바코드|ITEM\s*CODE/i,
+  qty: /수량|피킹수량|출고수량|지시수량|QTY|EA/i,
+  expiry: /유통기한|소비기한|유효기간|유효일자|유통일자|만료일|유통기간|EXP|LOT/i
 };
+const DATE_RE = /^(20\d{2}\D{0,3}\d{1,2}\D{0,3}\d{1,2}|\d{2}[.\-\/]\d{1,2}[.\-\/]\d{1,2}|2\d{5}|20\d{6})/;
+const cellS = c => String(c == null ? "" : c).trim();
+function guessPicks(rows) {
+  rows = rows.filter(r => r && r.some(c => cellS(c)));
+  if (!rows.length) return [];
+  const n = Math.max(...rows.map(r => r.length));
+  const score = { date: [], name: [], qty: [], code: [] };
+  for (let i = 0; i < n; i++) {
+    const v = rows.map(r => cellS(r[i])).filter(Boolean);
+    const cnt = f => v.filter(f).length / Math.max(rows.length, 1);
+    score.date[i] = cnt(s => DATE_RE.test(s) || (/^\d{5}$/.test(s) && +s > 40000 && +s < 60000));
+    score.name[i] = cnt(s => /[가-힣]/.test(s) && s.length >= 3) + v.reduce((a, s) => a + s.length, 0) / Math.max(v.length, 1) / 100;
+    score.qty[i] = cnt(s => /^\d{1,5}(,\d{3})*$/.test(s) && !DATE_RE.test(s));
+    score.code[i] = cnt(s => /^[A-Za-z0-9\-_]{4,}$/.test(s) && /\d/.test(s) && !DATE_RE.test(s));
+  }
+  const pick = (k, used) => { let b = -1, bs = 0.3; for (let i = 0; i < n; i++) if (!used.includes(i) && score[k][i] > bs) { bs = score[k][i]; b = i; } return b; };
+  const used = [];
+  const dc = pick("date", used); used.push(dc);
+  const nc = pick("name", used); used.push(nc);
+  if (nc < 0) return [];
+  const qc = pick("qty", used); used.push(qc);
+  const cc = pick("code", used);
+  return rows.map(r => ({ name: cellS(r[nc]), code: cc >= 0 ? cellS(r[cc]) : "", qty: qc >= 0 ? Number(cellS(r[qc]).replace(/,/g, "")) || 0 : 0, expiry: dc >= 0 ? normDate(r[dc]) : "" }))
+    .filter(p => p.name && /[가-힣A-Za-z]/.test(p.name) && !HEAD.name.test(p.name));
+}
+function htmlToRows(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const trs = [...doc.querySelectorAll("tr")];
+  return trs.map(tr => [...tr.children].flatMap(td => { const t = td.textContent.replace(/\s+/g, " ").trim(); const span = Math.min(+td.getAttribute("colspan") || 1, 20); return [t, ...Array(span - 1).fill("")]; }));
+}
 function rowsToPicks(rows) {
   rows = rows.filter(r => r && r.some(c => String(c == null ? "" : c).trim() !== ""));
   let hi = rows.findIndex(r => r.some(c => HEAD.name.test(String(c))) && r.some(c => HEAD.expiry.test(String(c))));
-  if (hi < 0) return null;
+  if (hi < 0) hi = rows.findIndex(r => r.some(c => HEAD.name.test(String(c))) && r.filter(c => cellS(c)).length >= 2);
+  if (hi < 0) { const g = guessPicks(rows); return g.length ? g : null; }
   const h = rows[hi].map(c => String(c == null ? "" : c).trim());
   const col = {};
   for (const k of ["expiry", "code", "name", "qty"]) col[k] = h.findIndex((c, i) => HEAD[k].test(c) && !Object.values(col).includes(i));
@@ -261,7 +286,12 @@ function rowsToPicks(rows) {
   for (const r of rows.slice(hi + 1)) {
     const name = col.name >= 0 ? String(r[col.name] == null ? "" : r[col.name]).trim() : "";
     if (!name) continue;
+    if (HEAD.name.test(name)) continue;
     out.push({ name, code: col.code >= 0 ? String(r[col.code] == null ? "" : r[col.code]).trim() : "", qty: col.qty >= 0 ? Number(String(r[col.qty]).replace(/,/g, "")) || 0 : 0, expiry: normDate(col.expiry >= 0 ? r[col.expiry] : "") });
+  }
+  if (col.expiry < 0 || out.every(p => !isDate(p.expiry))) {
+    const g = guessPicks(rows.slice(hi + 1));
+    if (g.length && g.some(p => isDate(p.expiry))) return g;
   }
   return out;
 }
@@ -273,7 +303,7 @@ async function aiPicksFromText(text) {
 async function loadPickImage(file) {
   const b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(",")[1]); fr.onerror = rej; fr.readAsDataURL(file); });
   const mt = /png|jpeg|jpg|gif|webp/.test(file.type) ? (file.type === "image/jpg" ? "image/jpeg" : file.type) : "image/png";
-  const out = await ask({ model: "claude-sonnet-4-5", max_tokens: 4000, system: "WMS 피킹리스트 화면 캡처를 읽어 표로 정리한다. 반드시 JSON 배열만 출력한다.",
+  const out = await ask({ max_tokens: 4000, system: "WMS 피킹리스트 화면 캡처를 읽어 표로 정리한다. 반드시 JSON 배열만 출력한다.",
     messages: [{ role: "user", content: [
       { type: "image", source: { type: "base64", media_type: mt, data: b64 } },
       { type: "text", text: "이 피킹리스트의 품목 행을 모두 JSON 배열로 출력해라. 형식: [{\"name\":\"상품명\",\"code\":\"업체품목코드\",\"qty\":숫자,\"expiry\":\"YYYY-MM-DD\"}]. 글자를 정확히 옮기고, 설명 없이 JSON만." }
@@ -288,7 +318,12 @@ function setPicks(arr, src) {
 }
 async function loadPickFile(file) {
   $("stP").textContent = file.name + " 읽는 중…";
-  if (/^image\//.test(file.type)) return setPicks(await loadPickImage(file), "이미지");
+  if (/^image\//.test(file.type) || /\.(png|jpe?g|gif|webp|bmp)$/i.test(file.name)) {
+    let arr;
+    try { arr = await loadPickImage(file); }
+    catch (e) { throw new Error("캡처 이미지를 읽지 못했습니다 (" + (e.message || e) + "). WMS 표를 드래그 복사해서 아래 칸에 붙여넣어 주세요."); }
+    return setPicks(arr, "이미지");
+  }
   const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: false });
   for (const sn of wb.SheetNames) {
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: true, defval: "" });
@@ -298,11 +333,18 @@ async function loadPickFile(file) {
   const csv = wb.SheetNames.map(sn => XLSX.utils.sheet_to_csv(wb.Sheets[sn])).join("\n");
   setPicks(await aiPicksFromText(csv), "엑셀");
 }
+let lastHtml = "";
 async function loadPickText(text) {
-  const rows = text.split(/\r?\n/).map(l => l.split(/\t|,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(c => c.replace(/^"|"$/g, "").trim()));
+  if (lastHtml) { const p = rowsToPicks(htmlToRows(lastHtml)); if (p && p.length) return setPicks(p, "붙여넣기"); }
+  const lines = text.split(/\r?\n/);
+  const sep = lines.some(l => l.includes("\t")) ? /\t/ : (lines.some(l => /,/.test(l)) ? /,(?=(?:[^"]*"[^"]*")*[^"]*$)/ : /\s{2,}/);
+  const rows = lines.map(l => l.split(sep).map(c => c.replace(/^"|"$/g, "").trim()));
   const p = rowsToPicks(rows);
   if (p && p.length) return setPicks(p, "붙여넣기");
-  setPicks(await aiPicksFromText(text), "붙여넣기");
+  let arr;
+  try { arr = await aiPicksFromText(text); }
+  catch (e) { throw new Error("표에서 상품명·유통기한 열을 찾지 못했습니다. 머리글(상품명, 유통기한)까지 함께 복사해 주세요."); }
+  setPicks(arr, "붙여넣기");
 }
 
 /* ---------- 매칭 / 판정 ---------- */
@@ -361,7 +403,7 @@ function render() {
   $("eIssue").style.display = issues.length ? "none" : "block";
   $("eIssue").textContent = S.picks.length && S.man.length ? "문제 없는 품목만 있습니다" : "비교할 데이터가 없습니다";
   $("issueCnt").textContent = issues.length ? issues.length + "건" : "";
-  const opts = '<option value="">— 선택 —</option>' + items.map(i => '<option value="' + esc(i.key) + '">' + esc(i.name + (i.productNo ? " (" + i.productNo + ")" : "")) + '</option>').join("");
+  const opts = '<option value="">' + (items.length ? "— 선택 —" : "동봉문서를 먼저 올려 주세요") + '</option>' + items.map(i => '<option value="' + esc(i.key) + '">' + esc(i.name + (i.productNo ? " (" + i.productNo + ")" : "")) + '</option>').join("");
   $("tPick").innerHTML = S.picks.map(p => { const r = res[p.id]; return '<tr data-id="' + p.id + '">' +
     '<td>' + esc(p.name) + '</td><td>' + esc(p.code) + '</td><td style="text-align:right">' + (p.qty || "") + '</td>' +
     '<td><input data-f="expiry" value="' + esc(p.expiry) + '" placeholder="YYYY-MM-DD" style="width:118px"></td>' +
@@ -409,7 +451,7 @@ function bindDrop(el, input, handler) {
   input.addEventListener("change", () => { const fs = [...input.files]; input.value = ""; if (fs.length) handler(fs); });
 }
 bindDrop($("dropM"), $("fileM"), fs => run(async () => { await loadManifest(fs); autoMatch(); }, "동봉문서"));
-bindDrop($("dropP"), $("fileP"), fs => run(() => loadPickFile(fs[0]), "피킹리스트"));
+
 bindDrop($("dropL"), $("fileL"), async fs => {
   $("stL").textContent = "읽는 중…";
   try { S.labels = await collectPdfs(fs); $("stL").textContent = "PDF " + S.labels.length + "개"; $("btnLabel").disabled = false; }
@@ -422,12 +464,21 @@ $("btnLabel").onclick = async () => {
   catch (e) { alert("PDF 합치기 실패: " + (e.message || e)); b.textContent = "라벨 PDF 1개로 합치기"; }
   b.disabled = false;
 };
-$("btnPaste").onclick = () => { const t = $("pasteP").value.trim(); if (!t) return alert("표를 붙여넣어 주세요."); run(() => loadPickText(t), "피킹리스트"); };
+$("btnPaste").onclick = () => { const t = $("pasteP").value.trim(); if (!t && !lastHtml) return alert("표를 붙여넣어 주세요."); run(() => loadPickText(t), "피킹리스트"); };
 $("btnClear").onclick = () => { if (!confirm("올린 파일과 결과를 모두 지울까요?")) return; S.pdfs = []; S.man = []; S.picks = []; S.labels = []; S.status = ""; $("stM").textContent = ""; $("stL").textContent = ""; $("btnLabel").disabled = true; $("btnLabel").textContent = "라벨 PDF 1개로 합치기"; $("stP").textContent = ""; $("pasteP").value = ""; render(); };
+$("pasteP").addEventListener("input", () => { if (!$("pasteP").value.trim()) lastHtml = ""; });
 document.addEventListener("paste", e => {
-  const items = [...((e.clipboardData && e.clipboardData.items) || [])];
+  const cd = e.clipboardData; if (!cd) return;
+  const html = cd.getData("text/html") || "", txt = cd.getData("text/plain") || "";
+  if (/<tr[\s>]/i.test(html) || txt.trim()) {
+    lastHtml = /<tr[\s>]/i.test(html) ? html : "";
+    if (e.target !== $("pasteP")) { e.preventDefault(); $("pasteP").value = txt; }
+    setTimeout(() => { const t = $("pasteP").value.trim() || txt.trim(); if (t || lastHtml) run(() => loadPickText(t), "피킹리스트"); }, 0);
+    return;
+  }
+  const items = [...(cd.items || [])];
   const img = items.find(i => i.type && i.type.startsWith("image/"));
-  if (img) { e.preventDefault(); const f = img.getAsFile(); run(() => loadPickFile(new File([f], "캡처.png", { type: f.type || "image/png" })), "피킹리스트"); }
+  if (img && !cd.getData("text/plain")) { e.preventDefault(); alert("캡처 이미지는 읽을 수 없습니다. WMS 표를 드래그 복사해서 붙여넣어 주세요."); }
 });
 $("tPick").addEventListener("change", e => {
   const tr = e.target.closest("tr"); if (!tr) return;

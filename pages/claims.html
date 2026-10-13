@@ -68,7 +68,10 @@ input[type=search]{width:160px;}
 .tab{height:34px;padding:0 14px;background:var(--surface2);border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:5px;white-space:nowrap;}
 .tab.active{background:var(--surface);color:var(--accent);}
 #table-wrap{flex:1;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:0 var(--radius) var(--radius) var(--radius);}
-#magang-wrap{flex:1;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:0 var(--radius) var(--radius) var(--radius);}
+#magang-wrap,#courier-wrap{flex:1;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:0 var(--radius) var(--radius) var(--radius);}
+#courier-wrap[hidden]{display:none;}
+#courier-sum strong{color:var(--accent);}
+#tbody-courier input:focus{outline:none;border-color:var(--accent)!important;background:#fff!important;}
 
 /* TABLE */
 table{width:max-content;min-width:100%;border-collapse:collapse;font-size:12px;}
@@ -248,6 +251,7 @@ function calcMaterial(boxCode, tempZone) {
   <div id="view-tabs">
     <button class="tab active" data-view="claims">📋 2026년 9월 클레임 (<span id="count-claims">0</span>)</button>
     <button class="tab" data-view="magang">📁 마감 클레임 (<span id="count-magang">0</span>)</button>
+    <button class="tab" data-view="courier">🚚 택배사고접수 (<span id="count-courier">0</span>)</button>
   </div>
 
   <!-- Claims view -->
@@ -289,6 +293,22 @@ function calcMaterial(boxCode, tempZone) {
         <th class="num">실결제금액</th><th class="num">Q배송비</th><th class="num">R부자재</th><th class="num">총변상액</th><th>비고</th>
       </tr></thead>
       <tbody id="tbody-magang"></tbody>
+    </table>
+  </div>
+
+  <!-- Courier accident view: 택배사고접수 '필요'만, 'O'로 바꾸면 빠짐 -->
+  <div id="courier-wrap" hidden>
+    <div id="courier-sum" style="display:flex;gap:16px;align-items:center;padding:8px 12px;font-size:12px">
+      <span>접수 필요: <strong id="count-courier2">0</strong>건</span>
+      <span style="color:var(--muted)">「접수 완료」를 누르면 택배사고접수가 O로 바뀌고 목록에서 빠집니다. 노란 칸은 바로 입력됩니다.</span>
+    </div>
+    <table id="tbl-courier">
+      <thead><tr>
+        <th>고객사</th><th>운송장번호</th><th>출고일</th><th>이름</th><th>사고사유</th>
+        <th class="num">판매내역서금액(vat 포함)</th><th>재출고송장/환불내역서</th><th>사진유무</th>
+        <th class="num">택배비</th><th class="num">반품택배비</th><th>반품송장</th><th>면세 여부/비고</th><th></th>
+      </tr></thead>
+      <tbody id="tbody-courier"></tbody>
     </table>
   </div>
 </div>
@@ -425,7 +445,7 @@ function calcMaterial(boxCode, tempZone) {
       </div>
       <div class="field">
         <label class="fl">누락제품 (M열)</label>
-        <input id="m-missing" class="editable-auto" type="text" placeholder="누락된 상품명 입력">
+        <input id="m-missing" class="editable-auto" type="text" list="item-name-list" autocomplete="off" placeholder="품목명 검색 · 선택하면 코드 자동">
       </div>
       <div class="field">
         <label class="fl">누락수량 (N열)</label>
@@ -438,7 +458,8 @@ function calcMaterial(boxCode, tempZone) {
       </div>
       <div class="field">
         <label class="fl">오배송/사고제품 (P열)</label>
-        <input id="m-accident" class="editable-auto" type="text" placeholder="잘못 나간 상품명 입력">
+        <input id="m-accident" class="editable-auto" type="text" list="item-name-list" autocomplete="off" placeholder="품목명 검색 · 선택하면 코드 자동">
+        <datalist id="item-name-list"></datalist>
       </div>
       <div class="field">
         <label class="fl">사고수량 (Q열)</label>
@@ -663,6 +684,7 @@ function switchMonth(ym) {
   document.getElementById('toolbar-title').textContent = '🗂 ' + label + ' 클레임';
   document.querySelector('[data-view="claims"]').innerHTML = '📋 ' + label + ' 클레임 (<span id="count-claims">0</span>)';
   document.querySelector('[data-view="magang"]').innerHTML = '📁 마감 클레임 (<span id="count-magang">0</span>)';
+  document.querySelector('[data-view="courier"]').innerHTML = '🚚 택배사고접수 (<span id="count-courier">0</span>)';
   render();
 }
 
@@ -902,14 +924,52 @@ function autoFees() {
   });
   return changed;
 }
+// ===== RENDER 택배사고접수 =====
+const isCourierPending = r => String(r.courierOk || '').trim() === '필요';
+function renderCourier() {
+  const rows = (data || []).filter(isCourierPending);
+  document.getElementById('count-courier').textContent = rows.length;
+  document.getElementById('count-courier2').textContent = rows.length;
+  const tbody = document.getElementById('tbody-courier');
+  const esc = v => String(v ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const inp = (row, f, w, num) => `<td style="background:#FFF8E1;padding:2px 4px"><input data-cf="${f}" data-id="${row.id}" value="${esc(row[f])}" ${num ? 'inputmode="numeric"' : ''} style="width:${w}px;border:1px solid transparent;background:transparent;font:inherit;padding:3px 4px;${num ? 'text-align:right' : ''}"></td>`;
+  tbody.innerHTML = rows.map(row => `<tr>
+      <td>목우촌</td>
+      <td class="mono">${fmt(row.waybill)}</td>
+      <td>${fmt(row.ship)}</td>
+      <td>${fmt(row.name)}</td>
+      <td><span class="reason-chip">${fmt(row.reason)}</span></td>
+      <td class="num">${money(row.price)}</td>
+      <td class="mono" style="max-width:150px;overflow:hidden;text-overflow:ellipsis">${fmt(row.reship)}</td>
+      ${inp(row, 'photo', 60)}
+      <td class="num">${money(row.claimDelivery)}</td>
+      ${inp(row, 'retFee', 70, true)}
+      ${inp(row, 'retWaybill', 120)}
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;font-size:11px" title="${esc(row.note)}">${fmt(row.note)}</td>
+      <td><button class="btn" data-cdone="${row.id}" style="height:24px;padding:0 10px;font-size:11px;white-space:nowrap">접수 완료</button></td>
+    </tr>`).join('') || '<tr><td colspan="13" class="empty-state">택배사고 접수할 건이 없습니다</td></tr>';
+}
+document.getElementById('tbody-courier').addEventListener('change', e => {
+  const el = e.target.closest('[data-cf]'); if (!el) return;
+  const row = data.find(r => String(r.id) === el.dataset.id); if (!row) return;
+  const v = el.value.trim();
+  row[el.dataset.cf] = el.dataset.cf === 'retFee' ? (v === '' ? '' : (+v.replace(/,/g, '') || 0)) : v;
+  saveData(); render();
+});
+document.getElementById('tbody-courier').addEventListener('click', e => {
+  const b = e.target.closest('[data-cdone]'); if (!b) return;
+  const row = data.find(r => String(r.id) === b.dataset.cdone); if (!row) return;
+  row.courierOk = 'O';
+  saveData(); render();
+});
 function render() {
   if (autoFees()) { try { localStorage.setItem(getStorageKey(), JSON.stringify(data)); } catch (e) {} if (window.claimSync) claimSync.push(); }
-  renderClaims(); renderMagang();
+  renderClaims(); renderMagang(); renderCourier();
 }
 
 function exportClaimsCsv() {
-  const magang = currentView === 'magang';
-  const tbody = document.getElementById(magang ? 'tbody-magang' : 'tbody-claims');
+  const magang = currentView === 'magang', courier = currentView === 'courier';
+  const tbody = document.getElementById(courier ? 'tbody-courier' : magang ? 'tbody-magang' : 'tbody-claims');
   const table = tbody.closest('table');
   const ths = [...table.querySelectorAll('thead tr:last-child th')];
   const first = tbody.querySelector('tr');
@@ -917,7 +977,7 @@ function exportClaimsCsv() {
   const head = keep.map(i => ths[i].textContent.trim());
   const body = [...tbody.querySelectorAll('tr')].filter(tr => !tr.querySelector('.empty-state')).map(tr => {
     const tds = [...tr.children];
-    return keep.map(i => { const td = tds[i]; if (!td) return ''; let t = td.textContent.trim(); if (td.classList.contains('num')) t = t === '-' ? '' : t.replace(/,/g, ''); return t; });
+    return keep.map(i => { const td = tds[i]; if (!td) return ''; const ip = td.querySelector('input'); let t = ip ? ip.value.trim() : td.textContent.trim(); if (td.classList.contains('num')) t = t === '-' ? '' : t.replace(/,/g, ''); return t; });
   });
   if (!body.length) { alert('내보낼 데이터가 없습니다'); return; }
   const esc = v => /^\d{11,}$/.test(v) ? '="' + v + '"' : /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
@@ -925,7 +985,7 @@ function exportClaimsCsv() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
   const d = new Date(), ds = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
-  a.download = (magang ? '마감클레임_' : '클레임_') + currentMonth + '_' + ds + '.csv';
+  a.download = (courier ? '택배사고접수_' : magang ? '마감클레임_' : '클레임_') + currentMonth + '_' + ds + '.csv';
   document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
 }
@@ -938,6 +998,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t===tab));
     document.getElementById('table-wrap').hidden = currentView !== 'claims';
     document.getElementById('magang-wrap').hidden = currentView !== 'magang';
+    document.getElementById('courier-wrap').hidden = currentView !== 'courier';
   });
 });
 
@@ -1350,13 +1411,37 @@ document.getElementById('m-multi-all').addEventListener('click', () => {
   syncMultiToForm();
 });
 document.getElementById('m-ship').addEventListener('input', calcDays);
+// 품목 DB (차량출고와 같은 품목 목록): 누락/사고제품 품목명 선택 → 품목코드 자동
+let ITEM_LIST = [];
+function setItemList(arr) {
+  if (!Array.isArray(arr) || !arr.length) return;
+  ITEM_LIST = arr.filter(x => x && x.n);
+  const dl = document.getElementById('item-name-list');
+  dl.innerHTML = '';
+  const seen = new Set();
+  ITEM_LIST.forEach(x => { if (seen.has(x.n)) return; seen.add(x.n); const o = document.createElement('option'); o.value = x.n; if (x.c) o.label = x.c; dl.appendChild(o); });
+}
+try { setItemList(JSON.parse(localStorage.getItem('mw_items_v1') || 'null')); } catch (e) {}
+if (!ITEM_LIST.length) import('../items-db.js').then(m => { if (!ITEM_LIST.length) setItemList(m.ITEM_DB); }).catch(() => {});
+window.addEventListener('storage', e => { if (e.key === 'mw_items_v1') try { setItemList(JSON.parse(e.newValue || 'null')); } catch (err) {} });
+[['m-missing','m-missing-code'],['m-accident','m-accident-code']].forEach(([nameId, codeId]) => {
+  const pick = () => {
+    const v = document.getElementById(nameId).value.trim();
+    const it = v && ITEM_LIST.find(x => x.n === v);
+    if (it && it.c) { const c = document.getElementById(codeId); c.value = it.c; c.dataset.auto = ''; }
+  };
+  ['input','change'].forEach(ev => document.getElementById(nameId).addEventListener(ev, pick));
+});
 // 구분이 택배사고면 택배사고접수 '필요' 자동 (비어 있을 때만)
 ['change','input'].forEach(ev => document.getElementById('m-type').addEventListener(ev, e => {
   const el = document.getElementById('m-courier-ok');
   if (e.target.value === '택배사고' && (!el.value.trim() || el.value.trim() === 'X')) el.value = '필요';
   else if (e.target.value === '아워사고') el.value = 'X';
   else if (el.value.trim() === '필요' || el.value.trim() === 'X') el.value = '';
+  if (ev === 'change') recalcFormulaFields(false);
 }));
+['m-missing-code','m-missing','m-mis-qty','m-accident-code','m-accident','m-acc-qty'].forEach(id =>
+  document.getElementById(id).addEventListener('input', e => { e.target.dataset.auto = ''; }));
 ['m-boxcode','m-worktype','m-tempzone'].forEach(id => {
   document.getElementById(id).addEventListener('change', recalcFees);
 });
@@ -1386,11 +1471,12 @@ function recalcFormulaFields(forceOverwrite) {
   const productCode = document.getElementById('m-product-code').value.trim();
 
   const isNulak = reason === '누락';
-  const isAccident = ACCIDENT_REASONS.includes(reason);
+  const isAccident = ACCIDENT_REASONS.includes(reason) || (!isNulak && document.getElementById('m-type').value === '택배사고');
 
+  // 빈 칸이거나 자동입력된 값이면 계속 따라감 (직접 수정한 값은 유지)
   const setIfEmpty = (id, val) => {
     const el = document.getElementById(id);
-    if (forceOverwrite || el.value === '') el.value = val;
+    if (forceOverwrite || el.value === '' || el.dataset.auto === '1') { el.value = val; el.dataset.auto = '1'; }
   };
 
   // 누락 필드
@@ -1473,6 +1559,7 @@ function openAdd() {
   document.getElementById('m-accident-code').value = '';
   document.getElementById('m-accident').value = '';
   document.getElementById('m-acc-qty').value = '';
+  ['m-missing-code','m-missing','m-mis-qty','m-accident-code','m-accident','m-acc-qty'].forEach(id => document.getElementById(id).dataset.auto = '');
   recalcFormulaFields(true);
   document.getElementById('m-price').value = '';
   document.getElementById('m-claim-delivery').value = '';
@@ -1519,6 +1606,7 @@ function openEdit(id) {
   document.getElementById('m-accident-code').value = row.accidentCode || '';
   document.getElementById('m-accident').value = row.accident || '';
   document.getElementById('m-acc-qty').value = row.accQty || '';
+  ['m-missing-code','m-missing','m-mis-qty','m-accident-code','m-accident','m-acc-qty'].forEach(id => document.getElementById(id).dataset.auto = '');
   recalcFormulaFields(false); // 빈 필드만 자동채움 (저장값 보존)
   document.getElementById('m-reship').value = row.reship || '';
   document.getElementById('m-courier-ok').value = row.type === '아워사고' ? 'X' : (row.courierOk || (row.type === '택배사고' ? '필요' : ''));
