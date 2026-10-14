@@ -60,6 +60,8 @@
         <div onClick="{{ goStock }}" style="{{ navStock }}">📊 월말 재고실사</div>
         <div onClick="{{ goRetPhoto }}" style="{{ navRetPhoto }}">📷 반품사진</div>
       </sc-if>
+      <div style="padding:14px 8px 6px;font-size:11px;font-weight:600;color:#6E7379;letter-spacing:0.06em">마감</div>
+      <div onClick="{{ goAircap }}" style="{{ navAircap }}">🧮 에어캡 · 세트 확인</div>
     </div>
     <div style="margin-top:auto;padding:16px 20px 0;border-top:1px solid #2C2F33">
       <button onClick="{{ openSync }}" style="display:flex;align-items:center;gap:8px;width:100%;padding:9px 0;border:none;background:none;font-size:12.5px;color:#C6C9CE;cursor:pointer;text-align:left" style-hover="color:#fff">{{ syncLabel }}</button>
@@ -1119,6 +1121,11 @@
     <sc-if value="{{ keepRetPhoto }}">
       <div style="display:{{ dispRetPhoto }};flex:1;flex-direction:column;min-height:0">
         <iframe src="반품사진 송장명 저장.dc.html" style="flex:1;width:100%;min-height:100vh;border:0;background:#f4f3ef"></iframe>
+      </div>
+    </sc-if>
+    <sc-if value="{{ keepAircap }}">
+      <div style="display:{{ dispAircap }};flex:1;flex-direction:column;min-height:0">
+        <iframe src="에어캡 계산기.dc.html" title="에어캡 · 세트 확인" style="flex:1;width:100%;min-height:100vh;border:0;background:#F4F3EF;display:block"></iframe>
       </div>
     </sc-if>
     <sc-if value="{{ keepStock }}">
@@ -3650,7 +3657,7 @@ class Component extends DCLogic {
   }
   tabVals() {
     const s = this.state;
-    const LBL = { input: "📝 차량출고 입력", list: "📋 차량출고 목록", sheet: "🧾 입출고명세서", promo: "📣 행사 일정", coupang: "🔎 쿠팡 유통기한 검수", items: "📦 품목현황", "return": "↩️ 고객반품 입력", returnlist: "📋 반품 목록", goodret: "♻️ 반품양품화", expiry: "⏰ 임박재고 알람", claims: "🗂 클레임 관리", claimsx: "💰 클레임 운임 조회", stock: "📊 월말 재고실사", retphoto: "📷 반품사진" };
+    const LBL = { input: "📝 차량출고 입력", list: "📋 차량출고 목록", sheet: "🧾 입출고명세서", promo: "📣 행사 일정", coupang: "🔎 쿠팡 유통기한 검수", items: "📦 품목현황", "return": "↩️ 고객반품 입력", returnlist: "📋 반품 목록", goodret: "♻️ 반품양품화", expiry: "⏰ 임박재고 알람", claims: "🗂 클레임 관리", claimsx: "💰 클레임 운임 조회", stock: "📊 월말 재고실사", retphoto: "📷 반품사진", aircap: "🧮 에어캡 · 세트 확인" };
     const base = s.openTabs || [];
     const open = base.includes(s.tab) ? base : [...base, s.tab];
     const TB = "display:flex;align-items:center;gap:6px;max-width:200px;height:32px;padding:0 8px 0 12px;border:1px solid #D9D6D0;border-bottom:none;border-radius:8px 8px 0 0;font-size:12.5px;white-space:nowrap;cursor:pointer;box-sizing:border-box;";
@@ -3666,6 +3673,7 @@ class Component extends DCLogic {
       })),
       keepPromo: keep("promo"), dispPromo: disp("promo"),
       keepCoupang: keep("coupang"), dispCoupang: disp("coupang"),
+      keepAircap: keep("aircap"), dispAircap: disp("aircap"),
       keepClaims: keep("claims"), dispClaims: disp("claims"),
       keepClaimsX: keep("claimsx"), dispClaimsX: disp("claimsx"),
       claimsXSrc: "https://hyobin82828282-bit.github.io/-/claims.html?v=20261013c#month=" + (localStorage.getItem("claims_cur_month") || todayStr().slice(0, 7).replace("-", "")) + ((localStorage.getItem("mw_sync_url") || "").trim() ? "&sync=" + encodeURIComponent(localStorage.getItem("mw_sync_url").trim()) : ""),
@@ -3788,6 +3796,8 @@ class Component extends DCLogic {
       goPromo: () => this.go("promo"),
       navCoupang: s.tab === "coupang" ? NAV_ON : NAV_OFF,
       goCoupang: () => this.go("coupang"),
+      navAircap: s.tab === "aircap" ? NAV_ON : NAV_OFF,
+      goAircap: () => this.go("aircap"),
       ...this.tabVals(),
       ...this.returnVals(),
       ...this.photoVals(),
