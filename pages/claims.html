@@ -432,7 +432,7 @@ function calcMaterial(boxCode, tempZone) {
         <input id="m-reship" type="text">
       </div>
       <div class="field">
-        <label class="fl">택배사고접수 (S열 · 택배사고 '필요' / 아워사고 'X' 자동)</label>
+        <label class="fl">택배사고접수 (S열 · 택배사고 '필요' / 아워사고·출고일수 15일↑ 'X' 자동)</label>
         <input id="m-courier-ok" class="editable-auto" type="text" list="courier-ok-list" placeholder="필요 / O">
         <datalist id="courier-ok-list"><option value="필요"></option><option value="O"></option><option value="X"></option></datalist>
       </div>
@@ -780,7 +780,7 @@ function renderClaims() {
     const typeCls = row.type==='아워사고'?'type-our':'type-courier';
     // 공식 자동계산 (사유 기반)
     const isNulak = row.reason==='누락';
-    const isAcc = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송','오출고'].includes(row.reason);
+    const isAcc = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송','오출고'].includes(row.reason) || isOurCoolantReason(row.type, row.reason);
     // 저장된(수정한) 값 우선, 비어 있을 때만 사유 기반 자동값
     const has = v => v !== '' && v != null;
     const dispMisCode = has(row.missingCode) ? row.missingCode : (isNulak ? (row.productCode||'') : '');
@@ -809,7 +809,7 @@ function renderClaims() {
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;font-size:11px" title="${fmt(dispAccident)}">${fmt(dispAccident)}</td>
       <td class="num">${fmt(dispAccQty)}</td>
       <td class="mono" style="font-size:11px">${fmt(row.reship)}</td>
-      <td style="font-size:11px;text-align:center">${row.type === '아워사고' ? 'X' : fmt(row.courierOk)}</td>
+      <td style="font-size:11px;text-align:center">${fmt(courierAuto(row.type, row.days, row.courierOk))}</td>
       <td style="font-size:11px;color:var(--muted)">${fmt(row.stockAdjDate)}</td>
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--muted)" title="${fmt(row.note)}">${fmt(row.note)}</td>
       <td class="num">${money(row.price)}</td>
@@ -864,7 +864,7 @@ function renderMagang() {
     const tr = document.createElement('tr');
     const has = v => v !== '' && v != null;
     const isNulak = row.reason==='누락';
-    const isAcc = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송','오출고'].includes(row.reason)
+    const isAcc = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송','오출고'].includes(row.reason) || isOurCoolantReason(row.type, row.reason)
       || (!isNulak && !has(row.missing) && !has(row.accident) && has(row.product));
     const misCode = has(row.missingCode) ? row.missingCode : (isNulak ? (row.productCode||'') : '');
     const mis = has(row.missing) ? row.missing : (isNulak ? row.product : '');
@@ -909,8 +909,9 @@ function autoFees() {
   (data || []).forEach(r => {
     const blank = v => v === '' || v == null;
     const type = r.type || wbType[String(r.waybill || '').replace(/\D/g, '')] || '';
-    if (type === '택배사고' && blank(r.courierOk)) { r.courierOk = '필요'; changed = true; }
-    if (type === '아워사고' && r.courierOk !== 'X') { r.courierOk = 'X'; changed = true; }
+    const ck = courierAuto(type, r.days, r.courierOk);
+    if (ck !== String(r.courierOk == null ? '' : r.courierOk).trim()) { r.courierOk = ck; changed = true; }
+    if (blank(r.note) && coolantNote(r.reason)) { r.note = coolantNote(r.reason); changed = true; }
     if (blank(r.deliveryCalc) && r.boxCode && deliveryMap[r.boxCode]) { r.deliveryCalc = deliveryMap[r.boxCode]; changed = true; }
     if (blank(r.workCalc) && r.workType && workMap[r.workType]) { r.workCalc = workMap[r.workType]; changed = true; }
     if (!blank(r.deliveryCalc) || !blank(r.workCalc)) {
@@ -1366,6 +1367,7 @@ function calcDays() {
     if(diff < 0) { sy = 2025; const sd2 = new Date(sy, sm-1, sd); diff = Math.round((recvDate - sd2) / 86400000); }
     daysEl.value = diff >= 0 ? diff : '';
   } catch(e) { daysEl.value = ''; }
+  syncCourierForm();
 }
 
 function recalcFees() {
@@ -1414,6 +1416,8 @@ document.getElementById('m-waybill').addEventListener('keydown', e => {
   if(e.key === 'Enter') { e.preventDefault(); lookupWaybill(document.getElementById('m-waybill').value.trim()); }
 });
 document.getElementById('m-recv').addEventListener('input', calcDays);
+document.getElementById('m-days').addEventListener('input', syncCourierForm);
+document.getElementById('m-note').addEventListener('input', e => { e.target.dataset.auto = ''; });
 ['m-missing','m-accident'].forEach(id => document.getElementById(id).addEventListener('input', autoTempZone));
 ['m-mis-qty','m-acc-qty','m-qty'].forEach(id => document.getElementById(id).addEventListener('input', recalcFees));
 document.getElementById('m-multi-list').addEventListener('change', syncMultiToForm);
@@ -1448,10 +1452,7 @@ window.addEventListener('storage', e => { if (e.key === 'mw_items_v1') try { set
 });
 // 구분이 택배사고면 택배사고접수 '필요' 자동 (비어 있을 때만)
 ['change','input'].forEach(ev => document.getElementById('m-type').addEventListener(ev, e => {
-  const el = document.getElementById('m-courier-ok');
-  if (e.target.value === '택배사고' && (!el.value.trim() || el.value.trim() === 'X')) el.value = '필요';
-  else if (e.target.value === '아워사고') el.value = 'X';
-  else if (el.value.trim() === '필요' || el.value.trim() === 'X') el.value = '';
+  syncCourierForm();
   if (ev === 'change') recalcFormulaFields(false);
 }));
 ['m-missing-code','m-missing','m-mis-qty','m-accident-code','m-accident','m-acc-qty'].forEach(id =>
@@ -1476,6 +1477,21 @@ document.getElementById('m-reason').addEventListener('change', () => recalcFormu
 document.getElementById('m-product-code').addEventListener('input', () => recalcFormulaFields(false));
 
 // ===== FORMULA AUTO-FILL (사유 기반) =====
+// 아워사고 + PCM/아이스팩 터짐 → 사고 필드 자동, 비고 자동
+function isOurCoolantReason(type, reason) { return type === '아워사고' && (reason === 'PCM터짐' || reason === '아이스팩터짐'); }
+function coolantNote(reason) { return reason === 'PCM터짐' ? '그린어스' : reason === '아이스팩터짐' ? '빙고' : ''; }
+// 택배사고접수: 아워사고 또는 출고일수 15일↑ → X, 택배사고 → 필요
+function courierAuto(type, days, cur) {
+  cur = String(cur == null ? '' : cur).trim();
+  if (type === '아워사고' || (days !== '' && days != null && +days >= 15)) return 'X';
+  if (type === '택배사고' && (!cur || cur === 'X')) return '필요';
+  if (!type && (cur === '필요' || cur === 'X')) return '';
+  return cur;
+}
+function syncCourierForm() {
+  const el = document.getElementById('m-courier-ok');
+  el.value = courierAuto(document.getElementById('m-type').value, document.getElementById('m-days').value, el.value);
+}
 const ACCIDENT_REASONS = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송','오출고'];
 // forceOverwrite=true: 사유 변경 시 기존 값 덮어쓰기 / false: 빈 필드만 채움
 function recalcFormulaFields(forceOverwrite) {
@@ -1485,7 +1501,12 @@ function recalcFormulaFields(forceOverwrite) {
   const productCode = document.getElementById('m-product-code').value.trim();
 
   const isNulak = reason === '누락';
-  const isAccident = ACCIDENT_REASONS.includes(reason) || (!isNulak && document.getElementById('m-type').value === '택배사고');
+  const mType = document.getElementById('m-type').value;
+  const isAccident = ACCIDENT_REASONS.includes(reason) || isOurCoolantReason(mType, reason) || (!isNulak && mType === '택배사고');
+  // 비고: PCM터짐 → 그린어스, 아이스팩터짐 → 빙고 (직접 쓴 비고는 유지)
+  const noteEl = document.getElementById('m-note'), cn = coolantNote(reason);
+  if (cn && (noteEl.value.trim() === '' || noteEl.dataset.auto === '1')) { noteEl.value = cn; noteEl.dataset.auto = '1'; }
+  else if (!cn && noteEl.dataset.auto === '1') { noteEl.value = ''; noteEl.dataset.auto = ''; }
 
   // 빈 칸이거나 자동입력된 값이면 계속 따라감 (직접 수정한 값은 유지)
   const setIfEmpty = (id, val) => {
@@ -1578,7 +1599,7 @@ function openAdd() {
   document.getElementById('m-price').value = '';
   document.getElementById('m-claim-delivery').value = '';
   document.getElementById('m-stock-adj-date').value = '';
-  document.getElementById('m-note').value = '';
+  document.getElementById('m-note').value = ''; document.getElementById('m-note').dataset.auto = '';
   document.getElementById('m-boxcode').value = '';
   document.getElementById('m-worktype').value = '';
   document.getElementById('m-tempzone').value = '';
@@ -1623,11 +1644,11 @@ function openEdit(id) {
   ['m-missing-code','m-missing','m-mis-qty','m-accident-code','m-accident','m-acc-qty'].forEach(id => document.getElementById(id).dataset.auto = '');
   recalcFormulaFields(false); // 빈 필드만 자동채움 (저장값 보존)
   document.getElementById('m-reship').value = row.reship || '';
-  document.getElementById('m-courier-ok').value = row.type === '아워사고' ? 'X' : (row.courierOk || (row.type === '택배사고' ? '필요' : ''));
+  document.getElementById('m-courier-ok').value = courierAuto(row.type, row.days, row.courierOk);
   document.getElementById('m-price').value = row.price || '';
   document.getElementById('m-claim-delivery').value = row.claimDelivery || '';
   document.getElementById('m-stock-adj-date').value = row.stockAdjDate || '';
-  document.getElementById('m-note').value = row.note || '';
+  document.getElementById('m-note').value = row.note || ''; document.getElementById('m-note').dataset.auto = '';
   document.getElementById('m-boxcode').value = row.boxCode || '';
   document.getElementById('m-worktype').value = row.workType || '';
   document.getElementById('m-tempzone').value = row.tempZone || detectTempZone((row.missing || '') + (row.accident || ''));
@@ -1695,8 +1716,7 @@ document.getElementById('m-save').addEventListener('click', () => {
     row.accQty = +document.getElementById('m-acc-qty').value || '';
     row.reship = document.getElementById('m-reship').value.trim();
     row.courierOk = document.getElementById('m-courier-ok').value.trim();
-    if (row.type === '아워사고') row.courierOk = 'X';
-    else if (row.type === '택배사고' && (!row.courierOk || row.courierOk === 'X')) row.courierOk = '필요';
+    row.courierOk = courierAuto(row.type, row.days, row.courierOk);
     row.price = +document.getElementById('m-price').value || 0;
     row.claimDelivery = +document.getElementById('m-claim-delivery').value || 0;
     row.stockAdjDate = document.getElementById('m-stock-adj-date').value.trim();
@@ -1729,7 +1749,7 @@ document.getElementById('m-save').addEventListener('click', () => {
       accident: document.getElementById('m-accident').value.trim(),
       accQty: +document.getElementById('m-acc-qty').value || '',
       reship: document.getElementById('m-reship').value.trim(),
-      courierOk: (() => { const t = document.getElementById('m-type').value, v = document.getElementById('m-courier-ok').value.trim(); return t === '아워사고' ? 'X' : (t === '택배사고' && (!v || v === 'X') ? '필요' : v); })(),
+      courierOk: courierAuto(document.getElementById('m-type').value, daysVal, document.getElementById('m-courier-ok').value),
       price: +document.getElementById('m-price').value || 0,
       claimDelivery: +document.getElementById('m-claim-delivery').value || 0,
       stockAdjDate: document.getElementById('m-stock-adj-date').value.trim(),
@@ -1747,7 +1767,7 @@ document.getElementById('m-save').addEventListener('click', () => {
     if(picked.length >= 2) {
       // 품목별로 행 분리 — 비용(택배비·부자재·사고접수택배비)과 실결제금액은 첫 행에만
       const isNulak = newRow.reason === '누락';
-      const isAcc = ACCIDENT_REASONS.includes(newRow.reason);
+      const isAcc = ACCIDENT_REASONS.includes(newRow.reason) || isOurCoolantReason(newRow.type, newRow.reason);
       picked.forEach((it, i) => {
         const code = i === 0 ? (newRow.productCode || it.code) : it.code;
         const r = Object.assign({}, newRow, {
