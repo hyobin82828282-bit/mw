@@ -55,6 +55,7 @@
     <div class="side-foot" style="margin-top:auto;padding:14px 20px 18px;border-top:1px solid #2C2F33;display:flex;flex-direction:column;gap:6px">
       <div style="font-size:11px;color:#6E7379;word-break:break-all">{{ fileName }}</div>
       <div style="font-size:11px;color:#8E9299">{{ verifyText }}</div>
+      <div style="display:flex;gap:6px;font-size:11px;color:#8E9299;line-height:1.4"><span style="{{ cloudDot }}"></span><span>{{ cloudText }}</span></div>
     </div>
   </aside>
 
@@ -724,8 +725,57 @@ class Component extends DCLogic {
     if (Object.keys(ed).length) wb.applyEdits(ed);
     try { const mg = JSON.parse(localStorage.getItem('closing.v1.merges.' + name) || '{}'); for (const k in mg) if (wb.byName[k] && wb.setMerges) wb.setMerges(k, mg[k]); } catch (e) {}
     this.setState({ loading: false, verify, rev: this.state.rev + 1 });
+    this.cloudInit();
+  }
+  // 클라우드 저장: 물류 관리 '실시간 공유'와 같은 Firebase(mw-sync.js)에 수정 내역을 함께 저장
+  cloudKey(fn) { return 'closing_' + String(fn || this.state.fileName).replace(/[.#$\[\]\/%]/g, '_'); }
+  cloudAtKey() { return 'closing.v1.editsAt.' + this.state.fileName; }
+  cloudInit() {
+    if (this._cloudP) { this.cloudSync(); return; }
+    this._cloudP = import('./mw-sync.js?v=20261009b').then(() => {
+      const S = window.MwSync; if (!S) return;
+      const upd = st => this.setState({ cloudSt: st.state, cloudMsg: st.msg || '' });
+      S.onStatus(upd); upd(S.status());
+      S.onData(keys => { if (!keys.length || keys.includes(this.cloudKey()) || keys.length > 3) this.cloudSync(); });
+      if (S.url() && S.status().state === 'off') S.start();
+      else if (S.ready()) this.cloudSync();
+    }).catch(() => this.setState({ cloudSt: 'error', cloudMsg: '클라우드 연결 파일을 불러오지 못했어요' }));
+  }
+  cloudPayload(edits) {
+    const fn = this.state.fileName;
+    return { file: fn, edits: edits || JSON.parse(JSON.stringify(this.wb.edits)), merges: localStorage.getItem('closing.v1.merges.' + fn) || '', imports: localStorage.getItem('closing.v1.imports.' + fn) || '' };
+  }
+  cloudPush(edits) {
+    const S = window.MwSync; if (!S || !S.url() || !this.state.fileName) return;
+    const val = this.cloudPayload(edits);
+    clearTimeout(this._cpT);
+    this._cpT = setTimeout(() => { const at = S.putBlob(this.cloudKey(val.file), val); localStorage.setItem('closing.v1.editsAt.' + val.file, String(at)); this.setState({ cloudAt: at }); }, edits ? 0 : 800);
+  }
+  async cloudSync() {
+    const S = window.MwSync; if (!S || !S.ready() || !this.wb || this._cloudBusy) return;
+    const fn = this.state.fileName, b = S.blob(this.cloudKey()), localAt = +localStorage.getItem(this.cloudAtKey()) || 0;
+    const localN = Object.values(this.wb.edits || {}).reduce((a, o) => a + Object.keys(o).length, 0);
+    if (b && b.val && b.val.file === fn && b.at > localAt) {
+      this._cloudBusy = true;
+      try {
+        if (localN) localStorage.setItem('closing.v1.edits.before_cloud_' + Date.now(), JSON.stringify(this.wb.edits));
+        const ed = b.val.edits || {};
+        await this.kv('put', this.editsKey(), ed);
+        try { localStorage.setItem(this.editsKey(), JSON.stringify(ed)); } catch (e) {}
+        if (b.val.merges) localStorage.setItem('closing.v1.merges.' + fn, b.val.merges);
+        if (b.val.imports) localStorage.setItem('closing.v1.imports.' + fn, b.val.imports);
+        localStorage.setItem(this.cloudAtKey(), String(b.at));
+        const saved = await this.idb('get');
+        if (saved && saved.buf && saved.name === fn) await this.open(saved.buf, saved.name);
+        this.setState({ cloudAt: b.at });
+        this.flash(`클라우드에서 최신 수정 내역을 불러왔어요${b.by ? ' · ' + b.by : ''}`);
+      } finally { this._cloudBusy = false; }
+    } else if (!b || b.at < localAt || (!localAt && localN)) {
+      if (localN || b) this.cloudPush();
+    } else this.setState({ cloudAt: b.at });
   }
   saveEdits() {
+    this.cloudPush();
     const key = this.editsKey(), ed = JSON.parse(JSON.stringify(this.wb.edits));
     this.kv('put', key, ed).then(ok => { if (!ok) this.flash('저장에 실패했어요 · 엑셀 내보내기로 백업해 주세요'); });
     try { localStorage.setItem(key, JSON.stringify(ed)); } catch (e) { try { localStorage.removeItem(key); } catch (e2) {} }
@@ -1747,7 +1797,10 @@ temp는 "상온"|"냉장"|"냉동", extra는 추가송장 줄이면 true.`;
   renderVals() {
     const s = this.state, fmt = n => typeof n === 'number' ? Math.round(n).toLocaleString('ko-KR') : '-';
     const navStyle = on => ({ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '7px', fontSize: '13px', cursor: 'pointer', background: on ? '#2C2F33' : 'transparent', color: on ? '#fff' : '#C6C9CE', fontWeight: on ? 600 : 400 });
+    const cs = s.cloudSt || 'off', hhmm = t => { const d = new Date(t); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
     const base = {
+      cloudText: cs === 'on' ? (s.cloudAt ? `클라우드 저장됨 · ${hhmm(s.cloudAt)}` : '클라우드 연결됨') : cs === 'connecting' ? '클라우드 연결 중…' : cs === 'error' ? (s.cloudMsg || '클라우드 저장 실패') : '클라우드 미연결 · 마감쓰 실시간 공유에서 연결',
+      cloudDot: { width: '6px', height: '6px', borderRadius: '50%', flex: 'none', marginTop: '4px', background: cs === 'on' ? '#3FA66B' : cs === 'error' ? '#D9534F' : '#8E9299' },
       loading: s.loading, loadingText: s.loadingText, fileName: s.fileName, toast: s.toast, hasToast: !!s.toast,
       goDash: () => this.setState({ page: 'dash' }), navDash: navStyle(s.page === 'dash'),
       isDash: false, isSheet: false, isImport: false, isEmpty: !s.loading && !this.wb, hasWb: !!this.wb, navGroups: [], periodShort: '', verifyText: '', crumb: '', pageTitle: '마감 개요',
@@ -1775,7 +1828,7 @@ temp는 "상온"|"냉장"|"냉동", extra는 추가송장 줄이면 true.`;
       editN,
       // 편집 초기화: 확인 창(브라우저 confirm 대신)
       resetEdits: () => { if (!editN) { this.flash('수정한 셀이 없어요'); return; } this.setState({ confirmReset: true }); },
-      doReset: async () => { this.setState({ confirmReset: false }); localStorage.removeItem(this.editsKey()); await this.kv('del', this.editsKey()); const saved = await this.idb('get'); const ab = saved ? saved.buf : await (await fetch((window.__resources && window.__resources.closingTemplate) || 'closing-template.xlsx')).arrayBuffer(); try { const CI = window.ClosingImport; ['홈쇼핑', '반품', '클레임', '차량출고', '폐기'].forEach(x => CI.clearSheet(s.fileName, x)); CI.saveCoupangDays(s.fileName, this.ymStr(), null); localStorage.removeItem('closing.v1.merges.' + s.fileName); } catch (e) {} this.home = null; this.real = {}; await this.open(ab, s.fileName); this.setState({ imp: {} }); this.flash('원본으로 되돌렸어요'); },
+      doReset: async () => { this.setState({ confirmReset: false }); localStorage.removeItem(this.editsKey()); await this.kv('del', this.editsKey()); this.cloudPush({}); const saved = await this.idb('get'); const ab = saved ? saved.buf : await (await fetch((window.__resources && window.__resources.closingTemplate) || 'closing-template.xlsx')).arrayBuffer(); try { const CI = window.ClosingImport; ['홈쇼핑', '반품', '클레임', '차량출고', '폐기'].forEach(x => CI.clearSheet(s.fileName, x)); CI.saveCoupangDays(s.fileName, this.ymStr(), null); localStorage.removeItem('closing.v1.merges.' + s.fileName); } catch (e) {} this.home = null; this.real = {}; await this.open(ab, s.fileName); this.setState({ imp: {} }); this.flash('원본으로 되돌렸어요'); },
       exportXlsx: async () => { this.flash('엑셀 파일 만드는 중…'); const blob = await wb.exportBlob(); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = s.fileName.replace(/(-[0-9a-f]{6,})?\.xlsx$/i, '') + '.xlsx'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); this.flash('내보냈어요 · 엑셀에서 열면 수식이 다시 계산됩니다'); }
     });
 
