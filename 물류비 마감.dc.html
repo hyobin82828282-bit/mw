@@ -332,7 +332,7 @@
             </div>
             <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
               <span style="font-size:12px;color:#6E7379">{{ bxSaved }}</span>
-              <sc-if value="{{ airHas }}"><button onClick="{{ airToIlban }}" title="에어캡 계산기 결과 → 일반 시트 '에어캡' · '작업료_세트/홈쇼핑' 머리글 열" style="height:36px;padding:0 14px;border:1px solid #1F6F5C;border-radius:8px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#1F6F5C" style-hover="background:#EEF4F1">{{ airLabel }}</button></sc-if>
+              <button onClick="{{ airToIlban }}" title="에어캡 계산기 결과 → 일반 시트 '에어캡' · '작업료_세트/홈쇼핑' 머리글 열" style="height:36px;padding:0 14px;border:1px solid #1F6F5C;border-radius:8px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#1F6F5C" style-hover="background:#EEF4F1">{{ airLabel }}</button>
               <sc-if value="{{ bxHasDay }}"><button onClick="{{ bxToIlban }}" style="height:36px;padding:0 14px;border:1px solid #1F6F5C;border-radius:8px;background:#1F6F5C;font-size:13px;font-weight:700;cursor:pointer;color:#fff">일반 시트에 넣기</button></sc-if>
               <sc-if value="{{ bxHasDay }}"><button onClick="{{ bxClear }}" style="height:36px;padding:0 14px;border:1px solid #D6D3CC;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#A5432F" style-hover="background:#F4F3EF">이 날짜 비우기</button></sc-if>
             </div>
@@ -736,7 +736,7 @@ class Component extends DCLogic {
       const S = window.MwSync; if (!S) return;
       const upd = st => this.setState({ cloudSt: st.state, cloudMsg: st.msg || '' });
       S.onStatus(upd); upd(S.status());
-      S.onData(keys => { if (!keys.length || keys.includes(this.cloudKey()) || keys.length > 3) this.cloudSync(); });
+      S.onData(keys => { if (keys.includes('aircap')) this.forceUpdate(); if (!keys.length || keys.includes(this.cloudKey()) || keys.length > 3) this.cloudSync(); });
       if (S.url() && S.status().state === 'off') S.start();
       else if (S.ready()) this.cloudSync();
     }).catch(() => this.setState({ cloudSt: 'error', cloudMsg: '클라우드 연결 파일을 불러오지 못했어요' }));
@@ -1690,9 +1690,14 @@ temp는 "상온"|"냉장"|"냉동", extra는 추가송장 줄이면 true.`;
     };
   }
   // 에어캡 계산기 → 일반 시트 AP(에어캡) · AV(작업료_세트/홈쇼핑)
-  airDays() { try { return (JSON.parse(localStorage.getItem('aircap.days.v2') || 'null') || {}).days || {}; } catch (e) { return {}; } }
+  airDays() {
+    let d = {}; try { d = (JSON.parse(localStorage.getItem('aircap.days.v2') || 'null') || {}).days || {}; } catch (e) {}
+    if (!Object.keys(d).length) { const b = window.MwSync && window.MwSync.blob('aircap'); if (b && b.val && b.val.days) d = b.val.days; }
+    return d;
+  }
   airToIlban() {
     if (!this.wb) { this.flash('마감 파일을 먼저 열어 주세요'); return; }
+    if (!Object.keys(this.airDays()).length) { this.flash('에어캡 계산기에 기록이 없어요 · 마감쓰 → 에어캡 계산기에서 출고 파일을 먼저 넣어 주세요'); return; }
     const sh = this.wb.byName['일반']; if (!sh) { this.flash("'일반' 시트가 없어요"); return; }
     const E = window.ClosingEngine, norm = s => String(s ?? '').replace(/\s+/g, '');
     const maxR = Math.min(sh.maxR, 80), maxC = Math.min(sh.maxC || 120, 200);
@@ -1780,7 +1785,7 @@ temp는 "상온"|"냉장"|"냉동", extra는 추가송장 줄이면 true.`;
         this.boxSave(); this.flash('표에 넣었어요');
       },
       bxToIlban: () => this.bxToIlban(),
-      ...(() => { const n = Object.keys(this.airDays()).length; return { airHas: n > 0, airLabel: `에어캡·세트 넣기 (${n}일)`, airToIlban: () => this.airToIlban() }; })(),
+      ...(() => { const n = Object.keys(this.airDays()).length; return { airHas: n > 0, airLabel: n ? `에어캡·세트 넣기 (${n}일)` : '에어캡·세트 넣기', airToIlban: () => this.airToIlban() }; })(),
       bxText: text,
       bxCopy: () => { if (!text) { this.flash('복사할 내용이 없어요'); return; } const p = navigator.clipboard && navigator.clipboard.writeText(text); if (!p) { this.flash('복사가 막혀 있어요 · 텍스트를 직접 선택해 복사하세요'); return; } p.then(() => this.flash('복사됨 · 일반 출고 텍스트 붙여넣기에 넣으세요'), () => this.flash('복사가 막혀 있어요 · 텍스트를 직접 선택해 복사하세요')); }
     };

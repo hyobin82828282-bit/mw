@@ -176,9 +176,34 @@ class Component extends DCLogic {
   componentDidMount() {
     try { const s = JSON.parse(localStorage.getItem(this.KEY) || 'null'); if (s) this.setState({ days: s.days || {}, hs: s.hs || {}, cur: s.cur || null, pw: s.pw || 'hyobin', rules: s.rules || null }); } catch (e) {}
     this._poll = setInterval(() => { if (window.Aircap && window.Aircap.boxCounts) { clearInterval(this._poll); this.forceUpdate(); } }, 200);
+    this.cloudInit();
   }
   componentWillUnmount() { clearInterval(this._poll); }
-  save() { const { days, hs, cur, pw, rules } = this.state; try { localStorage.setItem(this.KEY, JSON.stringify({ days, hs, cur, pw, rules })); } catch (e) {} }
+  // 클라우드 저장: 물류 관리 '실시간 공유'와 같은 Firebase(mw-sync.js)
+  cloudInit() {
+    import('./mw-sync.js?v=20261009b').then(() => {
+      const S = window.MwSync; if (!S) return;
+      S.onData(keys => { if (!keys.length || keys.includes('aircap') || keys.length > 3) this.cloudPull(); });
+      if (S.url() && S.status().state === 'off') S.start(); else if (S.ready()) this.cloudPull();
+    }).catch(() => {});
+  }
+  cloudPull() {
+    const S = window.MwSync; if (!S || !S.ready()) return;
+    const b = S.blob('aircap'), localAt = +localStorage.getItem(this.KEY + '.at') || 0;
+    if (b && b.val && b.at > localAt) {
+      const s = b.val;
+      this.setState({ days: s.days || {}, hs: s.hs || {}, cur: s.cur || null, rules: s.rules || null }, () => {
+        try { localStorage.setItem(this.KEY, JSON.stringify({ days: this.state.days, hs: this.state.hs, cur: this.state.cur, pw: this.state.pw, rules: this.state.rules })); localStorage.setItem(this.KEY + '.at', String(b.at)); } catch (e) {}
+      });
+      if (Object.keys(s.days || {}).length) this.flash('클라우드에서 에어캡 기록을 불러왔어요' + (b.by ? ' · ' + b.by : ''));
+    } else if ((!b || b.at < localAt || !localAt) && Object.keys(this.state.days).length) this.cloudPush();
+  }
+  cloudPush() {
+    const S = window.MwSync; if (!S || !S.url() || !S.ready()) return;
+    clearTimeout(this._cpT);
+    this._cpT = setTimeout(() => { const { days, hs, cur, rules } = this.state; const at = S.putBlob('aircap', { days, hs, cur, rules }); try { localStorage.setItem(this.KEY + '.at', String(at)); } catch (e) {} }, 600);
+  }
+  save() { const { days, hs, cur, pw, rules } = this.state; try { localStorage.setItem(this.KEY, JSON.stringify({ days, hs, cur, pw, rules })); } catch (e) {} this.cloudPush(); }
   flash(t) { this.setState({ toast: t }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: '' }), 3200); }
   errMsg(f, e) { return f.name + ': ' + (e.wrongPassword ? '비밀번호가 맞지 않아요' : (e.message || e)); }
   async load(files) {
