@@ -252,6 +252,7 @@ function calcMaterial(boxCode, tempZone) {
     <button class="tab active" data-view="claims">📋 2026년 9월 클레임 (<span id="count-claims">0</span>)</button>
     <button class="tab" data-view="magang">📁 마감 클레임 (<span id="count-magang">0</span>)</button>
     <button class="tab" data-view="courier">🚚 택배사고접수 (<span id="count-courier">0</span>)</button>
+    <button class="tab" data-view="stock">📦 누락 재고조정 (<span id="count-stock">0</span>)</button>
   </div>
 
   <!-- Claims view -->
@@ -309,6 +310,25 @@ function calcMaterial(boxCode, tempZone) {
         <th class="num">택배비</th><th class="num">반품택배비</th><th>반품송장</th><th>면세 여부/비고</th><th></th>
       </tr></thead>
       <tbody id="tbody-courier"></tbody>
+    </table>
+  </div>
+
+  <!-- Stock adjust view: 아워사고·누락·출고일수 14일 이하·재고조정일자 빈 건, 품목별 합계 -->
+  <div id="stock-wrap" hidden style="flex:1;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:0 var(--radius) var(--radius) var(--radius)">
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:8px 12px;font-size:12px">
+      <span>조정 대상: <strong id="stock-items" style="color:var(--accent)">0</strong>품목 · <strong id="stock-rows" style="color:var(--accent)">0</strong>건 · 총 <strong id="stock-qty" style="color:var(--accent)">0</strong>개</span>
+      <span style="color:var(--muted)">「조정 완료」를 누르면 해당 품목 건들의 재고조정일자(U열)에 오늘 날짜가 들어가고 목록에서 빠집니다.</span>
+      <label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="stock-split" checked> 세트는 단품코드로 풀기</label>
+      <span id="stock-file-label" style="margin-left:auto;color:var(--muted)"></span>
+      <button class="btn" id="stock-inbound" style="height:26px;padding:0 12px;font-size:11px">입고조정</button>
+      <label class="btn" style="height:26px;padding:0 12px;font-size:11px;cursor:pointer">재고현황<input type="file" id="stock-file" accept=".xlsx,.xls" style="display:none"></label>
+      <button class="btn" id="stock-all-done" style="height:26px;padding:0 12px;font-size:11px">전체 조정 완료</button>
+    </div>
+    <table id="tbl-stock">
+      <thead><tr>
+        <th style="width:28px;text-align:center"><input type="checkbox" id="stock-sel-all" title="전체 선택"></th><th>품목코드</th><th>누락제품</th><th>세트</th><th class="num">총수량</th><th class="num">건수</th><th>유통기한</th><th>적치위치</th><th>재고상태</th><th></th>
+      </tr></thead>
+      <tbody id="tbody-stock"></tbody>
     </table>
   </div>
 </div>
@@ -685,6 +705,7 @@ function switchMonth(ym) {
   document.querySelector('[data-view="claims"]').innerHTML = '📋 ' + label + ' 클레임 (<span id="count-claims">0</span>)';
   document.querySelector('[data-view="magang"]').innerHTML = '📁 마감 클레임 (<span id="count-magang">0</span>)';
   document.querySelector('[data-view="courier"]').innerHTML = '🚚 택배사고접수 (<span id="count-courier">0</span>)';
+  document.querySelector('[data-view="stock"]').innerHTML = '📦 누락 재고조정 (<span id="count-stock">0</span>)';
   render();
 }
 
@@ -977,14 +998,225 @@ document.getElementById('tbody-courier').addEventListener('click', e => {
   data.filter(r => r === row || (wb && String(r.waybill || '') === wb && isCourierPending(r))).forEach(r => { r.courierOk = 'O'; });
   saveData(); render();
 });
+// ===== RENDER 누락 재고조정 =====
+const isStockPending = r => {
+  const blank = v => v === '' || v == null || String(v).trim() === '';
+  const d = String(r.days ?? '').trim();
+  return r.type === '아워사고' && r.reason === '누락' && (d === '' || +d <= 14) && blank(r.stockAdjDate);
+};
+const stockKey = r => {
+  const has = v => v !== '' && v != null;
+  const code = String(has(r.missingCode) ? r.missingCode : (r.productCode || '')).trim();
+  const name = String(has(r.missing) ? r.missing : (r.product || '')).trim();
+  const qty = +(has(r.misQty) ? r.misQty : r.qty) || 0;
+  return { code, name, qty, key: code || name };
+};
+// 품목현황에 세트 구성(s)이 등록된 품목이면 단품으로 풀기
+const stockNorm = v => String(v || '').replace(/\[[^\]]*\]/g, '').replace(/[\s#*]/g, '').toLowerCase();
+function findSetItem(code, name) {
+  const sets = ITEM_LIST.filter(x => x.s && x.s.length);
+  if (!sets.length) return null;
+  const head = String(name || '').split(/\s\*|\s\+\s|\s*\(\s*\d+\s*EA\s*\)/i)[0];
+  const n = stockNorm(head);
+  return (code && sets.find(x => x.c === code)) || (n && sets.find(x => stockNorm(x.n) === n)) || null;
+}
+// 품목명에 "세트명 *포장재 (1EA) + 단품 (1EA)" 구성이 그대로 들어있으면 바로 풀기
+function parseInlineSet(name) {
+  const s = String(name || '');
+  if (!/\(\s*\d+\s*EA\s*\)\s*\+/i.test(s)) return null;
+  const parts = s.split(/\s\+\s/).map(p => p.trim()).filter(Boolean).map(p => {
+    const q = p.match(/^(.*?)\s*\(\s*(\d+)\s*EA\s*\)\s*$/i);
+    return { n: (q ? q[1] : p).trim(), q: q ? +q[2] : 1 };
+  });
+  let setName = parts[0].n; const star = setName.indexOf(' *');
+  if (star > 0) { parts[0] = { n: setName.slice(star + 1).trim(), q: parts[0].q }; setName = setName.slice(0, star).trim(); }
+  else parts.shift();
+  const find = nm => { const k = stockNorm(nm); return ITEM_LIST.find(x => stockNorm(x.n) === k) || (k.length >= 3 ? ITEM_LIST.find(x => { const j = stockNorm(x.n); return j.length >= 3 && (j.startsWith(k) || k.startsWith(j)); }) : null); };
+  return { n: setName, s: parts.map(p => { const hit = find(p.n); return { c: hit ? hit.c : '', n: hit ? hit.n : p.n, q: p.q }; }) };
+}
+function renderStock() {
+  const groups = new Map();
+  const split = (document.getElementById('stock-split') || {}).checked !== false;
+  const add = (key, code, name, qty, r, setName) => {
+    if (!groups.has(key)) groups.set(key, { key, code, name, qty: 0, ids: [], wbs: [], sets: new Set() });
+    const g = groups.get(key); g.qty += qty; if (!g.ids.includes(r.id)) g.ids.push(r.id); if (r.waybill) g.wbs.push(String(r.waybill)); if (setName) g.sets.add(setName);
+  };
+  (data || []).filter(isStockPending).forEach(r => {
+    const k = stockKey(r);
+    const set = split && (findSetItem(k.code, k.name) || parseInlineSet(k.name));
+    if (set) set.s.forEach(c => add('SET|' + set.n + '|' + (c.c || c.n), c.c, c.n, k.qty * (+c.q || 1), r, set.n));
+    else add(k.key, k.code, k.name, k.qty, r);
+  });
+  const setOf = g => [...g.sets][0] || '';
+  const rows = [...groups.values()].sort((a, b) => (setOf(a) ? 1 : 0) - (setOf(b) ? 1 : 0) || setOf(a).localeCompare(setOf(b)) || (setOf(a) ? 0 : b.qty - a.qty));
+  const nRows = rows.reduce((s, g) => s + g.ids.length, 0);
+  document.getElementById('count-stock').textContent = rows.length;
+  document.getElementById('stock-items').textContent = rows.length;
+  document.getElementById('stock-rows').textContent = nRows;
+  document.getElementById('stock-qty').textContent = rows.reduce((s, g) => s + g.qty, 0).toLocaleString();
+  STOCK_ROWS = rows;
+  [...STOCK_SEL].forEach(k => { if (!groups.has(k)) STOCK_SEL.delete(k); });
+  const sa = document.getElementById('stock-sel-all');
+  sa.checked = rows.length > 0 && rows.every(g => STOCK_SEL.has(g.key));
+  sa.indeterminate = !sa.checked && rows.some(g => STOCK_SEL.has(g.key));
+  const lbl = document.getElementById('stock-file-label');
+  lbl.textContent = STOCK_INV ? '재고현황: ' + STOCK_INV.name + ' · ' + STOCK_INV.at : '';
+  const esc = v => String(v ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  document.getElementById('tbody-stock').innerHTML = rows.map(g => {
+    const on = STOCK_SEL.has(g.key);
+    const m = on && STOCK_INV ? stockMatch(g.code) : null;
+    const st = !on || !STOCK_INV ? '' : m ? '가용' : '<span style="color:var(--danger,#B3261E);font-weight:600">불용(분실)</span>';
+    return `<tr>
+      <td style="text-align:center"><input type="checkbox" data-ssel="${esc(g.key)}" ${on ? 'checked' : ''}></td>
+      <td class="mono">${fmt(g.code)}</td>
+      <td>${fmt(g.name)}</td>
+      <td style="font-size:11px;color:var(--muted)">${esc([...g.sets].join(', '))}</td>
+      <td class="num" style="font-weight:700">${g.qty.toLocaleString()}</td>
+      <td class="num">${g.ids.length}</td>
+      <td class="mono">${!on || !STOCK_INV ? '' : m ? esc(m.e) : '2999-12-29'}</td>
+      <td class="mono">${m ? esc([m.z1, m.z2, m.z3].filter(Boolean).join('-')) : ''}</td>
+      <td>${st}</td>
+      <td><button class="btn" data-sdone="${esc(g.ids.join(','))}" style="height:24px;padding:0 10px;font-size:11px;white-space:nowrap">조정 완료</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="10" class="empty-state">재고조정할 누락 건이 없습니다</td></tr>';
+  applyStockColW();
+}
+// ===== 누락 입고조정: 재고현황 매칭 =====
+var STOCK_ROWS = [], STOCK_SEL = new Set(), STOCK_INV = null;
+try { STOCK_INV = JSON.parse(localStorage.getItem('mw_claim_stock_inv_v1') || 'null'); } catch (e) {}
+function stockMatch(code) {
+  if (!STOCK_INV || !code) return null;
+  const tier = z => { const n = parseInt(String(z).replace(/\D/g, ''), 10); return isNaN(n) ? 999 : n; };
+  const list = STOCK_INV.rows.filter(r => r.c === String(code) && r.e && String(r.st).replace(/\s+/g, '') === '가용' && !(r.q <= 0 && r.a <= 0));
+  list.sort((a, b) => a.e < b.e ? -1 : a.e > b.e ? 1 : tier(a.z3) - tier(b.z3) || a.z1.localeCompare(b.z1) || a.z2.localeCompare(b.z2, undefined, { numeric: true }));
+  return list[0] || null;
+}
+function stockDate(v) {
+  if (v === '' || v == null) return '';
+  if (typeof v === 'number') { try { const d = XLSX.SSF.parse_date_code(v); if (d) return d.y + '-' + String(d.m).padStart(2, '0') + '-' + String(d.d).padStart(2, '0'); } catch (e) {} return ''; }
+  const t = String(v).trim(); if (/^0000/.test(t)) return '';
+  const m = t.match(/(\d{4})[-./]?(\d{1,2})[-./]?(\d{1,2})/);
+  return m ? m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0') : '';
+}
+document.getElementById('stock-file').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = ev => {
+    try {
+      if (typeof XLSX === 'undefined') throw new Error('엑셀 모듈을 불러오지 못했습니다.');
+      const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: false });
+      let out = null;
+      for (const n of wb.SheetNames) {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '', raw: true });
+        const hi = rows.slice(0, 20).findIndex(r => r.some(c => String(c).trim() === '품목코드') && r.some(c => String(c).trim() === '유통기한'));
+        if (hi < 0) continue;
+        const h = rows[hi].map(c => String(c ?? '').trim()), ix = k => h.indexOf(k);
+        const [ic, ie, i1, i2, i3, ist, iq, ia] = ['품목코드', '유통기한', '분띘1', '분띘2', '분띘3', '재고상태', '재고수량', '가용수량'].map(ix);
+        const s = (r, i) => i < 0 ? '' : String(r[i] ?? '').trim();
+        out = rows.slice(hi + 1).map(r => ({ c: s(r, ic).replace(/\.0+$/, ''), e: stockDate(r[ie]), z1: s(r, i1), z2: s(r, i2), z3: s(r, i3), st: s(r, ist), q: ia < 0 && iq < 0 ? 1 : Number(s(r, iq)) || 0, a: ia < 0 ? 1 : Number(s(r, ia)) || 0 })).filter(r => r.c);
+        break;
+      }
+      if (!out) throw new Error('품목코드·유통기한 열을 찾지 못했습니다 (재고조정_실사_현황 엑셀인지 확인)');
+      STOCK_INV = { name: file.name, at: new Date().toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }), rows: out };
+      try { localStorage.setItem('mw_claim_stock_inv_v1', JSON.stringify(STOCK_INV)); } catch (err) {}
+      renderStock();
+      if (!STOCK_SEL.size) alert('재고현황 ' + out.length.toLocaleString() + '행을 불러왔습니다. 입고조정할 품목을 체크하면 매칭 결과가 표시됩니다.');
+    } catch (err) { alert('재고현황 업로드 실패: ' + (err.message || err)); }
+  };
+  rd.readAsArrayBuffer(file);
+});
+document.getElementById('stock-sel-all').addEventListener('change', e => {
+  STOCK_SEL = e.target.checked ? new Set(STOCK_ROWS.map(g => g.key)) : new Set();
+  renderStock();
+});
+document.getElementById('tbody-stock').addEventListener('change', e => {
+  const c = e.target.closest('[data-ssel]'); if (!c) return;
+  if (c.checked) STOCK_SEL.add(c.dataset.ssel); else STOCK_SEL.delete(c.dataset.ssel);
+  renderStock();
+});
+document.getElementById('stock-inbound').addEventListener('click', async () => {
+  const sel = STOCK_ROWS.filter(g => STOCK_SEL.has(g.key));
+  if (!sel.length) return alert('입고조정할 품목을 체크해 주세요.');
+  if (!STOCK_INV) return alert('재고현황 엑셀을 먼저 올려 주세요.');
+  const noCode = sel.filter(g => !g.code);
+  if (noCode.length && !confirm('품목코드가 없는 ' + noCode.length + '개 품목은 빼고 만듭니다.\n\n' + noCode.map(g => '· ' + g.name).join('\n') + '\n\n계속할까요?')) return;
+  const list = sel.filter(g => g.code);
+  if (!list.length) return;
+  try {
+    const [res, XF] = await Promise.all([fetch('../nurak-template.xlsx'), import('../xlsx-fill.js')]);
+    if (!res.ok) throw new Error('양식 파일(nurak-template.xlsx)을 찾지 못했습니다');
+    const cells = {};
+    list.forEach((g, i) => {
+      const r = i + 2, m = stockMatch(g.code);
+      Object.assign(cells, { ['A' + r]: String(g.code), ['C' + r]: m ? m.e : '2999-12-29', ['D' + r]: String(g.qty),
+        ['E' + r]: m ? m.z1 : '', ['F' + r]: m ? m.z2 : '', ['G' + r]: m ? m.z3 : '',
+        ['M' + r]: m ? '가용' : '불용(분실)', ['N' + r]: '누락건 재고조정' });
+    });
+    const blob = await XF.fillXlsx(await res.arrayBuffer(), cells);
+    const d = new Date(), ymd = String(d.getFullYear()).slice(2) + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '누락 입고조정_' + ymd + '.xlsx';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch (err) { alert('엑셀 저장 실패: ' + (err.message || err)); }
+});
+// 열 너비 조절 (엑셀처럼 헤더 오른쪽 끝 드래그, 더블클릭하면 원래대로)
+function applyStockColW() {
+  const tbl = document.getElementById('tbl-stock'), ths = [...tbl.tHead.rows[0].cells];
+  let w = null; try { w = JSON.parse(localStorage.getItem('mw_stock_colw_v1') || 'null'); } catch (e) {}
+  ths.forEach((th, i) => {
+    if (!th.querySelector('.col-rz') && i > 0) {
+      th.style.position = 'sticky';
+      const h = document.createElement('div'); h.className = 'col-rz';
+      h.style.cssText = 'position:absolute;top:0;right:-3px;width:7px;height:100%;cursor:col-resize;z-index:11';
+      h.addEventListener('mousedown', ev => startStockResize(ev, i));
+      h.addEventListener('dblclick', () => { try { localStorage.removeItem('mw_stock_colw_v1'); } catch (e) {} tbl.style.tableLayout = ''; tbl.style.width = ''; ths.forEach(t => t.style.width = ''); tbl.querySelectorAll('tbody td').forEach(td => { td.style.overflow = ''; td.style.textOverflow = ''; }); });
+      th.appendChild(h);
+    }
+  });
+  if (w && w.length === ths.length) fixStockCols(w);
+}
+function fixStockCols(w) {
+  const tbl = document.getElementById('tbl-stock'), ths = [...tbl.tHead.rows[0].cells];
+  ths.forEach((th, i) => { th.style.width = w[i] + 'px'; th.style.overflow = 'hidden'; th.style.textOverflow = 'ellipsis'; });
+  tbl.style.tableLayout = 'fixed'; tbl.style.width = w.reduce((a, b) => a + b, 0) + 'px'; tbl.style.minWidth = '0';
+  tbl.querySelectorAll('tbody td').forEach(td => { td.style.overflow = 'hidden'; td.style.textOverflow = 'ellipsis'; });
+}
+function startStockResize(ev, i) {
+  ev.preventDefault(); ev.stopPropagation();
+  const tbl = document.getElementById('tbl-stock'), ths = [...tbl.tHead.rows[0].cells];
+  const w = ths.map(th => Math.round(th.getBoundingClientRect().width));
+  fixStockCols(w);
+  const x0 = ev.clientX, w0 = w[i];
+  const mv = e => { w[i] = Math.max(30, w0 + e.clientX - x0); fixStockCols(w); };
+  const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); document.body.style.cursor = ''; try { localStorage.setItem('mw_stock_colw_v1', JSON.stringify(w)); } catch (e) {} };
+  document.body.style.cursor = 'col-resize';
+  document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+}
+function markStockDone(ids) {
+  const d = new Date(), today = String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0');
+  const set = new Set(ids.map(String));
+  data.forEach(r => { if (set.has(String(r.id))) r.stockAdjDate = today; });
+  saveData(); render();
+}
+document.getElementById('tbody-stock').addEventListener('click', e => {
+  const b = e.target.closest('[data-sdone]'); if (!b) return;
+  markStockDone(b.dataset.sdone.split(','));
+});
+document.getElementById('stock-split').addEventListener('change', renderStock);
+document.getElementById('stock-all-done').addEventListener('click', () => {
+  const ids = (data || []).filter(isStockPending).map(r => r.id);
+  if (!ids.length) return;
+  if (!confirm(ids.length + '건 모두 오늘 날짜로 재고조정 처리할까요?')) return;
+  markStockDone(ids);
+});
 function render() {
   if (autoFees()) { try { localStorage.setItem(getStorageKey(), JSON.stringify(data)); } catch (e) {} if (window.claimSync) claimSync.push(); }
-  renderClaims(); renderMagang(); renderCourier();
+  renderClaims(); renderMagang(); renderCourier(); renderStock();
 }
 
 function exportClaimsCsv() {
-  const magang = currentView === 'magang', courier = currentView === 'courier';
-  const tbody = document.getElementById(courier ? 'tbody-courier' : magang ? 'tbody-magang' : 'tbody-claims');
+  const magang = currentView === 'magang', courier = currentView === 'courier', stock = currentView === 'stock';
+  const tbody = document.getElementById(stock ? 'tbody-stock' : courier ? 'tbody-courier' : magang ? 'tbody-magang' : 'tbody-claims');
   const table = tbody.closest('table');
   const ths = [...table.querySelectorAll('thead tr:last-child th')];
   const first = tbody.querySelector('tr');
@@ -1000,7 +1232,7 @@ function exportClaimsCsv() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
   const d = new Date(), ds = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
-  a.download = (courier ? '택배사고접수_' : magang ? '마감클레임_' : '클레임_') + currentMonth + '_' + ds + '.csv';
+  a.download = (stock ? '누락재고조정_' : courier ? '택배사고접수_' : magang ? '마감클레임_' : '클레임_') + currentMonth + '_' + ds + '.csv';
   document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
 }
@@ -1014,6 +1246,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.getElementById('table-wrap').hidden = currentView !== 'claims';
     document.getElementById('magang-wrap').hidden = currentView !== 'magang';
     document.getElementById('courier-wrap').hidden = currentView !== 'courier';
+    document.getElementById('stock-wrap').hidden = currentView !== 'stock';
   });
 });
 
@@ -1438,10 +1671,11 @@ function setItemList(arr) {
   dl.innerHTML = '';
   const seen = new Set();
   ITEM_LIST.forEach(x => { if (seen.has(x.n)) return; seen.add(x.n); const o = document.createElement('option'); o.value = x.n; if (x.c) o.label = x.c; dl.appendChild(o); });
+  try { if (typeof data !== 'undefined' && data) renderStock(); } catch (e) {}
 }
 try { setItemList(JSON.parse(localStorage.getItem('mw_items_v1') || 'null')); } catch (e) {}
 if (!ITEM_LIST.length) import('../items-db.js').then(m => { if (!ITEM_LIST.length) setItemList(m.ITEM_DB); }).catch(() => {});
-window.addEventListener('storage', e => { if (e.key === 'mw_items_v1') try { setItemList(JSON.parse(e.newValue || 'null')); } catch (err) {} });
+window.addEventListener('storage', e => { if (e.key === 'mw_items_v1') try { setItemList(JSON.parse(e.newValue || 'null')); renderStock(); } catch (err) {} });
 [['m-missing','m-missing-code'],['m-accident','m-accident-code']].forEach(([nameId, codeId]) => {
   const pick = () => {
     const v = document.getElementById(nameId).value.trim();

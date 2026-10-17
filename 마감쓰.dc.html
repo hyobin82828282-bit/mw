@@ -1063,6 +1063,7 @@
           ✎ 품목현황 수정 (엑셀 업로드)
           <input type="file" accept=".xlsx" onChange="{{ onItemXlsx }}" style="display:none">
         </label>
+        <button onClick="{{ toggleSetForm }}" style="height:36px;padding:0 14px;border:1px solid #D9D6D0;border-radius:8px;background:#fff;font-size:12.5px;font-weight:700;color:#3D4248;cursor:pointer" style-hover="border-color:#1F6F5C;color:#1F6F5C">🧩 세트 구성 등록 · {{ setCountLabel }}</button>
       </div>
     </header>
     <div style="padding:24px 32px 40px">
@@ -1071,6 +1072,19 @@
       </sc-if>
       <sc-if value="{{ itemErr }}">
         <div style="margin-bottom:14px;padding:11px 14px;border-radius:9px;background:#FBEAE8;border:1px solid #EFC5C0;font-size:12.5px;color:#8C1D18">{{ itemErr }}</div>
+      </sc-if>
+      <sc-if value="{{ setFormOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-bottom:14px;background:#fff;border:1px solid #E3E1DC;border-radius:12px;padding:16px 20px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:13.5px;font-weight:700">세트 구성 등록 <span style="margin-left:6px;font-weight:500;color:#8A8F96;font-size:12px">한 줄에 세트 1개 · 클레임 누락 재고조정에서 단품코드로 풀어서 보여줘요</span></div>
+          <textarea value="{{ setText }}" onChange="{{ onSetText }}" placeholder="201987000305 [M부직포세트]정성가득수제햄1호 *정성가득선물세트(부직포가방세트) (1EA) + [M냉장] 잠발라야소스 160g (1EA) + [M냉장]등심햄 400g (1EA) + …" style="min-height:110px;padding:10px 12px;border:1px solid #D9D6D0;border-radius:8px;font-size:12.5px;line-height:1.5;font-family:inherit;resize:vertical;outline:none" style-focus="border-color:#1F6F5C;box-shadow:0 0 0 3px #E8F1ED"></textarea>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button onClick="{{ saveSets }}" style="height:34px;padding:0 16px;border:0;border-radius:8px;background:#1F6F5C;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer" style-hover="background:#16503F">등록</button>
+            <span style="font-size:12px;color:#8A8F96">단품명은 품목현황에서 찾아 코드를 붙여요. 이미 등록된 세트는 새 구성으로 바뀌어요.</span>
+          </div>
+          <sc-for list="{{ setMiss }}" as="m" hint-placeholder-count="0">
+            <div style="font-size:12px;color:#B3261E">{{ m }}</div>
+          </sc-for>
+        </div>
       </sc-if>
       <div style="background:#fff;border:1px solid #E3E1DC;border-radius:12px;overflow:hidden">
         <div style="overflow-x:auto">
@@ -1090,7 +1104,7 @@
               <sc-for list="{{ itemRows }}" as="x" hint-placeholder-count="6">
                 <tr style="text-align:right" style-hover="background:#FBFAF7">
                   <td style="padding:10px 14px;text-align:left;font-size:11.5px;color:#8A8F96;border-bottom:1px solid #F3F1EC">{{ x.code }}</td>
-                  <td style="padding:10px 14px;text-align:left;white-space:normal;min-width:240px;border-bottom:1px solid #F3F1EC">{{ x.name }}</td>
+                  <td style="padding:10px 14px;text-align:left;white-space:normal;min-width:240px;border-bottom:1px solid #F3F1EC">{{ x.name }}<sc-if value="{{ x.isSet }}" hint-placeholder-val="{{ false }}"><div style="margin-top:4px;display:flex;align-items:flex-start;gap:6px;font-size:11.5px;color:#585D64"><span style="flex:none;padding:1px 6px;border-radius:4px;background:#E8F1ED;color:#16503F;font-weight:700">세트</span><span>{{ x.setLabel }}</span><span onClick="{{ x.clearSet }}" title="세트 구성 삭제" style="flex:none;cursor:pointer;color:#9A9EA5" style-hover="color:#B3261E">✕</span></div></sc-if></td>
                   <td style="padding:10px 14px;text-align:center;color:#585D64;border-bottom:1px solid #F3F1EC">{{ x.temp }}</td>
                   <td style="padding:10px 14px;font-weight:700;border-bottom:1px solid #F3F1EC">{{ x.ipsu }}</td>
                   <td style="padding:10px 14px;color:#585D64;border-bottom:1px solid #F3F1EC">{{ x.weight }}</td>
@@ -1113,7 +1127,7 @@
 
     <sc-if value="{{ keepClaims }}">
       <div style="display:{{ dispClaims }};flex:1;flex-direction:column;min-height:0">
-        <iframe src="pages/claims.html?v=20261013c" style="flex:1;width:100%;min-height:100vh;border:0;background:#fff"></iframe>
+        <iframe src="pages/claims.html?v=20261017d" style="flex:1;width:100%;min-height:100vh;border:0;background:#fff"></iframe>
       </div>
     </sc-if>
     <sc-if value="{{ keepClaimsX }}">
@@ -1765,6 +1779,37 @@ const WORK_FEES = {'입고박스출고':0,'재포장이상':495,'재포장이하
 const NAV_BASE = "display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:7px;font-size:13px;cursor:pointer;";
 const REC_STORE = "mw_records_v1";
 const ITEM_STORE = "mw_items_v1";
+const setNormFull = v => String(v || "").replace(/[\s#*]/g, "").toLowerCase();
+const setNorm = v => setNormFull(String(v || "").replace(/\[[^\]]*\]/g, ""));
+function findItemByName(db, name) {
+  const f = setNormFull(name), n = setNorm(name);
+  return db.find(x => setNormFull(x.n) === f) || db.find(x => setNorm(x.n) === n)
+    || (n.length >= 3 ? db.find(x => { const k = setNorm(x.n); return k.length >= 3 && (k.startsWith(n) || n.startsWith(k)); }) : null);
+}
+// "코드 세트명 *포장재 (1EA) + 단품 (1EA) + …" → 품목현황 세트 품목에 s:[{c,n,q}] 저장
+function applySetLines(text, db) {
+  const out = db.slice(), miss = []; let n = 0;
+  for (const raw of String(text || "").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!/\(\s*\d+\s*EA\s*\)/i.test(line)) continue;
+    const m = line.match(/^(\d{6,})\s+(.+)$/);
+    const parts = (m ? m[2] : line).split(/\s\+\s/).map(p => p.trim()).filter(Boolean).map(p => {
+      const q = p.match(/^(.*?)\s*\(\s*(\d+)\s*EA\s*\)\s*$/i);
+      return { name: (q ? q[1] : p).trim(), q: q ? +q[2] : 1 };
+    });
+    if (!parts.length) continue;
+    let setName = parts[0].name; const star = setName.indexOf(" *");
+    if (star > 0) { parts[0] = { name: setName.slice(star + 1).trim(), q: parts[0].q }; setName = setName.slice(0, star).trim(); }
+    else parts.shift();
+    let idx = m ? out.findIndex(x => x.c === m[1]) : -1;
+    if (idx < 0) { const hit = findItemByName(out, setName); idx = hit ? out.indexOf(hit) : -1; }
+    if (idx < 0) { miss.push("세트를 품목현황에서 못 찾음: " + (m ? m[1] + " " : "") + setName); continue; }
+    const comps = parts.map(p => { const hit = findItemByName(out.filter((x, i) => i !== idx), p.name); return { c: hit ? hit.c : "", n: hit ? hit.n : p.name, q: p.q }; });
+    comps.filter(k => !k.c).forEach(k => miss.push(setName + " → 단품코드 못 찾음: " + k.n));
+    out[idx] = { ...out[idx], s: comps }; n++;
+  }
+  return { db: out, n, miss };
+}
 const REC_FIELDS = [["info","출고정보",1],["name","품명",1],["qty","수량",0],["box","BOX",0],["plt","PLT",0],
   ["box_total","박스비",0],["ice_total","냉매제",0],["other_total","기타부자재",0],["work_all","작업비",0],
   ["mov_total","파렛트이동",0],["car_fee","차량비",0],["total","총합계",0],["note","비고",1]];
@@ -1927,7 +1972,7 @@ class Component extends DCLogic {
     grStock: (() => { try { return JSON.parse(localStorage.getItem("mw_goodret_stock_v1") || "null"); } catch (e) { return null; } })(),
     returns: SEED_RETURNS, rFilterText: "", rUnsharedOnly: false, rClosedFilter: "all", rMonth: "", retSortCol: "confirmed", retSortDir: 1,
     retMsg: "", retErr: "",
-    itemSearch: "", itemTemp: "", itemQty: {},
+    itemSearch: "", itemTemp: "", itemQty: {}, setFormOpen: false, setText: "", setMiss: [],
     expFiles: {}, expActive: "", expDays: "7", expError: "", excludeCount: 36,
     edit: null, itemMsg: "", itemErr: "",
     shOpen: false, shPicked: "", shSearch: "", shPaste: "", shMsg: "", shErr: "",
@@ -3235,18 +3280,32 @@ class Component extends DCLogic {
               t: it >= 0 ? String(row[it] || "").trim() : "", w: parseFloat(row[iw]) || 0 });
           }
           if (!db.length) throw new Error("품목 데이터가 비어 있습니다");
+          const oldSets = {}; (this.state.itemDb || []).forEach(x => { if (x.s) oldSets[x.c] = x.s; });
+          db.forEach(x => { if (oldSets[x.c]) x.s = oldSets[x.c]; });
           this.setState({ itemDb: db, itemQty: {}, itemMsg: file.name + " · " + db.length.toLocaleString("ko-KR") + "개 품목으로 업데이트했습니다.", itemErr: "" });
         } catch (err) {
           this.setState({ itemMsg: "", itemErr: "업로드 실패: " + ((err && err.message) || err) });
         }
       },
       itemTemp: s.itemTemp, onItemTemp: this.set("itemTemp"),
+      setFormOpen: s.setFormOpen, setText: s.setText, setMiss: s.setMiss,
+      setCountLabel: s.itemDb.filter(x => x.s).length + "개",
+      toggleSetForm: () => this.setState(p => ({ setFormOpen: !p.setFormOpen })),
+      onSetText: e => this.setState({ setText: e.target.value }),
+      saveSets: () => {
+        const { db, n, miss } = applySetLines(s.setText, s.itemDb);
+        if (!n && !miss.length) { this.setState({ setMiss: ["세트 줄을 찾지 못했어요. '단품 (1EA) + 단품 (1EA)' 형식인지 확인해 주세요."] }); return; }
+        this.setState({ itemDb: db, setMiss: miss, setText: miss.length ? s.setText : "", itemMsg: n ? "세트 " + n + "개 구성을 등록했습니다." : "", itemErr: "" });
+      },
       itemCount: list.length.toLocaleString("ko-KR") + "개 품목",
       itemOverflow: list.length > 200, itemOverflowLabel: "검색을 좁혀주세요 (" + (list.length - 200) + "개 더 있음)",
       noItems: list.length === 0,
       itemRows: shown.map(x => {
         const qv = s.itemQty[x.c] || "";
         return { code: x.c, name: x.n, temp: x.t, ipsu: x.i, weight: x.w, qty: qv,
+          isSet: !!(x.s && x.s.length),
+          setLabel: (x.s || []).map(k => (k.c || "코드없음") + " " + k.n + " ×" + k.q).join(" · "),
+          clearSet: () => { if (!confirm(x.n + " 세트 구성을 삭제할까요?")) return; this.setState(p => ({ itemDb: p.itemDb.map(y => { if (y.c !== x.c) return y; const z = { ...y }; delete z.s; return z; }) })); },
           boxLabel: num(qv) ? Math.ceil(num(qv) / x.i) + " BOX" : "-",
           onQty: e => { const v = e.target.value; this.setState(p => ({ itemQty: { ...p.itemQty, [x.c]: v } })); } };
       })

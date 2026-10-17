@@ -94,6 +94,41 @@ header .sub{font-size:13px;color:var(--muted)}
 .evbar{position:absolute;top:4px;bottom:4px;left:0;right:0;border-top:1px dashed var(--muted);border-bottom:1px dashed var(--muted)}
 .ship{color:var(--accent);font-weight:600}
 .legend i.p{width:9px;height:9px;transform:rotate(45deg);background:var(--kraft);border:0;border-radius:0}
+.mc-wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:start}
+.mc{flex:1 1 560px;min-width:0;display:grid;gap:10px}
+.mc-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.mc-nav{display:flex;align-items:center;gap:6px}
+.mc-nav h3{font-size:16px;min-width:110px;text-align:center}
+.mc-nav button{padding:4px 10px}
+.mc-wd,.mc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.mc-wd{font-size:12px;font-weight:600;color:var(--muted);text-align:center}
+.mc-wd .we{color:var(--warn)}
+.mc-grid{border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.mc-d{min-height:96px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px 0 6px;cursor:pointer;display:flex;flex-direction:column;gap:3px;min-width:0;background:var(--surface)}
+.mc-d:hover{background:var(--bg)}
+.mc-d.sel{background:var(--accent-soft)}
+.mc-d.out{opacity:.45}
+.mc-n{display:flex;align-items:center;gap:4px;padding:0 6px}
+.mc-n b{font-family:var(--f-mono);font-size:12px;padding:0 6px;border-radius:10px}
+.mc-n b.we{color:var(--warn)}
+.mc-n b.td{background:var(--today);color:#fff}
+.mc-n small{margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap}
+.mc-pin{width:7px;height:7px;transform:rotate(45deg);background:var(--kraft);flex:none}
+.mc-b,.mc-sp{height:18px;flex:none}
+.mc-b{position:relative;font-size:11px;line-height:16px;font-weight:600;background:var(--cb);border-top:1px solid var(--cb);border-bottom:1px solid var(--cb)}
+.mc-b.ev{background:transparent;border-top:1px dashed var(--cf);border-bottom:1px dashed var(--cf)}
+.mc-b.s{margin-left:4px;border-top-left-radius:4px;border-bottom-left-radius:4px}
+.mc-b.e{margin-right:4px;border-top-right-radius:4px;border-bottom-right-radius:4px}
+.mc-b.ev.s{border-left:1px dashed var(--cf)}
+.mc-b.ev.e{border-right:1px dashed var(--cf)}
+.mc-b span{position:absolute;left:0;top:0;z-index:1;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--cf)}
+.mc-more{font-size:11px;color:var(--muted);padding:0 6px}
+.mc-side{flex:1 1 280px;max-width:100%;display:grid;gap:10px;align-content:start}
+.mc-ev{border:1px solid var(--line);border-radius:var(--r);padding:12px;display:grid;gap:6px}
+.mc-tags{display:flex;gap:6px;flex-wrap:wrap}
+.mc-ev .kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:13px}
+.mc-ev .kv>span:nth-child(odd){color:var(--muted)}
+@media (max-width:520px){.mc-d{min-height:64px}.mc-b span{display:none}.mc-n small{display:none}}
 
 /* cards */
 .list-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
@@ -192,7 +227,7 @@ td.bx input{font-family:var(--f-mono);font-weight:600;color:var(--kraft);width:1
   <section id="view-board" class="wrap" style="gap:20px">
     <div class="panel intake">
       <h2>행사 공유 붙여넣기</h2>
-      <textarea id="raw" placeholder="카톡 메시지를 그대로 붙여넣거나, 캡처 이미지를 여기에 붙여넣기(Ctrl+V)/끌어다 놓기 하세요.&#10;예) 지마켓 행사공유 / 일자 : 10/10(토) / 상품 : ... / 예상건수 : 1,000건  — 카카오·쿠팡·홈쇼핑 등 채널 상관없이 붙여넣으면 됩니다"></textarea>
+      <textarea id="raw" placeholder="카톡 메시지를 그대로 붙여넣으세요.&#10;예) 지마켓 행사공유 / 일자 : 10/10(토) / 상품 : ... / 예상건수 : 1,000건  — 카카오·쿠팡·홈쇼핑 등 채널 상관없이 붙여넣으면 됩니다"></textarea>
       <div class="thumbs" id="thumbs"></div>
       <div class="row">
         <button class="primary" id="parseBtn">저장</button>
@@ -200,14 +235,11 @@ td.bx input{font-family:var(--f-mono);font-weight:600;color:var(--kraft);width:1
         <button class="ghost" id="manualBtn">직접 입력</button>
         <span class="hint" id="parseState"></span>
       </div>
-      <div class="hint">같은 행사의 정정·추가 메시지(기간 변경, 박스 회신 등)를 붙여넣으면 기존 행사에 합쳐집니다.</div>
       <div id="draft"></div>
     </div>
 
     <div class="panel">
-      <div class="list-head"><h2>3주 타임라인</h2>
-        <div class="legend"><span><i></i>출고 기간</span><span><i class="ev"></i>행사 기간(출고와 다를 때)</span><span><i class="p"></i>입고일</span></div></div>
-      <div class="tl" id="timeline"></div>
+      <div id="mcal" class="mc-wrap"></div>
     </div>
 
     <div class="list-head">
@@ -218,11 +250,13 @@ td.bx input{font-family:var(--f-mono);font-weight:600;color:var(--kraft);width:1
     </div>
     <div class="cards" id="cards"></div>
 
-    <div class="panel">
-      <div class="list-head"><h2>행사일정 달력 문구</h2><span class="hint">출고 시작일 칸에 들어갈 문구입니다. 네이버는 기간 내 매일 [도착]으로 들어갑니다.</span></div>
+    <details class="panel fold">
+      <summary>행사일정 달력 문구</summary>
+      <div class="fold-body">
       <div class="hint">시트에서 해당 날짜 칸을 <b>더블클릭(편집 상태)</b>한 뒤 붙여넣으면 여러 줄이 한 칸에 들어갑니다.</div>
       <div id="calLines" class="cal"></div>
-    </div>
+      </div>
+    </details>
   </section>
 
   <section id="view-prod" class="wrap" hidden>
@@ -339,13 +373,13 @@ function rolls(ch){const n=norm(ch);return!(S.noRoll||[]).some(k=>{const kn=norm
 function ship(e){
   const o=shipOffset(e.channel),a=e.start||e.end,b=e.end||e.start;
   if(!a)return{s:"",e:"",o,why:[]};
-  let s0=addD(a,o),en=addD(b,o),s1=s0,skipped=[];
+  let s0=e.firstShip||addD(a,o),en=e.firstShip?addD(b,dayDiff(e.firstShip,a)):addD(b,o),s1=s0,skipped=[];
   if(rolls(e.channel)){
     let g=0;while(offDay(s1)&&g++<14){skipped.push(md(s1)+" "+offDay(s1));s1=addD(s1,1)}
     g=0;while(offDay(en)&&g++<14){skipped.push(md(en)+" "+offDay(en));en=addD(en,1)}
   }
   if(en<s1)en=s1;
-  const why=[];if(o)why.push("행사일 +"+o+"일");if(skipped.length)why.push("주말·공휴일 → 다음 평일");
+  const why=[];if(e.firstShip)why.push("첫출고 지정");else if(o)why.push("행사일 +"+o+"일");if(skipped.length)why.push("주말·공휴일 → 다음 평일");
   return{s:s1,e:en,o,why,skipped,changed:s1!==a||en!==b};
 }
 const range=(a,b)=>md(a)+(b&&b!==a?" ~ "+md(b):"");
@@ -369,7 +403,46 @@ function boxChip(it){
 }
 
 /* ---------- timeline ---------- */
+function chC(ch){const n=norm(ch);if(/카카오/.test(n))return["var(--kraft-soft)","var(--kraft)"];if(/네이버|n배송/.test(n))return["var(--ok-soft)","var(--ok)"];if(/쿠팡/.test(n))return["var(--warn-soft)","var(--warn)"];if(/지마켓|g마켓|옥션|11번가/.test(n))return["var(--accent-soft)","var(--accent)"];return["var(--sunk)","var(--ink)"]}
+const expN=s=>{const m=String(s||"").replace(/,/g,"").match(/\d+/);return m?+m[0]:0};
+function calEvents(){return S.events.filter(e=>!S.chF||(e.channel||"채널 미정")===S.chF).map(e=>{const h=ship(e),es=e.start||e.end,ee=e.end||e.start;if(!h.s&&!es)return null;const s=h.s||es,en=h.e||ee;return{e,s,en,es,ee,u0:[s,es].filter(Boolean).sort()[0],u1:[en,ee].filter(Boolean).sort().pop()}}).filter(Boolean)}
+function renderMonthCal(){
+  if(S.calY==null){const t=parseD(TODAY);S.calY=t.getFullYear();S.calM=t.getMonth();S.calSel=TODAY}
+  const y=S.calY,m=S.calM,first=new Date(y,m,1),start=new Date(y,m,1-first.getDay()),nd=new Date(y,m+1,0).getDate(),weeks=Math.ceil((first.getDay()+nd)/7);
+  const all=calEvents(),hm=holMap(),MAX=4,inbDays=new Set();
+  all.forEach(x=>(x.e.inbound||[]).forEach(i=>i.date&&inbDays.add(i.date)));
+  const onD=(x,ds)=>x.u0<=ds&&ds<=x.u1,shipD=(x,ds)=>x.s<=ds&&ds<=x.en;
+  let g="";
+  for(let w=0;w<weeks;w++){
+    const ws=new Date(start);ws.setDate(start.getDate()+w*7);const a=ymd(ws),b=addD(a,6),lanes=[];
+    all.filter(x=>x.u0<=b&&x.u1>=a).sort((p,q)=>p.u0.localeCompare(q.u0)||q.u1.localeCompare(p.u1)).forEach(x=>{let i=lanes.findIndex(l=>l.every(o=>o.u1<x.u0||o.u0>x.u1));if(i<0){lanes.push([]);i=lanes.length-1}lanes[i].push(x)});
+    for(let k=0;k<7;k++){
+      const ds=addD(a,k),d=parseD(ds),dow=d.getDay(),act=all.filter(x=>onD(x,ds));
+      let used=0;lanes.forEach((l,i)=>{if(l.some(x=>onD(x,ds)))used=i+1});
+      let bars="",shown=0;
+      for(let i=0;i<Math.min(used,MAX);i++){const x=lanes[i].find(o=>onD(o,ds));if(!x){bars+=`<div class="mc-sp"></div>`;continue}shown++;
+        const[cb,cf]=chC(x.e.channel),head=ds===x.u0||dow===0,tail=ds===x.u1||dow===6,span=head?dayDiff(x.u1<b?x.u1:b,ds)+1:1;
+        bars+=`<div class="mc-b${shipD(x,ds)?"":" ev"}${head?" s":""}${tail?" e":""}" style="--cb:${cb};--cf:${cf}" title="${esc((x.e.channel||"")+" "+(x.e.title||""))}">${head?`<span style="width:calc(${span*100}% + ${span-1}px)">${esc(x.e.title||x.e.channel||"")}</span>`:""}</div>`}
+      const sum=act.filter(x=>shipD(x,ds)).reduce((t,x)=>t+expN(x.e.expected),0),we=dow%6===0||hm.get(ds);
+      g+=`<div class="mc-d${ds===S.calSel?" sel":""}${d.getMonth()!==m?" out":""}" data-cday="${ds}" role="button" tabindex="0" title="${esc(hm.get(ds)||"")}"><div class="mc-n"><b class="${ds===TODAY?"td":we?"we":""}">${d.getDate()}</b>${inbDays.has(ds)?`<i class="mc-pin" title="입고"></i>`:""}<small>${sum?sum.toLocaleString()+"건":""}</small></div>${bars}${act.length>shown?`<div class="mc-more">+${act.length-shown}건</div>`:""}</div>`;
+    }
+  }
+  const sel=S.calSel,list=all.filter(x=>shipD(x,sel)||(x.es&&x.es<=sel&&sel<=x.ee)).sort((p,q)=>shipD(q,sel)-shipD(p,sel)||p.s.localeCompare(q.s));
+  const shipL=list.filter(x=>shipD(x,sel)),tot=shipL.reduce((t,x)=>t+expN(x.e.expected),0),inbs=[];
+  all.forEach(x=>(x.e.inbound||[]).forEach(i=>{if(i.date===sel&&i.text)inbs.push(i.text)}));
+  const cards=list.map(x=>{const e=x.e,[cb,cf]=chC(e.channel),sh=shipD(x,sel),tag=sh?(sel===x.s?"첫출고":sel===x.en?"마지막 출고":"출고 중"):"행사 중 · 출고 없음";
+    return`<div class="mc-ev"><div class="mc-tags">${e.shipper?`<span class="ch" style="background:var(--kraft-soft);color:var(--kraft)">${esc(e.shipper)}</span>`:""}<span class="ch" style="background:${cb};color:${cf}">${esc(e.channel||"채널 미정")}</span><span class="ch">${tag}</span></div><b>${esc(e.title||"(제목 없음)")}</b><div class="kv"><span>출고</span><span class="num">${range(x.s,x.en)}</span><span>행사</span><span class="num">${range(x.es,x.ee)}</span>${e.expected?`<span>예상</span><span>${esc(e.expected)}</span>`:""}</div><div class="c-act"><button class="ghost" data-cal="${e.id}">달력 문구 복사</button><button class="ghost" data-edit="${e.id}">수정</button></div></div>`}).join("");
+  $("#mcal").innerHTML=`<div class="mc"><div class="mc-head"><div class="mc-nav"><button data-cnav="-1" aria-label="이전 달">‹</button><h3>${y}년 ${m+1}월</h3><button data-cnav="1" aria-label="다음 달">›</button><button class="ghost" data-cnav="0">오늘</button></div><div class="legend"><span><i></i>출고 기간</span><span><i class="ev"></i>행사 기간(출고 없는 날)</span><span><i class="p"></i>입고일</span></div></div><div class="mc-wd"><span class="we">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="we">토</span></div><div class="mc-grid">${g}</div></div><div class="mc-side"><div class="list-head"><h2>${md(sel)} 출고</h2><span class="hint">${shipL.length?`${shipL.length}개 행사 · 예상 ${tot.toLocaleString()}건`:""}</span></div>${inbs.length?`<div class="inb"><div><span class="d">입고</span><span>${esc(inbs.join(", "))}</span></div></div>`:""}${cards||`<div class="empty">이 날 출고하는 행사가 없습니다</div>`}</div>`;
+}
+document.addEventListener("click",ev=>{
+  const n=ev.target.closest("[data-cnav]");
+  if(n){const v=+n.dataset.cnav;if(!v){const t=parseD(TODAY);S.calY=t.getFullYear();S.calM=t.getMonth();S.calSel=TODAY}else{const d=new Date(S.calY,S.calM+v,1);S.calY=d.getFullYear();S.calM=d.getMonth()}renderMonthCal();return}
+  const c=ev.target.closest("[data-cday]");
+  if(c){S.calSel=c.dataset.cday;const d=parseD(S.calSel);if(d.getMonth()!==S.calM){S.calY=d.getFullYear();S.calM=d.getMonth()}renderMonthCal();return}
+  if(ev.target.closest("#mcal [data-edit]"))setTimeout(()=>{const f=document.querySelector('form[data-mode="edit"]');if(f)window.scrollTo({top:f.getBoundingClientRect().top+scrollY-80,behavior:"smooth"})},150);
+});
 function renderTimeline(){
+  if(!$("#timeline"))return;
   const start=parseD(TODAY);start.setDate(start.getDate()-3);
   const days=21,cols=[];for(let i=0;i<days;i++){const d=new Date(start);d.setDate(d.getDate()+i);cols.push(ymd(d))}
   const last=cols[days-1];
@@ -438,6 +511,7 @@ function formHTML(e,mode){
     <label class="f w2"><span>행사 메모용 제목</span><input id="f-title" value="${esc(e.title)}" placeholder="나주배 오리훈제 카카오 행사"></label>
     <label class="f"><span>행사 시작일</span><input type="date" id="f-s" value="${esc(e.start)}"></label>
     <label class="f"><span>행사 종료일</span><input type="date" id="f-e" value="${esc(e.end)}"></label>
+    <label class="f"><span>첫출고일 (비우면 채널 설정대로)</span><input type="date" id="f-fs" value="${esc(e.firstShip||"")}"></label>
     <label class="f w4"><span>입고 (한 줄에 하나: 날짜 | 내용)</span><textarea id="f-inb" rows="2" placeholder="2026-10-12 | 나주배 오리훈제200g 15,000개(8p) 오전">${esc(inb)}</textarea></label>
     <label class="f w4"><span>품목 (한 줄에 하나: 품목명 | 박스)</span><textarea id="f-items" rows="${Math.max(3,(e.items||[]).length+1)}" placeholder="주부9단 프랑크500gx4개 | 135T">${esc(items)}</textarea></label>
     ${preview?`<div class="w4"><div class="sect">박스표 대조</div><ul class="items preview-items">${preview}</ul></div>`:""}
@@ -452,7 +526,7 @@ function readForm(form){
   const items=g("#f-items").split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{const[a,...b]=l.split("|");return{name:a.trim(),box:b.join("|").trim()}});
   const inbound=g("#f-inb").split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{const m=l.match(/^(\d{4}-\d{2}-\d{2})?\s*\|?\s*(.*)$/);return{date:m[1]||"",text:(m[2]||"").trim()}});
   let s=g("#f-s"),e=g("#f-e");if(s&&!e)e=s;if(e&&!s)s=e;if(s&&e&&e<s)[s,e]=[e,s];
-  return{shipper:g("#f-shp"),shipType:form.querySelector("#f-type").value,channel:g("#f-ch"),title:g("#f-title"),expected:g("#f-exp"),start:s,end:e,items,inbound,notes:g("#f-notes")};
+  return{shipper:g("#f-shp"),shipType:form.querySelector("#f-type").value,channel:g("#f-ch"),title:g("#f-title"),expected:g("#f-exp"),start:s,end:e,firstShip:g("#f-fs"),items,inbound,notes:g("#f-notes")};
 }
 function renderDraft(){
   $("#draft").innerHTML=S.draft?formHTML(S.draft,"draft"):"";
@@ -517,6 +591,18 @@ async function parse(){
 메시지:
 ${raw||"(첨부 이미지 참고)"}`;
   try{
+    if(!S.images.length){const parts=splitNumbered(raw);if(parts.length>1){
+      const base={channel:"",title:"",start:"",end:"",expected:"",items:[],inbound:[],notes:""},labels=[];
+      for(const p of parts){
+        let ev=parseLocal(p),match=null;const se=sameEvent(ev);if(se){match=se.id;ev=mergeLocal(se,ev)}
+        if(match&&sig({...base,...ev})===sig(se)){labels.push(evLabel(se)+"(변경 없음)");continue}
+        const d0={...base,...ev};if(!d0.shipper)d0.shipper=lastShipper();if(!d0.shipType)d0.shipType=/도착|네이버|n배송/i.test(d0.channel||"")?"도착":"일반";
+        const data={firstShip:d0.firstShip||"",shipper:d0.shipper,shipType:d0.shipType,channel:d0.channel||"",title:d0.title||"",expected:d0.expected||"",start:d0.start||"",end:d0.end||d0.start||"",items:(d0.items||[]).map(i=>({name:i.name||"",box:i.box||""})),inbound:(d0.inbound||[]).map(x=>({date:x.date||"",text:x.text||""})),notes:d0.notes||""};
+        await saveEvent(data,match,p);labels.push(evLabel(data));
+      }
+      S.draft=null;renderDraft();$("#raw").value="";
+      $("#parseState").textContent="순번별로 "+parts.length+"개 행사로 나눠 저장했습니다 → "+labels.join(" / ");
+      toast(parts.length+"개 행사로 저장했습니다");return}}
     const opts={modelTier:"default"};if(S.images.length)opts.images=S.images.map(x=>x.blob);
     const r=S.sample?await S.sample.json(prompt,opts):{text:raw,matchId:null,event:parseLocal(raw)};
     let ev=r&&r.event?r.event:r;
@@ -531,7 +617,7 @@ ${raw||"(첨부 이미지 참고)"}`;
     S.draft={...base,...ev,_matchId:match,_auto:auto,_raw:msg};
     if(!S.draft.shipper)S.draft.shipper=lastShipper();
     if(!S.draft.shipType)S.draft.shipType=/도착|네이버|n배송/i.test(S.draft.channel||"")?"도착":"일반";
-    const d0=S.draft,data={shipper:d0.shipper,shipType:d0.shipType,channel:d0.channel||"",title:d0.title||"",expected:d0.expected||"",start:d0.start||"",end:d0.end||d0.start||"",items:(d0.items||[]).map(i=>({name:i.name||"",box:i.box||""})),inbound:(d0.inbound||[]).map(x=>({date:x.date||"",text:x.text||""})),notes:d0.notes||""};
+    const d0=S.draft,data={firstShip:d0.firstShip||"",shipper:d0.shipper,shipType:d0.shipType,channel:d0.channel||"",title:d0.title||"",expected:d0.expected||"",start:d0.start||"",end:d0.end||d0.start||"",items:(d0.items||[]).map(i=>({name:i.name||"",box:i.box||""})),inbound:(d0.inbound||[]).map(x=>({date:x.date||"",text:x.text||""})),notes:d0.notes||""};
     await saveEvent(data,d0._matchId,d0._raw);
     S.draft=null;renderDraft();$("#raw").value="";S.images.forEach(x=>URL.revokeObjectURL(x.url));S.images=[];renderThumbs();
     $("#parseState").textContent=(d0._matchId?"기존 행사에 합쳐 저장했습니다 → ":"저장했습니다 → ")+evLabel(data)+" · 고칠 내용은 카드의 「수정」에서";
@@ -619,7 +705,7 @@ function renderCal(){
   if(a!==$("#hol"))$("#hol").value=(S.holidays||DEFAULT_HOL).join("\n");
   $("#holState").textContent=S.holidays?"":"기본 공휴일 목록(2026~2027) 사용 중";
 }
-function renderAll(){$("#shipperList").innerHTML=[...new Set(S.events.map(e=>e.shipper).filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join("");renderTimeline();renderCards();renderCal2();renderProducts();renderOffsets();renderCal()}
+function renderAll(){$("#shipperList").innerHTML=[...new Set(S.events.map(e=>e.shipper).filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join("");renderMonthCal();renderCards();renderCal2();renderProducts();renderOffsets();renderCal()}
 
 /* ---------- events ---------- */
 document.addEventListener("click",async ev=>{
@@ -912,19 +998,25 @@ function localDB(){
 function nearYear(m,d){const t=new Date();let best=null;for(const y of[t.getFullYear()-1,t.getFullYear(),t.getFullYear()+1]){const x=new Date(y,m-1,d);if(!best||Math.abs(x-t)<Math.abs(best-t))best=x}return ymd(best)}
 function parseDates(str){
   const s=String(str||"");let m;
-  if(m=s.match(/(\d{1,2})\s*\/\s*(\d{1,2})[^\d~\-]*[~\-]\s*(?:(\d{1,2})\s*\/\s*)?(\d{1,2})/)){const a=nearYear(+m[1],+m[2]);const em=m[3]?+m[3]:+m[1];let b=nearYear(em,+m[4]);if(b<a)b=addD(b,0);return[a,b]}
+  if(m=s.match(/(\d{1,2})\s*\/\s*(\d{1,2})[^\d~\-]*(?:\d{1,2}(?::\d{2}|\s*시)[^\d~\-]*)?[~\-]\s*(?:(\d{1,2})\s*\/\s*)?(\d{1,2})/)){const a=nearYear(+m[1],+m[2]);const em=m[3]?+m[3]:+m[1];let b=nearYear(em,+m[4]);if(b<a)b=addD(b,0);return[a,b]}
   if(m=s.match(/(\d{1,2})\s*일\s*[~\-]\s*(\d{1,2})\s*일/)){const mo=new Date().getMonth()+1;return[nearYear(mo,+m[1]),nearYear(mo,+m[2])]}
   if(m=s.match(/(\d{1,2})\s*\/\s*(\d{1,2})/)){const a=nearYear(+m[1],+m[2]);return[a,a]}
   return["",""];
 }
 const BOX_RE=/\s+(\d+\s*T|\d+\s*K|굴|바지락|글)\s*$/i;
+function splitNumbered(raw){
+  const lines=String(raw||"").split(/\r?\n/),re=/^\s*(\d{1,2})\s*[.)．]\s*(\S.*)$/;
+  const idx=lines.map((l,i)=>re.test(l)?i:-1).filter(i=>i>=0);if(idx.length<2)return[String(raw||"")];
+  const head=lines.slice(0,idx[0]).filter(l=>!/^\s*(메인\s*상품|주요\s*구성|구성|행사\s*상품|상품|품목|제품)\s*[:：]?\s*$/.test(l));
+  return idx.map((s,k)=>{const body=lines.slice(s,k+1<idx.length?idx[k+1]:lines.length);const name=body[0].match(re)[2].trim();return[...head,"","상품 : "+name,...body.slice(1)].join("\n").trim()});
+}
 function parseLocal(raw){
   const lines=String(raw||"").split(/\r?\n/).map(l=>l.trim());
   const ev={shipper:"",shipType:"",channel:"",title:"",start:"",end:"",expected:"",items:[],inbound:[],notes:""};
   const first=lines.find(Boolean)||"";
   const cm=first.match(/^(.+?)\s*행사\s*공유/);if(cm)ev.channel=cm[1].trim();
   if(!ev.channel){const k=["카카오 선물하기","카카오","지마켓","G마켓","쿠팡","11번가","네이버","옥션","SSG","홈쇼핑","도착보장"].find(k=>String(raw).includes(k));if(k)ev.channel=k}
-  const lab=/^(메인\s*상품|상품|품목|제품|일자|기간|일정|예상\s*건수|입고일|수량)\s*(?:[:：]\s*(.*)|$)/;
+  const lab=/^(메인\s*상품|주요\s*구성|구성|행사\s*상품|상품|품목|제품|일자|기간|일정|예상\s*건수|입고일|수량)\s*(?:[:：]\s*(.*)|$)/;
   const notes=[];let mode="",inPrep=false,pendIn="";
   for(const l of lines){
     if(!l){mode="";continue}
@@ -935,26 +1027,28 @@ function parseLocal(raw){
       if(inPrep&&/상품|품목|제품/.test(k)){pendIn=v;mode="";continue}
       if(/일자|기간|일정/.test(k)){const[a,b]=parseDates(v);if(a){ev.start=a;ev.end=b}mode=""}
       else if(/예상건수/.test(k)){ev.expected=v;mode=""}
-      else if(/상품|품목|제품/.test(k)){mode="items";if(v)v.split(/\s*,\s*/).filter(Boolean).forEach(x=>pushItem(x))}
+      else if(/상품|품목|제품|구성/.test(k)){mode="items";if(v)v.split(/\s*,\s*/).filter(Boolean).forEach(x=>pushItem(x))}
       else if(/입고일/.test(k)){const[a]=parseDates(v);ev.inbound.push({date:a,text:[pendIn,v].filter(Boolean).join(" ")});pendIn="";mode="in"}
       else if(/수량/.test(k)&&ev.inbound.length){ev.inbound[ev.inbound.length-1].text+=" · "+v}
       continue}
+    const fm=l.match(/^첫\s*출고(?:일)?\s*[:：]?\s*(?:(\d{1,2})\s*[\/월]\s*)?(\d{1,2})\s*일?/);
+    if(fm){const sm=ev.start?+ev.start.slice(5,7):new Date().getMonth()+1,v=nearYear(fm[1]?+fm[1]:sm,+fm[2]);ev.firstShip=typeof v==="string"?v:ymd(v);continue}
     const em=l.match(/예상\s*건수\s*[:：]?\s*([\d,~\s]+건?(?:\s*이상)?)/);
     if(em){ev.expected=em[1].trim();const[a,b]=parseDates(l.replace(em[0],""));if(a&&!ev.start){ev.start=a;ev.end=b}continue}
     if(mode==="items"&&/\d/.test(l)&&/(g|kg|개|팩|입|ml)/i.test(l)){pushItem(l);continue}
-    if(!ev.start&&/\d{1,2}\s*(\/\s*\d{1,2}|일)\s*[~\-]/.test(l)){const[a,b]=parseDates(l);if(a){ev.start=a;ev.end=b;continue}}
+    if(!ev.start&&/\d{1,2}\s*(\/\s*\d{1,2}|일)[^~\-]{0,14}[~\-]/.test(l)){const[a,b]=parseDates(l);if(a){ev.start=a;ev.end=b;continue}}
     if(/(g|kg)\s*[x*×]\s*\d/i.test(l)&&l.length<60){pushItem(l);continue}
     notes.push(l);
   }
-  function pushItem(x){x=x.trim();if(!x)return;const bm=x.match(BOX_RE);let box="";if(bm){box=bm[1].replace(/\s/g,"");x=x.slice(0,bm.index).trim()}x=x.replace(/^프라임\s+/,"");ev.items.push({name:x,box})}
+  function pushItem(x){x=x.trim().replace(/\s*등\s*$/,"");if(!x)return;const bm=x.match(BOX_RE);let box="";if(bm){box=bm[1].replace(/\s/g,"");x=x.slice(0,bm.index).trim()}x=x.replace(/^프라임\s+/,"");ev.items.push({name:x,box})}
   if(!ev.expected){const em=String(raw).match(/([\d,]+\s*(?:~\s*[\d,]+)?\s*건)/);if(em)ev.expected=em[1]}
   ev.notes=notes.filter(n=>n.length>3).join("\n");
-  ev.title=ev.items.length?shortTitle(ev.items):"";
+  ev.title=ev.items.length?shortTitle(ev.items):(ev.channel?ev.channel+" 행사":"");
   return ev;
 }
 function mergeLocal(prev,ev){
   const o={...prev};delete o.id;delete o.raw;delete o.updatedAt;
-  for(const k of["shipper","shipType","channel","start","end","expected"])if(ev[k])o[k]=ev[k];
+  for(const k of["shipper","shipType","channel","start","end","expected","firstShip"])if(ev[k])o[k]=ev[k];
   const items=(prev.items||[]).map(i=>({...i}));
   for(const it of ev.items||[]){const n=norm(it.name);const hit=items.find(x=>{const m=norm(x.name);return m===n||m.includes(n)||n.includes(m)});if(hit){if(it.box)hit.box=it.box}else items.push({...it})}
   o.items=items;
