@@ -1194,8 +1194,19 @@ function startStockResize(ev, i) {
 function markStockDone(ids) {
   const d = new Date(), today = String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0');
   const set = new Set(ids.map(String));
-  data.forEach(r => { if (set.has(String(r.id))) r.stockAdjDate = today; });
+  const adj = loadStockAdj();
+  data.forEach(r => { if (set.has(String(r.id))) { r.stockAdjDate = today; adj[String(r.id)] = today; } });
+  saveStockAdj(adj);
   saveData(); render();
+}
+// 조정 완료 기록을 따로 보관 — 엑셀/자동 동기화가 빈 값으로 덮어도 다시 채움
+function stockAdjKey() { return 'claims_stockadj_' + currentMonth; }
+function loadStockAdj() { try { return JSON.parse(localStorage.getItem(stockAdjKey()) || '{}') || {}; } catch (e) { return {}; } }
+function saveStockAdj(o) { try { localStorage.setItem(stockAdjKey(), JSON.stringify(o)); } catch (e) {} }
+function restoreStockAdj() {
+  const adj = loadStockAdj(); let n = 0;
+  (data || []).forEach(r => { const v = adj[String(r.id)]; if (v && (r.stockAdjDate === '' || r.stockAdjDate == null)) { r.stockAdjDate = v; n++; } });
+  return n > 0;
 }
 document.getElementById('tbody-stock').addEventListener('click', e => {
   const b = e.target.closest('[data-sdone]'); if (!b) return;
@@ -1209,7 +1220,8 @@ document.getElementById('stock-all-done').addEventListener('click', () => {
   markStockDone(ids);
 });
 function render() {
-  if (autoFees()) { try { localStorage.setItem(getStorageKey(), JSON.stringify(data)); } catch (e) {} if (window.claimSync) claimSync.push(); }
+  const fixed = restoreStockAdj();
+  if (autoFees() || fixed) { try { localStorage.setItem(getStorageKey(), JSON.stringify(data)); } catch (e) {} if (window.claimSync) claimSync.push(); }
   renderClaims(); renderMagang(); renderCourier(); renderStock();
 }
 
@@ -1953,6 +1965,7 @@ document.getElementById('m-save').addEventListener('click', () => {
     row.price = +document.getElementById('m-price').value || 0;
     row.claimDelivery = +document.getElementById('m-claim-delivery').value || 0;
     row.stockAdjDate = document.getElementById('m-stock-adj-date').value.trim();
+    if (!row.stockAdjDate) { const adj = loadStockAdj(); if (adj[String(row.id)]) { delete adj[String(row.id)]; saveStockAdj(adj); } }
     row.note = document.getElementById('m-note').value.trim();
     row.boxCode = document.getElementById('m-boxcode').value;
     row.workType = document.getElementById('m-worktype').value;
