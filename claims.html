@@ -1111,7 +1111,7 @@ document.getElementById('stock-file').addEventListener('change', e => {
         const hi = rows.slice(0, 20).findIndex(r => r.some(c => String(c).trim() === '품목코드') && r.some(c => String(c).trim() === '유통기한'));
         if (hi < 0) continue;
         const h = rows[hi].map(c => String(c ?? '').trim()), ix = k => h.indexOf(k);
-        const [ic, ie, i1, i2, i3, ist, iq, ia] = ['품목코드', '유통기한', '분띘1', '분띘2', '분띘3', '재고상태', '재고수량', '가용수량'].map(ix);
+        const [ic, ie, i1, i2, i3, ist, iq, ia] = ['품목코드', '유통기한', '분류1', '분류2', '분류3', '재고상태', '재고수량', '가용수량'].map(ix);
         const s = (r, i) => i < 0 ? '' : String(r[i] ?? '').trim();
         out = rows.slice(hi + 1).map(r => ({ c: s(r, ic).replace(/\.0+$/, ''), e: stockDate(r[ie]), z1: s(r, i1), z2: s(r, i2), z3: s(r, i3), st: s(r, ist), q: ia < 0 && iq < 0 ? 1 : Number(s(r, iq)) || 0, a: ia < 0 ? 1 : Number(s(r, ia)) || 0 })).filter(r => r.c);
         break;
