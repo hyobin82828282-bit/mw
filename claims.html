@@ -1044,11 +1044,10 @@ function renderStock() {
   (data || []).filter(isStockPending).forEach(r => {
     const k = stockKey(r);
     const set = split && (findSetItem(k.code, k.name) || parseInlineSet(k.name));
-    if (set) set.s.forEach(c => add('SET|' + set.n + '|' + (c.c || c.n), c.c, c.n, k.qty * (+c.q || 1), r, set.n));
-    else add(k.key, k.code, k.name, k.qty, r);
+    if (set) set.s.forEach(c => add(c.c || c.n, c.c, c.n, k.qty * (+c.q || 1), r, set.n));
+    else add(k.code || k.key, k.code, k.name, k.qty, r);
   });
-  const setOf = g => [...g.sets][0] || '';
-  const rows = [...groups.values()].sort((a, b) => (setOf(a) ? 1 : 0) - (setOf(b) ? 1 : 0) || setOf(a).localeCompare(setOf(b)) || (setOf(a) ? 0 : b.qty - a.qty));
+  const rows = [...groups.values()].sort((a, b) => b.qty - a.qty);
   const nRows = rows.reduce((s, g) => s + g.ids.length, 0);
   document.getElementById('count-stock').textContent = rows.length;
   document.getElementById('stock-items').textContent = rows.length;
