@@ -901,14 +901,14 @@
       order.forEach((key) => {
         const rec = agg.get(key), cv = convLeft.get(String(rec.code).trim()) || 0;
         if (!cv) return;
-        rec.diff -= cv; rec.conv = cv;
+        rec.diff -= cv; rec.avail += cv; rec.conv = cv;
         convLeft.delete(String(rec.code).trim());
       });
       removeIfExists(workbook, "전체실사요약");
       const ws = workbook.addWorksheet("전체실사요약");
       ws.getRow(1).getCell(1).value = "전체실사요약 (냉동 + 상온,냉장 통합 집계)";
       ws.getRow(1).getCell(1).font = { bold: true, size: 14 };
-      ws.getRow(2).getCell(1).value = "※ 불용(분실·파손) → 가용 전환분 반영됨 (차이수량에서만 뺌 · 가용수량은 그대로)";
+      ws.getRow(2).getCell(1).value = "※ 불용(분실·파손) → 가용 전환분 반영됨 (가용수량에 더하고 차이수량에서 뺌 · 초록 음영 셀 = 전환 포함)";
       ws.getRow(2).getCell(1).font = { size: 10, color: { argb: "FF1F6F5C" } };
       const headers = ["품목코드", "품목명", "합계 : 가용수량", "합계 : 실수량", "합계 : 차이수량", "조정수량"];
       headers.forEach((h, i) => {
@@ -920,11 +920,18 @@
         ws.getRow(r).getCell(1).value = rec.code;
         ws.getRow(r).getCell(2).value = rec.name;
         ws.getRow(r).getCell(3).value = rec.avail; ws.getRow(r).getCell(3).numFmt = "#,##0";
+        if (rec.conv) {
+          const c3 = ws.getRow(r).getCell(3);
+          c3.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2F4E8" } };
+          c3.note = `${rec.conv}개 가용전환 (WMS 가용 ${rec.avail - rec.conv} + 전환 ${rec.conv})`;
+          ws.getRow(r).getCell(7).value = `${rec.conv}개 가용전환`;
+          ws.getRow(r).getCell(7).font = { color: { argb: "FF1F6F5C" } };
+        }
         ws.getRow(r).getCell(4).value = rec.actual; ws.getRow(r).getCell(4).numFmt = "#,##0";
-        ws.getRow(r).getCell(5).value = rec.diff; ws.getRow(r).getCell(5).numFmt = "#,##0";
+        ws.getRow(r).getCell(5).value = { formula: `D${r}-C${r}`, result: rec.diff }; ws.getRow(r).getCell(5).numFmt = "#,##0";
         ws.getRow(r).getCell(6).numFmt = "#,##0";
       });
-      for (let c = 1; c <= 6; c++) {
+      for (let c = 1; c <= 7; c++) {
         let max = 0;
         for (let r = 3; r <= order.length + 3; r++) max = Math.max(max, textWidth(ws.getRow(r).getCell(c).value));
         ws.getColumn(c).width = Math.min(Math.max(Math.ceil(max + 3), 8), 80);
