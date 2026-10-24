@@ -408,7 +408,7 @@
       <div class="step-body">
         <h2 class="step-title">폐기시트 재고조정 파일</h2>
         <p class="step-desc"><code>폐기대상</code> 시트와 같은 기준으로 이상재고(불량/임박/분실/파손/불용, <b>불용(대기) 제외</b>)만 뽑아 조정수량 0으로 채운
-          WMS 재고조정 양식(stock_new_v2, 4행부터 · 모든 값 텍스트)을 만듭니다. 재고상태는 코드로 변환됩니다 (임박=2 · 불량=3 · 분실=4 · 파손=5 · 기타=6).
+          WMS 재고조정 양식(stock_new_v2, 4행부터 · 모든 값 텍스트)을 만듭니다. 재고상태는 코드로 변환됩니다 (불량=2 · 파손=3 · 임박=4 · 대기=6 · 분실=7 · 기타=9).
           유통기한이 오늘 기준 D+3 이상인 불용(임박)은 재고로 두므로 조정하지 않습니다.</p>
         <div class="row">
           <label class="filepick" id="pick3">
@@ -1004,7 +1004,7 @@
     function buildWmsCsv(workbook) {
       const wsRaw = workbook.getWorksheet("Sheet1");
       const exclude = loadExcludeSet(workbook);
-      const statusCodeMap = [["임박", "2"], ["불량", "3"], ["분실", "4"], ["파손", "5"], ["대기", "1"]];
+      const statusCodeMap = [["반품불량", "11"], ["불량", "2"], ["파손", "3"], ["임박", "4"], ["만료", "5"], ["대기", "6"], ["분실", "7"], ["폐기", "8"], ["기타", "9"], ["기부", "10"]];
       const rows = [];
       const convMap = new Map(computeConversions(workbook).map((c) => [c.r, c.conv]));
       let convCount = 0, convQty = 0;
@@ -1021,12 +1021,12 @@
         const cv = convMap.get(r) || 0;
         if (cv) { convCount++; convQty += cv; }
         if (cv && cv >= toNum(cellRaw(wsRaw, r, COL_STOCK))) continue;
-        let stCode = "6";
+        let stCode = "1";
         for (const [kw, sc] of statusCodeMap) { if (status.includes(kw)) { stCode = sc; break; } }
         const expiry = fmtExpiry(cellRaw(wsRaw, r, COL_EXPIRY));
         const loc1 = cellText(wsRaw, r, COL_CAT1), loc2 = cellText(wsRaw, r, COL_CAT2), loc3 = cellText(wsRaw, r, COL_CAT3);
         const lot = cellText(wsRaw, r, COL_LOT), batch = cellText(wsRaw, r, COL_BATCH);
-        const mfg = colMfg ? fmtExpiry(cellRaw(wsRaw, r, colMfg)) : "";
+        const mfg = colMfg ? fmtExpiry(cellRaw(wsRaw, r, colMfg)).replace(/^0000-00-00$/, "") : "";
         rows.push(["", code, cellText(wsRaw, r, COL_NAME), mfg, expiry, lot, batch, String(cv), loc1, loc2, loc3, "", "", "", stCode]);
       }
       return { rows, count: rows.length, convCount, convQty };
@@ -1173,7 +1173,7 @@
           const code = cellText(wsRaw, r, COL_CODE);
           if (!code) continue;
           const key = [code, locText(cellRaw(wsRaw, r, COL_CAT1)), locText(cellRaw(wsRaw, r, COL_CAT2), true), locText(cellRaw(wsRaw, r, COL_CAT3), true), fmtExpiry(cellRaw(wsRaw, r, COL_EXPIRY))].join("|");
-          if (!raw.has(key)) raw.set(key, { lot: cellText(wsRaw, r, COL_LOT), batch: cellText(wsRaw, r, COL_BATCH), status: cellText(wsRaw, r, COL_STATUS), name: cellText(wsRaw, r, COL_NAME), mfg: colMfg ? fmtExpiry(cellRaw(wsRaw, r, colMfg)) : "" });
+          if (!raw.has(key)) raw.set(key, { lot: cellText(wsRaw, r, COL_LOT), batch: cellText(wsRaw, r, COL_BATCH), status: cellText(wsRaw, r, COL_STATUS), name: cellText(wsRaw, r, COL_NAME), mfg: colMfg ? fmtExpiry(cellRaw(wsRaw, r, colMfg)).replace(/^0000-00-00$/, "") : "" });
         }
       }
       const rawOf = (c) => raw.get([c.code, c.loc[0], c.loc[1], c.loc[2], c.expiry].join("|")) || { lot: "", batch: "", status: "", name: "", mfg: "" };
@@ -1200,7 +1200,7 @@
             inRows.push([c.code, "", c.expiry, String(take), c.loc[0], c.loc[1], c.loc[2], "", "", "", x.lot, x.batch, "가용", ""]);
             inQty += take;
           } else {
-            const st = x.status.includes("대기") ? "1" : "0";
+            const st = x.status.includes("대기") ? "6" : "0";
             // stock_new_v2 양식: PLANT, 품목코드, 품목명, 제조일자, 유통기한, Lot No., Batch No., 조정수량, 분류명1~6, 현 재고상태
             outRows.push(["", c.code, c.name || x.name || (pname !== code ? pname : ""), x.mfg || "", c.expiry, x.lot, x.batch, String(Math.max(c.avail - take, 0)), c.loc[0], c.loc[1], c.loc[2], "", "", "", st]);
             outQty += take;
