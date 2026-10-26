@@ -3418,7 +3418,7 @@ class Component extends DCLogic {
       items.forEach((it, i) => {
         const r = i + 2, hit = this.lookupItem(it.name);
         Object.assign(cells, {
-          ["A" + r]: y + "-" + mm + "-" + dd, ["C" + r]: 12345, ["D" + r]: info,
+          ["A" + r]: y + "-" + mm + "-" + dd, ["C" + r]: "", ["D" + r]: info,
           ["E" + r]: "010-0000-0000", ["F" + r]: info, ["G" + r]: "010-0000-0000",
           ["H" + r]: 18137, ["I" + r]: "경기 오산시 오산로 149 7층",
           ["K" + r]: hit ? hit.c : "", ["L" + r]: it.name.trim(), ["M" + r]: num(it.qty),
