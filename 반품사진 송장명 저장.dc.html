@@ -8,29 +8,29 @@
 <body>
 <x-dc>
 <helmet>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
-body{background:#f4f3ef;color:#16181a;font:14px/1.55 Pretendard,"Noto Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased}
-a{color:#1f6f5c}a:hover{color:#16503f}
-input:focus-visible,button:focus-visible,label:focus-visible{outline:2px solid #1f6f5c;outline-offset:2px}
+body{background:#F5F7FA;color:#0F172A;font:14px/1.55 Pretendard,"Noto Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#2563EB}a:hover{color:#1E40AF}
+input:focus-visible,button:focus-visible,label:focus-visible{outline:2px solid #2563EB;outline-offset:2px}
 </style>
 </helmet>
-<div style="min-height:100vh;background:#f4f3ef">
-  <div style="border-bottom:1px solid #e3e1dc;background:#fff;padding:16px 28px">
+<div style="min-height:100vh;background:#F5F7FA">
+  <div style="border-bottom:1px solid #E5E7EB;background:#fff;padding:16px 28px">
     <div style="display:flex;flex-direction:column;gap:3px">
-      <div style="color:#6e7379;font-size:12px">물류비 마감 · 도구</div>
+      <div style="color:#6B7280;font-size:12px">물류비 마감 · 도구</div>
       <div style="font-size:20px;font-weight:700;letter-spacing:-.3px">반품사진 송장명 저장</div>
     </div>
   </div>
   <div style="padding:24px 28px 40px">
     <div style="max-width:1120px;display:flex;flex-direction:column;gap:16px">
-      <p style="margin:0;color:#4a4e54;font-size:13px;max-width:70ch">반품 박스 사진을 넣으면 CJ 반품송장의 <b>원운송장번호</b>를 읽어 파일 이름을 그 번호로 바꿔 저장합니다. 같은 번호 사진이 여러 장이면 (1), (2)… 순번이 붙습니다.</p>
+      <p style="margin:0;color:#4B5563;font-size:13px;max-width:70ch">반품 박스 사진을 넣으면 CJ 반품송장의 <b>원운송장번호</b>를 읽어 파일 이름을 그 번호로 바꿔 저장합니다. 같은 번호 사진이 여러 장이면 (1), (2)… 순번이 붙습니다.</p>
 
-      <label tabindex="0" onKeyDown="{{ onDropKey }}" onDragEnter="{{ onDragOver }}" onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" style="{{ dropStyle }}" style-hover="border-color:#1f6f5c;background:#f8f7f4">
+      <label tabindex="0" onKeyDown="{{ onDropKey }}" onDragEnter="{{ onDragOver }}" onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" style="{{ dropStyle }}" style-hover="border-color:#2563EB;background:#F9FAFB">
         <strong style="font-size:15px">사진을 여기로 끌어오거나 눌러서 선택</strong>
-        <small style="color:#6e7379;font-size:12px">JPG · PNG · WebP · 여러 장 한 번에 가능</small>
+        <small style="color:#6B7280;font-size:12px">JPG · PNG · WebP · 여러 장 한 번에 가능</small>
         <input type="file" ref="{{ pickerRef }}" onChange="{{ onPick }}" accept="image/jpeg,image/png,image/webp" multiple="multiple" style="display:none">
       </label>
 
@@ -38,60 +38,60 @@ input:focus-visible,button:focus-visible,label:focus-visible{outline:2px solid #
         <div style="padding:10px 16px;border-radius:12px;background:#fff3d6;color:#7a5a12;font-size:13px">{{ notice }}</div>
       </sc-if>
 
-      <div style="border:1px solid #e3e1dc;background:#fff;border-radius:12px;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between">
-        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;color:#6e7379;font-size:13px">
-          <span>사진 <b style="color:#16181a;font-variant-numeric:tabular-nums">{{ cTotal }}</b></span>
-          <span>인식 <b style="color:#16181a;font-variant-numeric:tabular-nums">{{ cOk }}</b></span>
-          <span>확인 필요 <b style="color:#16181a;font-variant-numeric:tabular-nums">{{ cWarn }}</b></span>
+      <div style="border:1px solid #E5E7EB;background:#fff;border-radius:12px;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;color:#6B7280;font-size:13px">
+          <span>사진 <b style="color:#0F172A;font-variant-numeric:tabular-nums">{{ cTotal }}</b></span>
+          <span>인식 <b style="color:#0F172A;font-variant-numeric:tabular-nums">{{ cOk }}</b></span>
+          <span>확인 필요 <b style="color:#0F172A;font-variant-numeric:tabular-nums">{{ cWarn }}</b></span>
           <span>통합내역 없음 <b style="color:#b42318;font-variant-numeric:tabular-nums">{{ cMiss }}</b></span>
-          <span style="font-size:12px;color:#1f6f5c">{{ dbLabel }}</span>
+          <span style="font-size:12px;color:#2563EB">{{ dbLabel }}</span>
           <span style="display:flex;gap:6px;align-items:center">
             <label for="prefix">앞에 붙일 말</label>
-            <input id="prefix" value="{{ prefix }}" onChange="{{ onPrefix }}" placeholder="자동: 목우촌_" style="font:inherit;font-size:12px;padding:6px 8px;border:1px solid #d6d3cc;border-radius:6px;width:130px">
+            <input id="prefix" value="{{ prefix }}" onChange="{{ onPrefix }}" placeholder="자동: 목우촌_" style="font:inherit;font-size:12px;padding:6px 8px;border:1px solid #D1D5DB;border-radius:6px;width:130px">
           </span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#16181a;cursor:pointer;padding:0 4px">
-            <input type="checkbox" checked="{{ allChecked }}" onChange="{{ toggleAll }}" style="width:16px;height:16px;accent-color:#1f6f5c;cursor:pointer">
-            전체선택 <span style="color:#6e7379">{{ selLabel }}</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#0F172A;cursor:pointer;padding:0 4px">
+            <input type="checkbox" checked="{{ allChecked }}" onChange="{{ toggleAll }}" style="width:16px;height:16px;accent-color:#2563EB;cursor:pointer">
+            전체선택 <span style="color:#6B7280">{{ selLabel }}</span>
           </label>
-          <button type="button" onClick="{{ saveSel }}" disabled="{{ selDisabled }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #1f6f5c;background:#fff;color:#1f6f5c;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ selOpacity }}" style-hover="background:#e6f0ec">{{ selSaveLabel }}</button>
-          <button type="button" onClick="{{ clearAll }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #d6d3cc;background:#fff;color:#16181a;border-radius:8px;padding:8px 14px;cursor:pointer" style-hover="background:#f4f3ef">비우기</button>
-          <button type="button" onClick="{{ saveZip }}" disabled="{{ zipDisabled }}" style="font:inherit;font-size:13px;font-weight:700;border:1px solid #1f6f5c;background:#1f6f5c;color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ zipOpacity }}" style-hover="background:#16503f">{{ zipLabel }}</button>
+          <button type="button" onClick="{{ saveSel }}" disabled="{{ selDisabled }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #2563EB;background:#fff;color:#2563EB;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ selOpacity }}" style-hover="background:#EFF4FF">{{ selSaveLabel }}</button>
+          <button type="button" onClick="{{ clearAll }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #D1D5DB;background:#fff;color:#0F172A;border-radius:8px;padding:8px 14px;cursor:pointer" style-hover="background:#F5F7FA">비우기</button>
+          <button type="button" onClick="{{ saveZip }}" disabled="{{ zipDisabled }}" style="font:inherit;font-size:13px;font-weight:700;border:1px solid #2563EB;background:#2563EB;color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ zipOpacity }}" style-hover="background:#1E40AF">{{ zipLabel }}</button>
         </div>
       </div>
 
-      <div style="border:1px solid #e3e1dc;background:#fff;border-radius:12px;overflow:hidden">
+      <div style="border:1px solid #E5E7EB;background:#fff;border-radius:12px;overflow:hidden">
         <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ true }}">
-          <div style="display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 16px;background:#f8f7f4">
-            <div style="width:72px;height:72px;border-radius:8px;background:#e3e1dc"></div>
+          <div style="display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 16px;background:#F9FAFB">
+            <div style="width:72px;height:72px;border-radius:8px;background:#E5E7EB"></div>
             <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
-              <div style="font-size:12px;color:#6e7379">예시 · IMG_4821.jpg</div>
+              <div style="font-size:12px;color:#6B7280">예시 · IMG_4821.jpg</div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <input value="302042092242" disabled="disabled" aria-label="예시 번호" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;font-weight:700;padding:5px 9px;border:1px solid #d6d3cc;border-radius:6px;background:#f8f7f4;color:#16181a;width:170px;max-width:100%">
-                <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#e6f0ec;color:#1f6f5c">인식됨</span>
+                <input value="302042092242" disabled="disabled" aria-label="예시 번호" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;font-weight:700;padding:5px 9px;border:1px solid #D1D5DB;border-radius:6px;background:#F9FAFB;color:#0F172A;width:170px;max-width:100%">
+                <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#EFF4FF;color:#2563EB">인식됨</span>
               </div>
-              <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#4a4e54">→ 302042092242.jpg</div>
+              <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#4B5563">→ 302042092242.jpg</div>
             </div>
-            <span style="font-size:12px;color:#6e7379">예시</span>
+            <span style="font-size:12px;color:#6B7280">예시</span>
           </div>
         </sc-if>
         <sc-for list="{{ rows }}" as="r" hint-placeholder-count="0">
           <div style="display:grid;grid-template-columns:20px 72px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 16px;border-top:{{ r.border }}">
-            <input type="checkbox" aria-label="선택" checked="{{ r.checked }}" onChange="{{ r.toggle }}" style="width:16px;height:16px;accent-color:#1f6f5c;cursor:pointer;margin:0">
+            <input type="checkbox" aria-label="선택" checked="{{ r.checked }}" onChange="{{ r.toggle }}" style="width:16px;height:16px;accent-color:#2563EB;cursor:pointer;margin:0">
             <img src="{{ r.url }}" alt="사진 크게 보기" onClick="{{ r.view }}" style="{{ r.thumbStyle }}" style-hover="opacity:.85">
             <div style="display:flex;flex-direction:column;gap:5px;min-width:0">
-              <div style="font-size:12px;color:#6e7379;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+              <div style="font-size:12px;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <input inputmode="numeric" aria-label="원운송장번호" value="{{ r.num }}" onChange="{{ r.onNum }}" disabled="{{ r.busy }}" placeholder="{{ r.ph }}" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;font-weight:700;padding:5px 9px;border:1px solid #d6d3cc;border-radius:6px;background:#fff;color:#16181a;width:170px;max-width:100%">
+                <input inputmode="numeric" aria-label="원운송장번호" value="{{ r.num }}" onChange="{{ r.onNum }}" disabled="{{ r.busy }}" placeholder="{{ r.ph }}" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;font-weight:700;padding:5px 9px;border:1px solid #D1D5DB;border-radius:6px;background:#fff;color:#0F172A;width:170px;max-width:100%">
                 <span title="{{ r.note }}" style="{{ r.chipStyle }}">{{ r.chip }}</span>
               </div>
 <sc-if value="{{ r.hasInfo }}"><div title="{{ r.info }}" style="{{ r.infoStyle }}">{{ r.info }}</div></sc-if>
-              <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#4a4e54;word-break:break-all">{{ r.fname }}</div>
+              <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#4B5563;word-break:break-all">{{ r.fname }}</div>
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-              <button type="button" onClick="{{ r.save }}" disabled="{{ r.saveDisabled }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #d6d3cc;background:#fff;color:#16181a;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ r.saveOpacity }}" style-hover="background:#f4f3ef">저장</button>
-              <button type="button" onClick="{{ r.del }}" style="background:none;border:0;color:#6e7379;font:inherit;font-size:12px;cursor:pointer;padding:2px" style-hover="color:#b42318">삭제</button>
+              <button type="button" onClick="{{ r.save }}" disabled="{{ r.saveDisabled }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #D1D5DB;background:#fff;color:#0F172A;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ r.saveOpacity }}" style-hover="background:#F5F7FA">저장</button>
+              <button type="button" onClick="{{ r.del }}" style="background:none;border:0;color:#6B7280;font:inherit;font-size:12px;cursor:pointer;padding:2px" style-hover="color:#b42318">삭제</button>
             </div>
           </div>
         </sc-for>
@@ -99,26 +99,26 @@ input:focus-visible,button:focus-visible,label:focus-visible{outline:2px solid #
     </div>
   </div>
   <sc-if value="{{ hasViewer }}">
-    <div style="position:fixed;top:16px;right:16px;bottom:16px;width:min(560px,calc(100vw - 32px));background:#fff;border:1px solid #d6d3cc;border-radius:12px;box-shadow:0 16px 48px #00000033;display:flex;flex-direction:column;z-index:50;overflow:hidden">
-      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #efede8">
-        <div style="flex:1;min-width:0;font-size:12px;color:#6e7379;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ vName }}</div>
-        <button type="button" onClick="{{ vRotate }}" style="font:inherit;font-size:12px;border:1px solid #d6d3cc;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">↻ 회전</button>
-        <button type="button" onClick="{{ vZoom }}" style="font:inherit;font-size:12px;border:1px solid #d6d3cc;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">{{ vZoomLabel }}</button>
-        <button type="button" onClick="{{ vClose }}" aria-label="닫기" style="font:inherit;font-size:16px;border:0;background:none;cursor:pointer;padding:2px 6px;color:#4a4e54">✕</button>
+    <div style="position:fixed;top:16px;right:16px;bottom:16px;width:min(560px,calc(100vw - 32px));background:#fff;border:1px solid #D1D5DB;border-radius:12px;box-shadow:0 16px 48px #00000033;display:flex;flex-direction:column;z-index:50;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #EEF0F3">
+        <div style="flex:1;min-width:0;font-size:12px;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ vName }}</div>
+        <button type="button" onClick="{{ vRotate }}" style="font:inherit;font-size:12px;border:1px solid #D1D5DB;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">↻ 회전</button>
+        <button type="button" onClick="{{ vZoom }}" style="font:inherit;font-size:12px;border:1px solid #D1D5DB;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer">{{ vZoomLabel }}</button>
+        <button type="button" onClick="{{ vClose }}" aria-label="닫기" style="font:inherit;font-size:16px;border:0;background:none;cursor:pointer;padding:2px 6px;color:#4B5563">✕</button>
       </div>
-      <div style="flex:1;overflow:auto;background:#f4f3ef;display:flex;align-items:center;justify-content:center">
+      <div style="flex:1;overflow:auto;background:#F5F7FA;display:flex;align-items:center;justify-content:center">
         <img src="{{ vUrl }}" alt="" style="{{ vImgStyle }}">
       </div>
-      <div style="display:flex;gap:8px;align-items:center;padding:12px;border-top:1px solid #efede8">
-        <button type="button" onClick="{{ vPrev }}" disabled="{{ vNoPrev }}" style="font:inherit;font-size:13px;border:1px solid #d6d3cc;background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer">‹</button>
-        <input inputmode="numeric" aria-label="원운송장번호" value="{{ vNum }}" onChange="{{ vOnNum }}" onKeyDown="{{ vKey }}" placeholder="번호 입력" autofocus="{{ true }}" style="flex:1;min-width:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;font-weight:700;padding:8px 10px;border:1px solid #d6d3cc;border-radius:8px;color:#16181a">
-        <button type="button" onClick="{{ vNext }}" disabled="{{ vNoNext }}" style="font:inherit;font-size:13px;border:1px solid #d6d3cc;background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer">›</button>
+      <div style="display:flex;gap:8px;align-items:center;padding:12px;border-top:1px solid #EEF0F3">
+        <button type="button" onClick="{{ vPrev }}" disabled="{{ vNoPrev }}" style="font:inherit;font-size:13px;border:1px solid #D1D5DB;background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer">‹</button>
+        <input inputmode="numeric" aria-label="원운송장번호" value="{{ vNum }}" onChange="{{ vOnNum }}" onKeyDown="{{ vKey }}" placeholder="번호 입력" autofocus="{{ true }}" style="flex:1;min-width:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;font-weight:700;padding:8px 10px;border:1px solid #D1D5DB;border-radius:8px;color:#0F172A">
+        <button type="button" onClick="{{ vNext }}" disabled="{{ vNoNext }}" style="font:inherit;font-size:13px;border:1px solid #D1D5DB;background:#fff;border-radius:8px;padding:8px 10px;cursor:pointer">›</button>
       </div>
       <sc-if value="{{ vHasInfo }}"><div style="{{ vInfoStyle }}">{{ vInfo }}</div></sc-if>
     </div>
   </sc-if>
   <sc-if value="{{ hasToast }}">
-    <div style="position:fixed;bottom:24px;right:24px;background:#16181a;color:#fff;border-radius:10px;padding:12px 16px;font-size:13px;max-width:360px;box-shadow:0 8px 24px #0000002e">{{ toast }}</div>
+    <div style="position:fixed;bottom:24px;right:24px;background:#0F172A;color:#fff;border-radius:10px;padding:12px 16px;font-size:13px;max-width:360px;box-shadow:0 8px 24px #0000002e">{{ toast }}</div>
   </sc-if>
 </div>
 </x-dc>
@@ -132,7 +132,7 @@ JSON만 출력: {"original":"숫자","waybill":"숫자","confident":true,"note":
 const digits = s => String(s || '').replace(/\D/g, '');
 const valid = n => /^\d{10,13}$/.test(n);
 const ext = name => { const m = /\.[^.]+$/.exec(name); return m ? m[0] : '.jpg'; };
-const CHIP = { busy: ['#f8f7f4', '#6e7379', '읽는 중…'], ok: ['#e6f0ec', '#1f6f5c', '인식됨'], warn: ['#fff3d6', '#7a5a12', '확인 필요'], bad: ['#fdecea', '#b42318', '실패'] };
+const CHIP = { busy: ['#F9FAFB', '#6B7280', '읽는 중…'], ok: ['#EFF4FF', '#2563EB', '인식됨'], warn: ['#fff3d6', '#7a5a12', '확인 필요'], bad: ['#fdecea', '#b42318', '실패'] };
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
 async function buildZip(entries) {
@@ -297,9 +297,9 @@ class Component extends DCLogic {
       const prods = hit ? hit.x.map(p => p.n.replace(/^\[[^\]]*\]\s*/, '') + (p.q > 1 ? ' ×' + p.q : '')).join(', ') : '';
       const info = !valid(it.num) ? '' : !this.db ? '통합내역 불러오는 중…' : hit ? (hit.u || '수취인 없음') + (prods ? ' · ' + prods : '') : '통합내역에 없는 번호';
       return {
-        info, hasInfo: !!info, infoStyle: `font-size:12px;${hit ? 'color:#16181a' : 'color:#b42318;font-weight:600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis`,
+        info, hasInfo: !!info, infoStyle: `font-size:12px;${hit ? 'color:#0F172A' : 'color:#b42318;font-weight:600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis`,
         url: it.url, name: it.file.name, num: it.num, note: it.note || '',
-        border: i === 0 ? '0' : '1px solid #efede8',
+        border: i === 0 ? '0' : '1px solid #EEF0F3',
         busy: it.status === 'busy', ph: it.status === 'busy' ? '읽는 중…' : '번호 입력',
         chip: manual ? '직접 입력' : label,
         chipStyle: `font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;background:${bg};color:${fg}`,
@@ -307,7 +307,7 @@ class Component extends DCLogic {
         checked: !!(s.sel || {})[it.id],
         toggle: e => { const c = e.target.checked; this.setState(x => ({ sel: { ...(x.sel || {}), [it.id]: c } })); },
         view: () => this.setState({ viewId: it.id, vRot: 0, vFit: true }),
-        thumbStyle: 'width:72px;height:72px;border-radius:8px;object-fit:cover;background:#e3e1dc;display:block;cursor:zoom-in;' + (s.viewId === it.id ? 'outline:3px solid #1F6F5C;outline-offset:1px' : ''),
+        thumbStyle: 'width:72px;height:72px;border-radius:8px;object-fit:cover;background:#E5E7EB;display:block;cursor:zoom-in;' + (s.viewId === it.id ? 'outline:3px solid #2563EB;outline-offset:1px' : ''),
         saveDisabled: !nm[it.id] || !dl, saveOpacity: (!nm[it.id] || !dl) ? 0.45 : 1,
         onNum: e => { const n = digits(e.target.value); this.patch(it.id, { num: n, status: valid(n) ? 'ok' : 'warn', unsure: false, note: '직접 입력' }); },
         save: () => this.saveOne(it),
@@ -322,7 +322,7 @@ class Component extends DCLogic {
     const viewer = {
       hasViewer: !!vIt, vUrl: vIt ? vIt.url : '', vName: vIt ? (vi + 1) + ' / ' + s.items.length + ' · ' + vIt.file.name : '',
       vNum: vIt ? vIt.num : '', vInfo, vHasInfo: !!vInfo,
-      vInfoStyle: 'padding:0 12px 12px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (vHit ? 'color:#16181a' : 'color:#b42318;font-weight:600'),
+      vInfoStyle: 'padding:0 12px 12px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (vHit ? 'color:#0F172A' : 'color:#b42318;font-weight:600'),
       vImgStyle: 'display:block;transform:rotate(' + rot + 'deg);transition:transform .15s;' + (s.vFit !== false ? (side ? 'max-width:70vh;max-height:500px' : 'max-width:100%;max-height:100%') : 'width:' + (side ? 'auto' : '200%') + ';max-width:none'),
       vZoomLabel: s.vFit !== false ? '확대' : '맞춤',
       vNoPrev: vi <= 0, vNoNext: vi < 0 || vi >= s.items.length - 1,
@@ -366,7 +366,7 @@ class Component extends DCLogic {
       onDragOver: e => { e.preventDefault(); if (!s.over) this.setState({ over: true }); },
       onDragLeave: e => { e.preventDefault(); this.setState({ over: false }); },
       onDrop: e => { e.preventDefault(); this.setState({ over: false }); this.addFiles(e.dataTransfer.files); },
-      dropStyle: `border:1.5px dashed ${s.over ? '#1f6f5c' : '#d6d3cc'};border-radius:12px;background:${s.over ? '#f8f7f4' : '#fff'};padding:28px 18px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;cursor:pointer`,
+      dropStyle: `border:1.5px dashed ${s.over ? '#2563EB' : '#D1D5DB'};border-radius:12px;background:${s.over ? '#F9FAFB' : '#fff'};padding:28px 18px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;cursor:pointer`,
     };
   }
 }

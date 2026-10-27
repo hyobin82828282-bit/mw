@@ -1,29 +1,30 @@
 <title>행사 출고 보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
 /* Layout: 상단 붙여넣기 패널 → 3주 타임라인 → 행사 카드 / 탭으로 품목 박스표 */
 :root{
-  --bg:#F2F4F3; --surface:#FFFFFF; --sunk:#E8ECEA; --ink:#1A2123; --muted:#5C696C; --line:#D6DDDA;
-  --accent:#1E6B66; --accent-ink:#FFFFFF; --accent-soft:#DCEDEA;
+  --bg:#F5F7FA; --surface:#FFFFFF; --sunk:#F3F4F6; --ink:#0F172A; --muted:#6B7280; --line:#E5E7EB;
+  --accent:#2563EB; --accent-ink:#FFFFFF; --accent-soft:#EFF4FF;
   --kraft:#9A6630; --kraft-soft:#F3E6D4;
-  --warn:#B9450F; --warn-soft:#FBE7DC; --ok:#2C7A4B; --ok-soft:#DFF1E5; --past:#8A9497;
+  --warn:#B9450F; --warn-soft:#FBE7DC; --ok:#2C7A4B; --ok-soft:#DFF1E5; --past:#9CA3AF;
   --today:#C2410C;
-  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:Pretendard,system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   --r:8px;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#121718; --surface:#1A2123; --sunk:#232B2D; --ink:#E7ECEB; --muted:#9AA7A9; --line:#2F393B;
-  --accent:#5BB8AF; --accent-ink:#0E1A19; --accent-soft:#1F3634;
+  --bg:#0B1120; --surface:#111827; --sunk:#1F2937; --ink:#E5E7EB; --muted:#9CA3AF; --line:#374151;
+  --accent:#60A5FA; --accent-ink:#0B1120; --accent-soft:#172554;
   --kraft:#D9A56A; --kraft-soft:#3A2D1E;
-  --warn:#F0915C; --warn-soft:#3C2418; --ok:#6FCB93; --ok-soft:#1B3325; --past:#6C787A; --today:#F0915C;
+  --warn:#F0915C; --warn-soft:#3C2418; --ok:#6FCB93; --ok-soft:#1B3325; --past:#6B7280; --today:#F0915C;
   color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#121718; --surface:#1A2123; --sunk:#232B2D; --ink:#E7ECEB; --muted:#9AA7A9; --line:#2F393B;
-  --accent:#5BB8AF; --accent-ink:#0E1A19; --accent-soft:#1F3634;
+  --bg:#0B1120; --surface:#111827; --sunk:#1F2937; --ink:#E5E7EB; --muted:#9CA3AF; --line:#374151;
+  --accent:#60A5FA; --accent-ink:#0B1120; --accent-soft:#172554;
   --kraft:#D9A56A; --kraft-soft:#3A2D1E;
-  --warn:#F0915C; --warn-soft:#3C2418; --ok:#6FCB93; --ok-soft:#1B3325; --past:#6C787A; --today:#F0915C;
+  --warn:#F0915C; --warn-soft:#3C2418; --ok:#6FCB93; --ok-soft:#1B3325; --past:#6B7280; --today:#F0915C;
   color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
