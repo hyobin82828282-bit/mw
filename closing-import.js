@@ -558,7 +558,7 @@
     let rows = 0, filled = 0;
     for (let r = 4; r <= sh.maxR; r++) {
       const a = wb.value(sh, 'A' + r); if (typeof a !== 'number') { if (rows) break; continue; }
-      rows++; const d = days[serialDay(a)] || {}; if (days[serialDay(a)]) filled++;
+      rows++; const has = !!days[serialDay(a)]; if (!has) continue; const d = days[serialDay(a)]; filled++;
       for (const [c] of COUPANG_COLS) {
         const want = d[c] || '', cell = sh.cells[c + r]; if (cell && cell.f) continue;
         if ((cell ? cell.v ?? '' : '') === want) continue;
@@ -594,7 +594,7 @@
     { code: '201978000126', name: '[M상온]주부9단 한우 사골곰탕 450g(리뉴얼)', mall: 'NS', col: 'AQ' },
     { code: '201978000133', name: '[M상온]주부9단 한우도가니탕 450g(리뉴얼)', mall: 'NS', col: 'AP' }
   ];
-  const SHIP_HEAD = { day: '출고처리일', code: '품목코드', name: '품목명', qty: '수량', mall: '쇼핑몰명', recipient: '수령인' };
+  const SHIP_HEAD = { day: '출고처리일', code: '품목코드', name: '품목명', qty: '수량', mall: '쇼핑몰명', recipient: '수령인', inv: '송장번호', pack: '합포장번호' };
   function toDay(v) {
     if (typeof v === 'number' && v > 1000) return new Date(Math.round((Math.floor(v) - 25569) * 864e5)).toISOString().slice(0, 10);
     const m = String(v ?? '').match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
@@ -608,7 +608,7 @@
       const out = [];
       for (let r = hr + 1; r <= maxR; r++) {
         const code = str(get(r, idx.code)); if (!code) continue;
-        out.push({ day: toDay(get(r, idx.day)), code, name: idx.name ? str(get(r, idx.name)) : '', qty: num(get(r, idx.qty)), mall: idx.mall ? str(get(r, idx.mall)) : '', recipient: idx.recipient ? str(get(r, idx.recipient)) : '' });
+        out.push({ day: toDay(get(r, idx.day)), code, name: idx.name ? str(get(r, idx.name)) : '', qty: num(get(r, idx.qty)), mall: idx.mall ? str(get(r, idx.mall)) : '', recipient: idx.recipient ? str(get(r, idx.recipient)) : '', inv: idx.inv ? str(get(r, idx.inv)) : '', pack: idx.pack ? str(get(r, idx.pack)) : '' });
       }
       return out;
     }
@@ -636,22 +636,43 @@
     const add = (d, col, n) => { const x = (res.cells[d] = res.cells[d] || {}); x[col] = (x[col] || 0) + n; };
     res.matched = new Map();
     const um = new Map(), mine = rules.filter(r => r.channel === 'homeshop'), cnt = new Map();
+    // 합포장번호(없으면 송장번호 → 수령인)가 같은 줄 = 한 박스. 같은 품목은 수량 합치고, 다른 품목이 섞이면 한 조합(합포장)으로
+    const pkgs = new Map();
     for (const l of inMonth) {
-      if (!l.recipient) { res.noRecipient++; continue; }
-      const k = l.day + '|' + l.mall + '|' + l.code, e = cnt.get(k); if (e) e.n++; else cnt.set(k, { l, n: 1 });
+      const id = l.pack || l.inv || (l.recipient ? '수령인:' + l.recipient : '');
+      if (!id) { res.noRecipient++; continue; }
+      const pk = l.day + '|' + l.mall + '|' + id, p = pkgs.get(pk) || { day: l.day, mall: l.mall, items: new Map() };
+      const it = p.items.get(l.code); if (it) it.qty += l.qty; else p.items.set(l.code, { code: l.code, name: l.name, qty: l.qty });
+      pkgs.set(pk, p);
+    }
+    const one = (code, qty, mall) => mine.find(r => !r.combo && r.code === code && r.mall === mall && r.qty != null && +r.qty === +qty) || mine.find(r => !r.combo && r.code === code && r.mall === mall && r.qty == null) || HOMESHOP_MAP.find(r => r.code === code && (r.mall ? mall.toLowerCase().includes(r.mall.toLowerCase()) : !mall));
+    for (const p of pkgs.values()) {
+      const items = [...p.items.values()].sort((a, b) => a.code.localeCompare(b.code));
+      const combo = items.length > 1 ? items.map(i => i.code + '*' + i.qty).join('+') : null;
+      const l = combo
+        ? { day: p.day, mall: p.mall, combo, code: items.map(i => i.code).join('+'), qty: items.reduce((a, i) => a + i.qty, 0), name: items.map(i => `${i.name} ${i.qty}개`).join(' + ') }
+        : { day: p.day, mall: p.mall, combo: null, code: items[0].code, qty: items[0].qty, name: items[0].name };
+      const k = l.day + '|' + l.mall + '|' + (combo || l.code + '*' + l.qty), e = cnt.get(k); if (e) e.n++; else cnt.set(k, { l, n: 1 });
     }
     for (const { l, n } of cnt.values()) {
-      const m = mine.find(r => r.code === l.code && r.mall === l.mall) || HOMESHOP_MAP.find(r => r.code === l.code && (r.mall ? l.mall.toLowerCase().includes(r.mall.toLowerCase()) : !l.mall));
+      // 단품: 송장당 수량별 지정 → 품목 전체 지정 → 기본표 / 합포장: 조합 지정 → (들어간 품목이 모두 같은 열이면) 그 열
+      let m;
+      if (l.combo) {
+        m = mine.find(r => r.combo === l.combo && r.mall === l.mall);
+        if (!m) { const cols = l.combo.split('+').map(s => { const [c, q] = s.split('*'); const x = one(c, q, l.mall); return x ? x.col : null; }); if (cols.every(c => c && c === cols[0])) m = { col: cols[0] }; }
+      } else m = one(l.code, l.qty, l.mall);
+      const label = l.combo ? `${l.name} · 합포장 총 ${l.qty}개` : `${l.name} · 송장당 ${l.qty}개`;
+      const key = l.mall + '|' + (l.combo || l.code + '*' + l.qty);
       if (m) {
         add(l.day, m.col, n);
-        const mk = l.code + '|' + l.mall, mt = res.matched.get(mk) || { code: l.code, name: l.name, mall: l.mall, boxes: 0, days: [], col: m.col, custom: !!m.channel };
-        mt.boxes += n; if (!mt.days.includes(l.day)) mt.days.push(l.day); res.matched.set(mk, mt); continue;
+        const mt = res.matched.get(key) || { code: l.code, name: l.name, label, combo: l.combo, mall: l.mall, qty: l.qty, boxes: 0, days: [], col: m.col, custom: !!m.channel };
+        mt.boxes += n; if (!mt.days.includes(l.day)) mt.days.push(l.day); res.matched.set(key, mt); continue;
       }
-      const k = l.code + '|' + l.mall, u = um.get(k) || { code: l.code, name: l.name, mall: l.mall, boxes: 0, days: [] };
-      u.boxes += n; if (!u.days.includes(l.day)) u.days.push(l.day); um.set(k, u);
+      const u = um.get(key) || { code: l.code, name: l.name, label, combo: l.combo, mall: l.mall, qty: l.qty, boxes: 0, days: [] };
+      u.boxes += n; if (!u.days.includes(l.day)) u.days.push(l.day); um.set(key, u);
     }
-    res.unmapped = [...um.values()].sort((a, b) => b.boxes - a.boxes);
-    res.matched = [...res.matched.values()].sort((a, b) => a.col.localeCompare(b.col) || b.boxes - a.boxes);
+    res.unmapped = [...um.values()].sort((a, b) => a.code.localeCompare(b.code) || a.mall.localeCompare(b.mall) || a.qty - b.qty);
+    res.matched = [...res.matched.values()].sort((a, b) => a.col.localeCompare(b.col) || a.code.localeCompare(b.code) || a.qty - b.qty);
     return res;
   }
   function boxColumns(wb, sheetName) {
@@ -673,7 +694,7 @@
     for (let c = 1; c <= sh.maxC; c++) { const g = wb.display(sh, En.colName(c) + 1).trim(); if (g) group = g; labels[c] = [group, wb.display(sh, En.colName(c) + 2).replace(/\s+/g, ' ').trim()].filter(Boolean).join(' · '); }
     return { cols: [...set].sort((a, b) => a - b).map(c => ({ col: En.colName(c), label: labels[c] })), dateRows };
   }
-  function applyShip(wb, name, cells, ym) {
+  function applyShip(wb, name, cells, ym, onlyDays) {
     const sh = wb.byName[name];
     let { cols, dateRows } = boxColumns(wb, name), datesMoved = false;
     if (ym && !Object.keys(dateRows).some(d => d.replace(/-/g, '').startsWith(ym))) {
@@ -681,7 +702,9 @@
       if (cell && !cell.f) { wb.setCell(name, 'A' + first, Date.UTC(+ym.slice(0, 4), +ym.slice(4) - 1, 1) / 864e5 + 25569); ({ cols, dateRows } = boxColumns(wb, name)); datesMoved = true; }
     }
     const colSet = new Set(cols.map(c => c.col));
-    for (const r of Object.values(dateRows)) for (const { col } of cols) { const cell = sh.cells[col + r]; if (cell && !cell.f && cell.v !== undefined && cell.v !== '') wb.setCell(name, col + r, ''); }
+    // 날짜를 새 달로 바꿨거나(지난달 양식) 비우기일 때만 전체 지움 · 그 외엔 이 파일에 있는 날짜 줄만 지우고 다시 채움
+    const clearDays = onlyDays && !datesMoved ? new Set(onlyDays) : null;
+    for (const [d, r] of Object.entries(dateRows)) { if (clearDays && !clearDays.has(d)) continue; for (const { col } of cols) { const cell = sh.cells[col + r]; if (cell && !cell.f && cell.v !== undefined && cell.v !== '') wb.setCell(name, col + r, ''); } }
     let n = 0, boxes = 0; const missingDays = [];
     for (const [day, byCol] of Object.entries(cells)) {
       const r = dateRows[day]; if (!r) { missingDays.push(day); continue; }

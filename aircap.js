@@ -79,7 +79,8 @@
   }
 
   // 하루치 → 피벗(A열 형식: 품목 내림차순, 구분자 없음) + 에어캡(I열 형식: 오름차순 ';')
-  function compute(lines) {
+  function compute(lines, th) {
+    th = th || 40;
     const byInv = new Map();
     for (const l of lines) { let m = byInv.get(l.inv); if (!m) byInv.set(l.inv, m = new Map()); m.set(l.item, (m.get(l.item) || 0) + l.qty); }
     const combos = new Map();
@@ -102,16 +103,16 @@
     }
     const invoices = byInv.size;
     // 목우촌 박스 건수 시트 수식과 같은 계산
-    const big = pivot.filter(p => p.n >= 40), sum = (arr, f) => arr.filter(f).reduce((a, p) => a + p.n, 0);
+    const big = pivot.filter(p => p.n >= th), sum = (arr, f) => arr.filter(f).reduce((a, p) => a + p.n, 0);
     const pre = (p, k) => p.combo.startsWith(k) && p.combo.slice(k.length).includes('세트');
     const set = sum(big, () => true) - sum(big, p => p.combo.includes('세트')) + ['[M냉장]', '[M상온]', '[M냉동]', '[M상온펫]'].reduce((a, k) => a + sum(big, p => pre(p, k)), 0);
     const gift = sum(pivot, p => p.combo.includes('세트')) - ['[M냉장]', '[M상온]', '[M냉동]'].reduce((a, k) => a + sum(pivot, p => pre(p, k)), 0);
     return { invoices, lines: lines.length, pivot, airTotal: pivot.reduce((a, p) => a + p.total, 0), set, gift, set40: set + gift };
   }
-  function byDay(lines) {
+  function byDay(lines, th) {
     const g = new Map();
     for (const l of lines) { const d = l.day || '날짜 없음'; if (!g.has(d)) g.set(d, []); g.get(d).push(l); }
-    return [...g.keys()].sort().map(day => ({ day, ...compute(g.get(day)) }));
+    return [...g.keys()].sort().map(day => ({ day, ...compute(g.get(day), th) }));
   }
 
   // 홈쇼핑 출고 완료 → 날짜별 합포장번호 수 (홈쇼핑원본 M열 수식과 같은 계산)
