@@ -158,6 +158,16 @@ async function buildZip(entries) {
   end.setUint32(12, csize, true); end.setUint32(16, off, true);
   return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
 }
+async function shrink(file, max = 2000) {
+  try {
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    if (k === 1 && file.size < 3e6) { bmp.close && bmp.close(); return file; }
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
+    return await new Promise(res => c.toBlob(b => res(b || file), 'image/jpeg', 0.88));
+  } catch (e) { return file; }
+}
 const plainDownloads = { save: ({ filename, data }) => new Promise(res => {
   const blob = data instanceof Blob ? data : new Blob([data]);
   const u = URL.createObjectURL(blob), a = document.createElement('a');
@@ -237,9 +247,16 @@ class Component extends DCLogic {
   }
 
   addFiles(files) {
-    const imgs = [...files].filter(f => /^image\//.test(f.type));
-    if (!imgs.length) { this.showToast('이미지 파일만 넣을 수 있어요'); return; }
-    imgs.sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }));
+    const all = [...files];
+    const ok = f => /^image\/(jpeg|png|webp|gif|bmp)$/.test(f.type) || (!f.type && /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name));
+    const key = f => f.name + '|' + f.size + '|' + f.lastModified;
+    const have = new Set(this.state.items.map(i => key(i.file)));
+    const imgs = [], bad = [], dup = [];
+    all.forEach(f => { if (!ok(f)) bad.push(f); else if (have.has(key(f))) dup.push(f); else { have.add(key(f)); imgs.push(f); } });
+    const msg = [imgs.length ? imgs.length + '장 추가' : '', bad.length ? '형식 안 맞는 ' + bad.length + '장 제외(HEIC 등)' : '', dup.length ? '중복 ' + dup.length + '장 제외' : ''].filter(Boolean).join(' · ');
+    if (msg) this.showToast(msg);
+    if (!imgs.length) return;
+    imgs.sort((a, b) => (a.lastModified - b.lastModified) || a.name.localeCompare(b.name, 'ko', { numeric: true }));
     const auto = !!(this.sample && this.canImages);
     const add = imgs.map(f => ({ id: ++this.uid, file: f, url: URL.createObjectURL(f), num: '', status: auto ? 'busy' : 'warn', unsure: false, note: '' }));
     this.setState(s => ({ items: [...s.items, ...add] }));
@@ -255,7 +272,13 @@ class Component extends DCLogic {
     if (!this.state.items.some(i => i.id === it.id)) return;
     if (!this.sample || !this.canImages) { this.patch(it.id, { status: 'warn', note: '' }); return; }
     try {
-      const r = await this.sample.json(PROMPT, { images: it.file });
+      const img = await shrink(it.file);
+      let r;
+      for (let tries = 0; ; tries++) {
+        try { r = await this.sample.json(PROMPT, { images: img }); break; }
+        catch (e) { if (e && e.code === 'rate_limited' && tries < 4) { await new Promise(z => setTimeout(z, 3000 * (tries + 1))); continue; } throw e; }
+      }
+      if (!this.state.items.some(i => i.id === it.id)) return;
       const o = digits(r && r.original), w = digits(r && r.waybill);
       if (valid(o)) this.patch(it.id, { num: o, status: 'ok', unsure: r.confident === false, note: r.confident === false ? '일부 숫자 불확실' : (r.note || '') });
       else this.patch(it.id, { num: '', status: 'warn', note: '원운송장번호 못 찾음' + (valid(w) ? ` (반품송장 ${w})` : '') });
