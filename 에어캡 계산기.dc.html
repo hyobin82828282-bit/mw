@@ -10,7 +10,7 @@
 <helmet>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
 <script src="./closing-import.js?v=8"></script>
-<script src="./aircap.js?v=5"></script>
+<script src="./aircap.js?v=6"></script>
 <style>
   html,body{margin:0;background:#F4F3EF;font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;color:#16181A}
   a{color:#1F6F5C;text-decoration:none}
@@ -216,14 +216,14 @@ class Component extends DCLogic {
   errMsg(f, e) { return f.name + ': ' + (e.wrongPassword ? '비밀번호가 맞지 않아요' : (e.message || e)); }
   async load(files) {
     if (!window.Aircap) return this.flash('계산기를 불러오는 중이에요. 잠시 후 다시 넣어 주세요');
-    const dk = this.dk(), ck = this.ck(), th = this.th(); const days = { ...this.state[dk] }; let cur = this.state[ck], n = 0;
+    const dk = this.dk(), ck = this.ck(), th = this.th(); const days = { ...this.state[dk] }; let cur = this.state[ck], n = 0, skip = 0;
     for (const f of files) {
       this.setState({ busy: f.name + ' 읽는 중…' });
-      try { const { lines } = await window.Aircap.readOutbound(await f.arrayBuffer(), this.state.pw); for (const d of window.Aircap.byDay(lines, th)) { days[d.day] = d; cur = d.day; n++; } }
+      try { const { lines, skipped } = await window.Aircap.readOutbound(await f.arrayBuffer(), this.state.pw, this.isA()); skip += skipped || 0; for (const d of window.Aircap.byDay(lines, th)) { days[d.day] = d; cur = d.day; n++; } }
       catch (e) { this.flash(this.errMsg(f, e)); }
     }
     this.setState({ [dk]: days, [ck]: cur, busy: '' }, () => this.save());
-    if (n) this.flash(n + '일치 계산했어요');
+    if (n) this.flash(n + '일치 계산했어요' + (skip ? ' · 출고등록일·출고요청일 월이 달라 ' + skip.toLocaleString() + '줄 뺐어요' : ''));
   }
   async loadHs(files) {
     if (!window.Aircap) return;

@@ -62,20 +62,23 @@
   }
 
   // ── 출고 완료 상세 현황 ──
-  async function readOutbound(ab, password) {
+  async function readOutbound(ab, password, sameMonth) {
     const rows = await readFirstSheet(await open(ab, password));
     const head = rows[0] || {}, col = {}, heads = [];
     for (const [c, v] of Object.entries(head)) { col[String(v).trim()] = c; heads.push([c, v]); }
     const miss = ['송장번호', '품목명', '수량'].filter(k => !col[k]);
     if (miss.length) throw new Error('머리글에 ' + miss.join('·') + ' 칸이 없어요');
     const dayCol = col['출고확정일'] || col['출고요청일'];
-    const lines = [];
+    const lines = [], regCol = col['출고등록일'], reqCol = col['출고요청일'];
+    let skipped = 0;
     for (const r of rows.slice(1)) {
       const inv = String(r[col['송장번호']] || '').trim(), item = String(r[col['품목명']] || '').trim();
       if (!inv || !item) continue;
+      // 도착보장: 출고등록일 월 = 출고요청일 월인 줄만
+      if (sameMonth && regCol && reqCol && String(r[regCol] || '').slice(0, 7) !== String(r[reqCol] || '').slice(0, 7)) { skipped++; continue; }
       lines.push({ day: String(r[dayCol] || '').slice(0, 10), inv, item, qty: Number(r[col['수량']]) || 0 });
     }
-    return { lines, rows, col };
+    return { lines, rows, col, skipped };
   }
 
   // 하루치 → 피벗(A열 형식: 품목 내림차순, 구분자 없음) + 에어캡(I열 형식: 오름차순 ';')
