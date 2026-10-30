@@ -168,6 +168,19 @@ async function shrink(file, max = 2000) {
     return await new Promise(res => c.toBlob(b => res(b || file), 'image/jpeg', 0.88));
   } catch (e) { return file; }
 }
+// ZIP 저장용: 긴 변 1600px · JPEG 75%, 작아질 때만 바꿈
+async function squeeze(file) {
+  try {
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
+    const b = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.75));
+    return b && b.size < file.size ? b : file;
+  } catch (e) { return file; }
+}
+const mb = n => n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
 const plainDownloads = { save: ({ filename, data }) => new Promise(res => {
   const blob = data instanceof Blob ? data : new Blob([data]);
   const u = URL.createObjectURL(blob), a = document.createElement('a');
@@ -302,10 +315,17 @@ class Component extends DCLogic {
     const skipped = items.length - entries.length;
     this.setState({ zipping: true });
     try {
+      let before = 0, after = 0;
+      for (const e of entries) {
+        before += e.file.size;
+        const small = await squeeze(e.file);
+        if (small !== e.file) { e.file = small; e.name = e.name.replace(/\.[^.]+$/, '') + '.jpg'; }
+        after += e.file.size;
+      }
       const blob = await buildZip(entries);
       const d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
       await this.downloads.save({ filename: `return_photos_${stamp}.zip`, data: blob });
-      this.showToast(`${entries.length}장 저장` + (skipped ? ` · 번호 없는 ${skipped}장 제외` : ''));
+      this.showToast(`${entries.length}장 저장 · ${mb(before)} → ${mb(after)}` + (skipped ? ` · 번호 없는 ${skipped}장 제외` : ''));
     } catch (e) { if (e.code !== 'declined') this.showToast('저장 안 됨: ' + (e.message || e.code)); }
     finally { this.setState({ zipping: false }); }
   }

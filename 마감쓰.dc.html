@@ -1497,6 +1497,16 @@
                   <button onClick="{{ syncClaimOwner }}" style="height:36px;padding:0 14px;border:1px solid #D1D5DB;border-radius:8px;background:#fff;font-size:12.5px;font-weight:600;color:#4B5563;cursor:pointer">{{ ownerLabel }}</button>
                   <button onClick="{{ ownerAction }}" style="height:36px;padding:0 14px;border:1px solid #2563EB;border-radius:8px;background:#EFF4FF;font-size:12.5px;font-weight:600;color:#2563EB;cursor:pointer">{{ ownerActionLabel }}</button>
                 </div>
+                <sc-if value="{{ ownerPinOpen }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:12px;border:1px solid #E5E7EB;border-radius:8px;background:#F9FAFB">
+                    <div style="font-size:12.5px;color:#4B5563">{{ ownerPinHint }}</div>
+                    <div style="display:flex;gap:8px">
+                      <input type="password" inputmode="numeric" placeholder="숫자 4~8자리" value="{{ ownerPinDraft }}" onChange="{{ onOwnerPin }}" onKeyDown="{{ ownerPinKey }}" style="flex:1;height:36px;padding:0 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;background:#fff">
+                      <button onClick="{{ ownerPinOk }}" style="height:36px;padding:0 16px;border:0;border-radius:8px;background:#2563EB;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer">확인</button>
+                      <button onClick="{{ ownerPinCancel }}" style="height:36px;padding:0 12px;border:1px solid #D1D5DB;border-radius:8px;background:#fff;font-size:12.5px;font-weight:600;color:#4B5563;cursor:pointer">취소</button>
+                    </div>
+                  </div>
+                </sc-if>
               </sc-if>
             </div>
             <div style="display:flex;gap:9px">
@@ -2172,17 +2182,15 @@ class Component extends DCLogic {
       ownerActionLabel: on && S.isOwner() ? (S.hasPin && S.hasPin() ? "관리자 비밀번호 변경" : "관리자 비밀번호 정하기") : "이 컴퓨터를 관리자로",
       ownerAction: () => {
         if (!S) return;
-        const done = r => this.setState(r.ok ? { syncErr: "", syncOk: true } : { syncErr: r.msg });
-        if (S.isOwner()) {
-          const pin = prompt("관리자 비밀번호(숫자 4~8자리)를 정하세요.\n다른 컴퓨터를 관리자로 바꿀 때 이 번호가 필요합니다.");
-          if (pin == null) return;
-          S.setPin(pin.trim()).then(r => { done(r); if (r.ok) alert("관리자 비밀번호를 저장했습니다."); });
-        } else {
-          const pin = prompt("관리자 비밀번호를 입력하세요.\n맞으면 이 컴퓨터가 관리자가 되고, 기존 컴퓨터는 관리자에서 빠집니다.");
-          if (pin == null) return;
-          S.takeOwner(pin.trim()).then(r => { done(r); if (r.ok) alert("이 컴퓨터가 관리자가 되었습니다."); });
-        }
+        if (!S.url()) return this.setState({ syncErr: "먼저 실시간 공유에 연결해 주세요" });
+        this.setState(p => ({ ownerPinOpen: !p.ownerPinOpen, ownerPinDraft: "", syncErr: "" }));
       },
+      ownerPinOpen: !!s.ownerPinOpen, ownerPinDraft: s.ownerPinDraft || "",
+      ownerPinHint: on && S.isOwner() ? "관리자 비밀번호를 정하세요. 다른 컴퓨터를 관리자로 바꿀 때 이 번호가 필요합니다." : "관리자 비밀번호를 입력하세요. 맞으면 이 컴퓨터가 관리자가 되고, 기존 컴퓨터는 관리자에서 빠집니다.",
+      onOwnerPin: e => this.setState({ ownerPinDraft: e.target.value }),
+      ownerPinCancel: () => this.setState({ ownerPinOpen: false, ownerPinDraft: "" }),
+      ownerPinKey: e => { if (e.key === "Enter") this.ownerPinSubmit(); },
+      ownerPinOk: () => this.ownerPinSubmit(),
       syncUrlDraft: s.syncUrlDraft || "", syncNameDraft: s.syncNameDraft || "",
       syncErr: s.syncErr || "", hasSyncErr: !!s.syncErr,
       onSyncUrl: e => this.setState({ syncUrlDraft: e.target.value }),
@@ -2253,6 +2261,15 @@ class Component extends DCLogic {
     if (!confirm("자동 백업에서 찾은 기록\n차량출고 " + nr + "건 · 반품 " + nt + "건\n\n" + prev + (nr > 15 ? "\n…" : "") + "\n\n목록에 되살릴까요? (공유 중이면 서버에도 올라갑니다)")) return;
     this.setState(p => ({ records: p.records.concat(found.records), returns: p.returns.concat(found.returns) }));
     alert("되살렸습니다. 차량출고 목록을 확인하세요.");
+  }
+  async ownerPinSubmit() {
+    const S = window.MwSync; if (!S) return;
+    const pin = (this.state.ownerPinDraft || "").trim();
+    if (!pin) return this.setState({ syncErr: "비밀번호를 입력해 주세요" });
+    const owner = S.isOwner();
+    const r = await (owner ? S.setPin(pin) : S.takeOwner(pin));
+    this.setState(r.ok ? { syncErr: "", syncOk: true, ownerPinOpen: false, ownerPinDraft: "" } : { syncErr: r.msg });
+    if (r.ok) alert(owner ? "관리자 비밀번호를 저장했습니다." : "이 컴퓨터가 관리자가 되었습니다.");
   }
   dailySnapshot() {
     const d0 = new Date(), p0 = n => String(n).padStart(2, "0");
