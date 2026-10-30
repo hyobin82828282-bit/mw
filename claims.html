@@ -2,39 +2,39 @@
 <meta charset="utf-8">
 <title>9월 클레임 관리</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
 :root {
-  --bg: #EEF1F7; --surface: #FFFFFF; --surface2: #F5F7FB; --border: #DDE2ED;
-  --text: #0F1624; --muted: #6B7689;
-  --our: #1A4ED8; --our-bg: #EEF3FF;
+  --bg: #F5F7FA; --surface: #FFFFFF; --surface2: #F9FAFB; --border: #E5E7EB;
+  --text: #0F172A; --muted: #6B7280;
+  --our: #2563EB; --our-bg: #EFF4FF;
   --courier: #C62828; --courier-bg: #FFF0F0;
-  --accent: #1A4ED8; --accent-hover: #1340BC;
+  --accent: #2563EB; --accent-hover: #1D4ED8;
   --warn: #B45309; --warn-bg: #FFFBEB;
   --success: #047857; --success-bg: #ECFDF5;
   --danger: #C62828; --danger-bg: #FFF0F0;
   --shadow: 0 1px 3px rgba(0,0,0,.08); --shadow-md: 0 4px 16px rgba(0,0,0,.12);
-  --radius: 8px; --row-hover: #F0F4FF; --row-exclude: #FFF8F8;
-  --computed-bg: #F0F5FF;
+  --radius: 8px; --row-hover: #F5F8FF; --row-exclude: #FFF8F8;
+  --computed-bg: #F5F8FF;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg:#0C0F1A; --surface:#141826; --surface2:#1A1F32; --border:#252C42;
-  --text:#E8EAF0; --muted:#8891A8; --our:#6B9EFF; --our-bg:#1A2345;
-  --courier:#FF7070; --courier-bg:#2A1515; --accent:#5B8AFF; --accent-hover:#7BA3FF;
+  --bg:#0B1120; --surface:#111827; --surface2:#1F2937; --border:#374151;
+  --text:#E5E7EB; --muted:#9CA3AF; --our:#60A5FA; --our-bg:#172554;
+  --courier:#FF7070; --courier-bg:#2A1515; --accent:#60A5FA; --accent-hover:#93C5FD;
   --warn:#FBBF24; --warn-bg:#1C1800; --success:#34D399; --success-bg:#001A10;
-  --danger:#FF7070; --danger-bg:#2A1515; --row-hover:#1A2340; --row-exclude:#1F1010;
-  --computed-bg:#1A2345;
+  --danger:#FF7070; --danger-bg:#2A1515; --row-hover:#1E293B; --row-exclude:#1F1010;
+  --computed-bg:#172554;
 }}
 :root[data-theme="dark"] {
-  --bg:#0C0F1A; --surface:#141826; --surface2:#1A1F32; --border:#252C42;
-  --text:#E8EAF0; --muted:#8891A8; --our:#6B9EFF; --our-bg:#1A2345;
-  --courier:#FF7070; --courier-bg:#2A1515; --accent:#5B8AFF; --accent-hover:#7BA3FF;
+  --bg:#0B1120; --surface:#111827; --surface2:#1F2937; --border:#374151;
+  --text:#E5E7EB; --muted:#9CA3AF; --our:#60A5FA; --our-bg:#172554;
+  --courier:#FF7070; --courier-bg:#2A1515; --accent:#60A5FA; --accent-hover:#93C5FD;
   --warn:#FBBF24; --warn-bg:#1C1800; --success:#34D399; --success-bg:#001A10;
-  --danger:#FF7070; --danger-bg:#2A1515; --row-hover:#1A2340; --row-exclude:#1F1010;
-  --computed-bg:#1A2345;
+  --danger:#FF7070; --danger-bg:#2A1515; --row-hover:#1E293B; --row-exclude:#1F1010;
+  --computed-bg:#172554;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;}
-html,body{height:100%;font-family:'Noto Sans KR',system-ui,sans-serif;}
+html,body{height:100%;font-family:Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;}
 body{background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;padding:0;display:flex;flex-direction:column;overflow:hidden;}
 
 /* TOOLBAR */
@@ -1291,7 +1291,7 @@ function uiDialog(msg, buttons) {
     const row = document.createElement('div'); row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end';
     buttons.forEach((b, i) => {
       const el = document.createElement('button'); el.textContent = b.label;
-      el.style.cssText = 'height:32px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid ' + (b.primary ? '#1A4ED8;background:#1A4ED8;color:#fff' : '#DDE2ED;background:#F5F7FB;color:#0F1624');
+      el.style.cssText = 'height:32px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid ' + (b.primary ? '#2563EB;background:#2563EB;color:#fff' : '#DDE2ED;background:#F5F7FB;color:#0F1624');
       el.onclick = () => { back.remove(); resolve(b.value); };
       row.appendChild(el);
     });

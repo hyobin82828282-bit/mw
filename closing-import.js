@@ -56,11 +56,37 @@
   function returnsFromCsv(text, ym) {
     const rows = parseCsv(text);
     if (rows.length < 2) throw new Error('CSV에 데이터가 없어요');
+    return returnsFromRows(rows, ym);
+  }
+  // 반품목록 엑셀: 시트·머리글 줄을 찾아 CSV와 같은 양식으로 읽어요
+  async function returnsFromXlsx(ab, ym) {
+    const En = E(), wb = await En.Workbook.load(ab);
+    const isWay = x => ['원송장번호', '송장번호'].includes(x);
+    const xdate = v => typeof v === 'number' && v > 20000 && v < 80000 ? new Date(Math.round((v - 25569) * 864e5)).toISOString().slice(0, 10) : str(v).replace(/^(\d{4})[.\/](\d{1,2})[.\/](\d{1,2}).*/, (m, y, mo, d) => y + '-' + mo.padStart(2, '0') + '-' + d.padStart(2, '0'));
+    const order = [...wb.sheets].sort((a, b) => (/반품/.test(b.name) ? 1 : 0) - (/반품/.test(a.name) ? 1 : 0));
+    for (const sh of order) {
+      const v = (r, c) => wb.value(sh, En.colName(c) + r);
+      for (let hr = 1; hr <= Math.min(15, sh.maxR); hr++) {
+        const h = []; for (let c = 1; c <= sh.maxC; c++) h.push(noSpace(str(v(hr, c))));
+        if (!h.some(isWay) || !h.includes('구분')) continue;
+        const dateCols = new Set(h.map((x, i) => /일$|일자|날짜/.test(x) ? i : -1).filter(i => i >= 0));
+        const rows = [h];
+        for (let r = hr + 1; r <= sh.maxR; r++) {
+          const row = []; for (let c = 1; c <= sh.maxC; c++) { const x = v(r, c); row.push(dateCols.has(c - 1) ? xdate(x) : x == null ? '' : String(x)); }
+          if (row.some(x => str(x) !== '')) rows.push(row);
+        }
+        if (rows.length < 2) throw new Error('엑셀에 반품 데이터가 없어요');
+        return returnsFromRows(rows, ym);
+      }
+    }
+    throw new Error('반품목록 엑셀 형식이 아니에요 (원송장번호·구분 열을 찾지 못했어요)');
+  }
+  function returnsFromRows(rows, ym) {
     const h = rows[0].map(x => noSpace(x));
     const col = (...names) => { for (const n of names) { const i = h.indexOf(n); if (i >= 0) return i; } return -1; };
     const iW = col('원송장번호', '송장번호'), iN = col('고객명'), iC = col('품목코드'), iP = col('품목명', '품명'), iK = col('구분'), iA = col('금액'),
       iFee = col('택배비'), iRet = col('반품택배비'), iD = col('회수요청일', '반품확인일', '접수일');
-    if (iW < 0 || iK < 0) throw new Error('반품이력 CSV 형식이 아니에요 (원송장번호·구분 열이 없어요)');
+    if (iW < 0 || iK < 0) throw new Error('반품이력 형식이 아니에요 (원송장번호·구분 열이 없어요)');
     return returnGroups(rows.slice(1).map(r => {
       const product = str(r[iP]);
       return {
@@ -905,7 +931,7 @@
     homeshopLines, homeshopBoxes, boxColumns, applyShip, planShip, saveShip, loadShipRules, saveShipRules,
     COUPANG_COLS, coupangLines, coupangBoxes, applyCoupang, loadCoupangDays, saveCoupangDays, loadCoupangMap, saveCoupangMap,
     ready, closingMonth, decodeText, parseCsv,
-    RETURNS_COLS, returnsFromCsv,
+    RETURNS_COLS, returnsFromCsv, returnsFromXlsx,
     CLAIMS_COLS, CLAIMS_MERGE_COLS, claimsFromXlsx, claimGroups,
     applyTable,
     VEHICLE_COLS, VEHICLE_OVERWRITE, vehicleFromCsv, vehicleGroups, vehicleGroupsFromXlsx, withRowFormulas,

@@ -12,9 +12,9 @@
 <script src="./closing-import.js?v=8"></script>
 <script src="./aircap.js?v=6"></script>
 <style>
-  html,body{margin:0;background:#F4F3EF;font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;color:#16181A}
-  a{color:#1F6F5C;text-decoration:none}
-  a:hover{color:#16503F;text-decoration:underline}
+  html,body{margin:0;background:#F5F7FA;font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;color:#0F172A}
+  a{color:#2563EB;text-decoration:none}
+  a:hover{color:#1E40AF;text-decoration:underline}
   input,button{font-family:inherit}
 </style>
 </helmet>
@@ -22,18 +22,18 @@
   <header style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
     <div style="display:flex;flex-direction:column;gap:4px">
       <div style="font-size:22px;font-weight:700">에어캡 · 세트 확인</div>
-      <div style="font-size:13px;color:#6E7379;text-wrap:pretty">출고 완료 파일을 넣고 '일별 건수 파일에 넣기'를 누르면 날짜 시트(1001 등)가 채워진 파일을 받아요.</div>
+      <div style="font-size:13px;color:#6B7280;text-wrap:pretty">출고 완료 파일을 넣고 '일별 건수 파일에 넣기'를 누르면 날짜 시트(1001 등)가 채워진 파일을 받아요.</div>
     </div>
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <div style="display:flex;gap:2px;padding:2px;border:1px solid #D6D3CC;border-radius:8px;background:#fff;height:34px;box-sizing:border-box">
+      <div style="display:flex;gap:2px;padding:2px;border:1px solid #D1D5DB;border-radius:8px;background:#fff;height:34px;box-sizing:border-box">
         <button onClick="{{ modeN.pick }}" style="padding:0 12px;border:0;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;background:{{ modeN.bg }};color:{{ modeN.c }}">일반</button>
         <button onClick="{{ modeA.pick }}" style="padding:0 12px;border:0;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;background:{{ modeA.bg }};color:{{ modeA.c }}">도착보장</button>
       </div>
-      <label style="font-size:12px;color:#6E7379">비밀번호</label>
-      <input value="{{ pw }}" onChange="{{ pwChange }}" style="width:90px;height:34px;padding:0 10px;border:1px solid #D6D3CC;border-radius:8px;font-size:13px;box-sizing:border-box">
+      <label style="font-size:12px;color:#6B7280">비밀번호</label>
+      <input value="{{ pw }}" onChange="{{ pwChange }}" style="width:90px;height:34px;padding:0 10px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box">
       <sc-if value="{{ hasDays }}" hint-placeholder-val="{{ false }}">
-        <button onClick="{{ clearAll }}" style="height:34px;padding:0 14px;border:1px solid #D6D3CC;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#16181A">모두 지우기</button>
-        <label style="display:flex;align-items:center;height:34px;padding:0 14px;border:1px solid #16181A;border-radius:8px;background:#16181A;color:#fff;font-size:13px;font-weight:600;cursor:pointer;box-sizing:border-box">
+        <button onClick="{{ clearAll }}" style="height:34px;padding:0 14px;border:1px solid #D1D5DB;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#0F172A">모두 지우기</button>
+        <label style="display:flex;align-items:center;height:34px;padding:0 14px;border:1px solid #0F172A;border-radius:8px;background:#0F172A;color:#fff;font-size:13px;font-weight:600;cursor:pointer;box-sizing:border-box">
           <input type="file" accept=".xlsx,.xlsm" onChange="{{ onDaily }}" style="display:none">
           일별 건수 파일에 넣기
         </label>
@@ -45,18 +45,18 @@
     <label onDragOver="{{ dz1.over }}" onDragLeave="{{ dz1.leave }}" onDrop="{{ dz1.drop }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:22px 20px;border:1.5px dashed {{ dz1.border }};border-radius:12px;background:#fff;cursor:pointer;text-align:center">
       <input type="file" accept=".xlsx" multiple onChange="{{ dz1.pick }}" style="display:none">
       <div style="font-size:15px;font-weight:600">{{ dz1.text }}</div>
-      <div style="font-size:12px;color:#6E7379">하루치 여러 개나 한 달치 1개 · 같은 날짜는 새 파일로 바뀌어요</div>
+      <div style="font-size:12px;color:#6B7280">하루치 여러 개나 한 달치 1개 · 같은 날짜는 새 파일로 바뀌어요</div>
     </label>
   </div>
 
   <sc-if value="{{ hasDays }}" hint-placeholder-val="{{ false }}">
-    <section style="background:#fff;border:1px solid #E3E1DC;border-radius:12px;overflow:auto">
+    <section style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:auto">
       <div style="min-width:620px">
-        <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,minmax(0,1fr));padding:10px 20px;border-bottom:1px solid #E3E1DC;font-size:12px;font-weight:600;color:#6E7379">
-          <div>출고일</div><div style="text-align:right">송장</div><div style="text-align:right">에어<div style="font-weight:500;color:#9A9EA3">→ 에어캡</div></div><div style="text-align:right">세트<div style="font-weight:500;color:#9A9EA3">→ 작업료_세트/홈쇼핑</div></div><div style="text-align:right">세트({{ th }}건↑)</div><div style="text-align:right">선물세트</div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,minmax(0,1fr));padding:10px 20px;border-bottom:1px solid #E5E7EB;font-size:12px;font-weight:600;color:#6B7280">
+          <div>출고일</div><div style="text-align:right">송장</div><div style="text-align:right">에어<div style="font-weight:500;color:#8B93A1">→ 에어캡</div></div><div style="text-align:right">세트<div style="font-weight:500;color:#8B93A1">→ 작업료_세트/홈쇼핑</div></div><div style="text-align:right">세트({{ th }}건↑)</div><div style="text-align:right">선물세트</div>
         </div>
         <sc-for list="{{ days }}" as="d" hint-placeholder-count="3">
-          <div onClick="{{ d.pick }}" style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,minmax(0,1fr));padding:10px 20px;border-bottom:1px solid #EFEDE8;font-size:14px;cursor:pointer;background:{{ d.bg }};font-variant-numeric:tabular-nums" style-hover="background:#F7F6F2">
+          <div onClick="{{ d.pick }}" style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,minmax(0,1fr));padding:10px 20px;border-bottom:1px solid #EEF0F3;font-size:14px;cursor:pointer;background:{{ d.bg }};font-variant-numeric:tabular-nums" style-hover="background:#F7F8FA">
             <div style="font-weight:600">{{ d.label }}</div>
             <div style="text-align:right">{{ d.invoices }}</div>
             <div style="text-align:right;font-weight:700">{{ d.air }}</div>
@@ -65,34 +65,34 @@
             <div style="text-align:right">{{ d.gift }}</div>
           </div>
         </sc-for>
-        <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,minmax(0,1fr));padding:12px 20px;font-size:14px;font-weight:700;background:#FAF9F6;font-variant-numeric:tabular-nums">
-          <div>합계</div><div style="text-align:right">{{ sum.invoices }}</div><div style="text-align:right;color:#1F6F5C">{{ sum.air }}</div><div style="text-align:right">{{ sum.set }}</div><div style="text-align:right">{{ sum.set40 }}</div><div style="text-align:right">{{ sum.gift }}</div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,minmax(0,1fr));padding:12px 20px;font-size:14px;font-weight:700;background:#F9FAFB;font-variant-numeric:tabular-nums">
+          <div>합계</div><div style="text-align:right">{{ sum.invoices }}</div><div style="text-align:right;color:#2563EB">{{ sum.air }}</div><div style="text-align:right">{{ sum.set }}</div><div style="text-align:right">{{ sum.set40 }}</div><div style="text-align:right">{{ sum.gift }}</div>
         </div>
       </div>
     </section>
 
-    <section style="background:#fff;border:1px solid #E3E1DC;border-radius:12px;overflow:hidden">
-      <div style="padding:12px 20px;border-bottom:1px solid #E3E1DC;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+    <section style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+      <div style="padding:12px 20px;border-bottom:1px solid #E5E7EB;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
         <div style="font-size:15px;font-weight:700">박스수량</div>
-        <div style="font-size:12px;color:#6E7379">'목우촌 박스 건수' 시트 O~AE열과 같은 계산 · 폴리 입수량은 {{ rulesSrc }}</div>
+        <div style="font-size:12px;color:#6B7280">'목우촌 박스 건수' 시트 O~AE열과 같은 계산 · 폴리 입수량은 {{ rulesSrc }}</div>
       </div>
       <div style="overflow:auto">
         <div style="min-width:1240px">
-          <div style="display:grid;grid-template-columns:56px repeat(18,minmax(0,1fr));gap:6px;padding:10px 20px;border-bottom:1px solid #E3E1DC;font-size:11.5px;font-weight:600;color:#6E7379;line-height:1.35">
+          <div style="display:grid;grid-template-columns:56px repeat(18,minmax(0,1fr));gap:6px;padding:10px 20px;border-bottom:1px solid #E5E7EB;font-size:11.5px;font-weight:600;color:#6B7280;line-height:1.35">
             <div>출고일</div>
             <sc-for list="{{ boxHead }}" as="h" hint-placeholder-count="11">
-              <div style="text-align:right"><div>{{ h.t }}</div><div style="font-weight:500;color:#9A9EA3">{{ h.s }}</div></div>
+              <div style="text-align:right"><div>{{ h.t }}</div><div style="font-weight:500;color:#8B93A1">{{ h.s }}</div></div>
             </sc-for>
           </div>
           <sc-for list="{{ boxRows }}" as="r" hint-placeholder-count="3">
-            <div onClick="{{ r.pick }}" style="display:grid;grid-template-columns:56px repeat(18,minmax(0,1fr));gap:6px;padding:9px 20px;border-bottom:1px solid #EFEDE8;font-size:14px;cursor:pointer;background:{{ r.bg }};font-variant-numeric:tabular-nums" style-hover="background:#F7F6F2">
+            <div onClick="{{ r.pick }}" style="display:grid;grid-template-columns:56px repeat(18,minmax(0,1fr));gap:6px;padding:9px 20px;border-bottom:1px solid #EEF0F3;font-size:14px;cursor:pointer;background:{{ r.bg }};font-variant-numeric:tabular-nums" style-hover="background:#F7F8FA">
               <div style="font-weight:600">{{ r.label }}</div>
               <sc-for list="{{ r.vals }}" as="v" hint-placeholder-count="11">
                 <div style="text-align:right;color:{{ v.c }};font-weight:{{ v.w }}">{{ v.v }}</div>
               </sc-for>
             </div>
           </sc-for>
-          <div style="display:grid;grid-template-columns:56px repeat(18,minmax(0,1fr));gap:6px;padding:11px 20px;font-size:14px;font-weight:700;background:#FAF9F6;font-variant-numeric:tabular-nums">
+          <div style="display:grid;grid-template-columns:56px repeat(18,minmax(0,1fr));gap:6px;padding:11px 20px;font-size:14px;font-weight:700;background:#F9FAFB;font-variant-numeric:tabular-nums">
             <div>합계</div>
             <sc-for list="{{ boxSum }}" as="v" hint-placeholder-count="11">
               <div style="text-align:right;color:{{ v.c }}">{{ v.v }}</div>
@@ -101,7 +101,7 @@
         </div>
       </div>
       <sc-if value="{{ hasUnreg }}" hint-placeholder-val="{{ false }}">
-        <div style="padding:12px 20px;border-top:1px solid #E3E1DC;background:#FBEEDC;font-size:13px;line-height:1.55;display:flex;flex-direction:column;gap:4px">
+        <div style="padding:12px 20px;border-top:1px solid #E5E7EB;background:#FBEEDC;font-size:13px;line-height:1.55;display:flex;flex-direction:column;gap:4px">
           <div style="font-weight:700">폴리 미등록 · 분류규칙 시트 H열에 입수량을 넣어 주세요</div>
           <sc-for list="{{ unreg }}" as="u" hint-placeholder-count="1">
             <div>{{ u.day }} · {{ u.name }} *{{ u.qty }} · 송장 {{ u.n }}건</div>
@@ -112,29 +112,29 @@
 
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="font-size:17px;font-weight:700">{{ curLabel }}</div>
-      <div style="font-size:13px;color:#6E7379">송장 {{ curInvoices }}건 · {{ curLines }}줄</div>
-      <button onClick="{{ copyDay }}" style="margin-left:auto;height:32px;padding:0 14px;border:1px solid #D6D3CC;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#16181A">이 날짜 시트 복사</button>
+      <div style="font-size:13px;color:#6B7280">송장 {{ curInvoices }}건 · {{ curLines }}줄</div>
+      <button onClick="{{ copyDay }}" style="margin-left:auto;height:32px;padding:0 14px;border:1px solid #D1D5DB;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#0F172A">이 날짜 시트 복사</button>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;align-items:start">
-      <section style="background:#fff;border:1px solid #E3E1DC;border-radius:12px;overflow:hidden">
-        <div style="padding:12px 20px;border-bottom:1px solid #E3E1DC;display:flex;align-items:baseline;gap:8px">
+      <section style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+        <div style="padding:12px 20px;border-bottom:1px solid #E5E7EB;display:flex;align-items:baseline;gap:8px">
           <div style="font-size:15px;font-weight:700">1. 세트확인</div>
-          <div style="font-size:12px;color:#6E7379">송장별 품목 조합 · 송장 수 많은 순 · {{ th }}건↑, 세트(냉장·상온·냉동·상온펫 접두어 제외) 주황</div>
+          <div style="font-size:12px;color:#6B7280">송장별 품목 조합 · 송장 수 많은 순 · {{ th }}건↑, 세트(냉장·상온·냉동·상온펫 접두어 제외) 주황</div>
         </div>
-        <div style="padding:10px 20px;border-bottom:1px solid #EFEDE8;display:flex;align-items:center;gap:10px">
-          <input value="{{ q }}" onChange="{{ qChange }}" placeholder="품목명 검색 (예: 보냉세트, 뚝심)" style="flex:1;min-width:0;height:34px;padding:0 12px;border:1px solid #D6D3CC;border-radius:8px;font-size:13px;box-sizing:border-box;outline:none">
+        <div style="padding:10px 20px;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;gap:10px">
+          <input value="{{ q }}" onChange="{{ qChange }}" placeholder="품목명 검색 (예: 보냉세트, 뚝심)" style="flex:1;min-width:0;height:34px;padding:0 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box;outline:none">
           <sc-if value="{{ hasQ }}" hint-placeholder-val="{{ false }}">
-            <div style="font-size:12px;color:#6E7379;white-space:nowrap">{{ qInfo }}</div>
-            <button onClick="{{ qClear }}" style="height:34px;padding:0 10px;border:1px solid #D6D3CC;border-radius:8px;background:#fff;font-size:12px;cursor:pointer;color:#16181A">지우기</button>
+            <div style="font-size:12px;color:#6B7280;white-space:nowrap">{{ qInfo }}</div>
+            <button onClick="{{ qClear }}" style="height:34px;padding:0 10px;border:1px solid #D1D5DB;border-radius:8px;background:#fff;font-size:12px;cursor:pointer;color:#0F172A">지우기</button>
           </sc-if>
         </div>
         <sc-if value="{{ qEmpty }}" hint-placeholder-val="{{ false }}">
-          <div style="padding:20px;font-size:13px;color:#6E7379">검색 결과가 없어요.</div>
+          <div style="padding:20px;font-size:13px;color:#6B7280">검색 결과가 없어요.</div>
         </sc-if>
         <div style="max-height:560px;overflow:auto">
           <sc-for list="{{ pivot }}" as="p" hint-placeholder-count="8">
-            <div style="display:grid;grid-template-columns:minmax(0,1fr) 56px;gap:12px;padding:8px 20px;border-bottom:1px solid #EFEDE8;font-size:13px;line-height:1.45;background:{{ p.bg }}">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 56px;gap:12px;padding:8px 20px;border-bottom:1px solid #EEF0F3;font-size:13px;line-height:1.45;background:{{ p.bg }}">
               <div style="word-break:break-all;white-space:pre-line">{{ p.text }}</div>
               <div style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">{{ p.n }}</div>
             </div>
@@ -142,18 +142,18 @@
         </div>
       </section>
 
-      <section style="background:#fff;border:1px solid #E3E1DC;border-radius:12px;overflow:hidden">
-        <div style="padding:12px 20px;border-bottom:1px solid #E3E1DC;display:flex;align-items:baseline;gap:8px">
+      <section style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+        <div style="padding:12px 20px;border-bottom:1px solid #E5E7EB;display:flex;align-items:baseline;gap:8px">
           <div style="font-size:15px;font-weight:700">2. 에어캡 확인</div>
-          <div style="margin-left:auto;font-size:15px;font-weight:700;color:#1F6F5C">{{ curAir }}개</div>
+          <div style="margin-left:auto;font-size:15px;font-weight:700;color:#2563EB">{{ curAir }}개</div>
         </div>
-        <div style="padding:10px 20px;font-size:12px;color:#6E7379;line-height:1.55;border-bottom:1px solid #EFEDE8">냉장·냉동이 섞인 조합은 빼고, 뚝심·장조림·고기 고추장·목우촌참치 수량을 5개당 1개(올림)로 세어 송장 수를 곱해요.</div>
+        <div style="padding:10px 20px;font-size:12px;color:#6B7280;line-height:1.55;border-bottom:1px solid #EEF0F3">냉장·냉동이 섞인 조합은 빼고, 뚝심·장조림·고기 고추장·목우촌참치 수량을 5개당 1개(올림)로 세어 송장 수를 곱해요.</div>
         <sc-if value="{{ hasAir }}" hint-placeholder-val="{{ true }}">
-          <div style="display:grid;grid-template-columns:minmax(0,1fr) 44px 44px 56px;gap:10px;padding:8px 20px;border-bottom:1px solid #EFEDE8;font-size:12px;font-weight:600;color:#6E7379">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 44px 44px 56px;gap:10px;padding:8px 20px;border-bottom:1px solid #EEF0F3;font-size:12px;font-weight:600;color:#6B7280">
             <div>조합</div><div style="text-align:right">송장</div><div style="text-align:right">개당</div><div style="text-align:right">에어캡</div>
           </div>
           <sc-for list="{{ air }}" as="a" hint-placeholder-count="4">
-            <div style="display:grid;grid-template-columns:minmax(0,1fr) 44px 44px 56px;gap:10px;padding:8px 20px;border-bottom:1px solid #EFEDE8;font-size:13px;line-height:1.45;font-variant-numeric:tabular-nums">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 44px 44px 56px;gap:10px;padding:8px 20px;border-bottom:1px solid #EEF0F3;font-size:13px;line-height:1.45;font-variant-numeric:tabular-nums">
               <div style="word-break:break-all;white-space:pre-line">{{ a.text }}</div>
               <div style="text-align:right">{{ a.n }}</div>
               <div style="text-align:right">{{ a.per }}</div>
@@ -162,14 +162,14 @@
           </sc-for>
         </sc-if>
         <sc-if value="{{ noAir }}" hint-placeholder-val="{{ false }}">
-          <div style="padding:20px;font-size:13px;color:#6E7379">이 날은 에어캡 대상이 없어요.</div>
+          <div style="padding:20px;font-size:13px;color:#6B7280">이 날은 에어캡 대상이 없어요.</div>
         </sc-if>
       </section>
     </div>
   </sc-if>
 
   <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
-    <div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);padding:10px 18px;border-radius:10px;background:#16181A;color:#fff;font-size:13px;font-weight:500;max-width:90vw;text-align:center">{{ toast }}</div>
+    <div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);padding:10px 18px;border-radius:10px;background:#0F172A;color:#fff;font-size:13px;font-weight:500;max-width:90vw;text-align:center">{{ toast }}</div>
   </sc-if>
 </div>
 </x-dc>
@@ -256,23 +256,23 @@ class Component extends DCLogic {
     const A = window.Aircap;
     if (!A || !A.boxCounts) return { boxHead: [], boxRows: [], boxSum: [], unreg: [], hasUnreg: false, rulesSrc: '' };
     const cols = A.BOX_COLS, rules = this.state.rules, sum = {}, unreg = [];
-    const cell = (k, v) => ({ v: v ? n(v) : '·', c: k === 'K' && v ? '#B5541C' : (v ? '#16181A' : '#B8BBBF'), w: k === 'K' && v ? 700 : 400 });
+    const cell = (k, v) => ({ v: v ? n(v) : '·', c: k === 'K' && v ? '#B5541C' : (v ? '#0F172A' : '#9CA3AF'), w: k === 'K' && v ? 700 : 400 });
     const boxRows = keys.map(k => {
       const b = A.boxCounts(days[k].pivot, rules);
       cols.forEach(([col]) => sum[col] = (sum[col] || 0) + b[col]);
       b.unreg.forEach(u => unreg.push({ day: fmt(k), ...u }));
-      return { label: fmt(k), bg: c && c.day === k ? '#EEF4F1' : '#fff', vals: cols.map(([col]) => cell(col, b[col])), pick: () => this.setState({ [this.ck()]: k }, () => this.save()) };
+      return { label: fmt(k), bg: c && c.day === k ? '#F5F8FF' : '#fff', vals: cols.map(([col]) => cell(col, b[col])), pick: () => this.setState({ [this.ck()]: k }, () => this.save()) };
     });
     return {
       boxHead: cols.map(([, t, s]) => ({ t, s })), boxRows,
-      boxSum: cols.map(([col]) => ({ v: n(sum[col]), c: col === 'K' && sum[col] ? '#B5541C' : '#16181A' })),
+      boxSum: cols.map(([col]) => ({ v: n(sum[col]), c: col === 'K' && sum[col] ? '#B5541C' : '#0F172A' })),
       unreg, hasUnreg: unreg.length > 0,
       rulesSrc: rules ? '일별 건수 파일 분류규칙 기준' : '10월 분류규칙 기준 (일별 건수 파일에 넣으면 그 파일 규칙으로 바뀌어요)'
     };
   }
   dz(id, text, onFiles) {
     return {
-      text, border: this.state.drag === id ? '#1F6F5C' : '#D6D3CC',
+      text, border: this.state.drag === id ? '#2563EB' : '#D1D5DB',
       over: e => { e.preventDefault(); if (this.state.drag !== id) this.setState({ drag: id }); },
       leave: () => this.setState({ drag: 0 }),
       drop: e => { e.preventDefault(); this.setState({ drag: 0 }); onFiles([...e.dataTransfer.files]); },
@@ -281,7 +281,7 @@ class Component extends DCLogic {
   }
   renderVals() {
     const { busy, busy2, toast, pw } = this.state, A = this.isA(), th = this.th(), days = this.state[this.dk()], cur = this.state[this.ck()];
-    const mb = on => ({ bg: on ? '#16181A' : 'transparent', c: on ? '#fff' : '#6E7379' });
+    const mb = on => ({ bg: on ? '#0F172A' : 'transparent', c: on ? '#fff' : '#6B7280' });
     const keys = Object.keys(days).sort(), c = days[cur] || days[keys[keys.length - 1]];
     const fmt = d => { const [, m, dd] = d.split('-'); return dd ? (+m) + '/' + (+dd) : d; };
     const n = v => (v || 0).toLocaleString();
@@ -292,7 +292,7 @@ class Component extends DCLogic {
       pw, pwChange: e => this.setState({ pw: e.target.value }, () => this.save()),
       hasDays: keys.length > 0,
       dz1: this.dz(1, busy || (A ? (keys.length ? '목우촌 도착보장 출고 완료 파일 더 넣기' : '목우촌 도착보장 출고 완료 상세 현황 파일') : (keys.length ? '목우촌 출고 완료 파일 더 넣기' : '목우촌 출고 완료 상세 현황 파일')), f => this.load(f)),
-      days: keys.map(k => { const d = days[k]; return { label: fmt(k), invoices: n(d.invoices), air: n(d.airTotal), set: n(d.set), set40: n(d.set40), gift: n(d.gift), bg: c && c.day === k ? '#EEF4F1' : '#fff', pick: () => this.setState({ [this.ck()]: k }, () => this.save()) }; }),
+      days: keys.map(k => { const d = days[k]; return { label: fmt(k), invoices: n(d.invoices), air: n(d.airTotal), set: n(d.set), set40: n(d.set40), gift: n(d.gift), bg: c && c.day === k ? '#F5F8FF' : '#fff', pick: () => this.setState({ [this.ck()]: k }, () => this.save()) }; }),
       sum: { invoices: n(tot(d => d.invoices)), air: n(tot(d => d.airTotal)), set: n(tot(d => d.set)), set40: n(tot(d => d.set40)), gift: n(tot(d => d.gift)) },
       curLabel: c ? fmt(c.day) + (A ? ' 도착보장 출고' : ' 출고') : '',
       curInvoices: c ? n(c.invoices) : 0, curLines: c ? n(c.lines) : 0, curAir: c ? n(c.airTotal) : 0,
