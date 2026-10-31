@@ -1,17 +1,18 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>재고실사 콘솔</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=Noto+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<!doctype html><html><head>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>재고실사</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
   :root {
-    --bg: #EEF1EE;
+    --bg: #F5F7FA;
     --surface: #FFFFFF;
-    --surface-alt: #E4E8E3;
-    --text: #17211D;
-    --text-muted: #5B6B63;
-    --line: #D6DCD3;
-    --accent: #C4661B;
-    --accent-strong: #9C4E12;
-    --accent-soft: #F3E2CC;
+    --surface-alt: #F3F4F6;
+    --text: #0F172A;
+    --text-muted: #6B7280;
+    --line: #E5E7EB;
+    --accent: #2563EB;
+    --accent-strong: #1D4ED8;
+    --accent-soft: #EFF4FF;
     --success: #2E7D4F;
     --success-soft: #DCEEE1;
     --danger: #B23A2E;
@@ -22,15 +23,15 @@
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #121715;
-      --surface: #1B211E;
-      --surface-alt: #232A26;
-      --text: #E7ECE8;
-      --text-muted: #96A49C;
-      --line: #313A35;
-      --accent: #E0904A;
-      --accent-strong: #F2AC6C;
-      --accent-soft: #3A2A18;
+      --bg: #0B1120;
+      --surface: #111827;
+      --surface-alt: #1F2937;
+      --text: #E5E7EB;
+      --text-muted: #9CA3AF;
+      --line: #374151;
+      --accent: #60A5FA;
+      --accent-strong: #93C5FD;
+      --accent-soft: #172554;
       --success: #57C08B;
       --success-soft: #173324;
       --danger: #E37766;
@@ -41,15 +42,15 @@
     }
   }
   :root[data-theme="dark"] {
-    --bg: #121715;
-    --surface: #1B211E;
-    --surface-alt: #232A26;
-    --text: #E7ECE8;
-    --text-muted: #96A49C;
-    --line: #313A35;
-    --accent: #E0904A;
-    --accent-strong: #F2AC6C;
-    --accent-soft: #3A2A18;
+    --bg: #0B1120;
+    --surface: #111827;
+    --surface-alt: #1F2937;
+    --text: #E5E7EB;
+    --text-muted: #9CA3AF;
+    --line: #374151;
+    --accent: #60A5FA;
+    --accent-strong: #93C5FD;
+    --accent-soft: #172554;
     --success: #57C08B;
     --success-soft: #173324;
     --danger: #E37766;
@@ -63,7 +64,7 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: "Noto Sans KR", "맑은 고딕", sans-serif;
+    font-family: Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
     padding-inline: 20px;
     padding-block: 28px 48px;
   }
@@ -83,7 +84,7 @@
     font-weight: 600;
   }
   h1 {
-    font-family: "Gothic A1", "Noto Sans KR", sans-serif;
+    font-family: Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
     font-weight: 800;
     font-size: clamp(26px, 4vw, 34px);
     margin: 0;
@@ -130,7 +131,7 @@
   }
   .step-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
   .step-title {
-    font-family: "Gothic A1", sans-serif;
+    font-family: Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
     font-weight: 700;
     font-size: 18px;
     margin: 0;
@@ -171,7 +172,7 @@
   }
 
   button.action {
-    font-family: "Noto Sans KR", sans-serif;
+    font-family: Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
     font-weight: 600;
     font-size: 13.5px;
     background: var(--accent);
@@ -186,7 +187,7 @@
   button.action:disabled { background: var(--line); color: var(--text-muted); cursor: not-allowed; }
 
   button.ghost {
-    font-family: "Noto Sans KR", sans-serif;
+    font-family: Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
     font-weight: 600;
     font-size: 13px;
     background: transparent;
@@ -276,7 +277,7 @@
   }
   table.preview-table th {
     background: var(--surface-alt);
-    font-family: "Noto Sans KR", sans-serif;
+    font-family: Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
     font-weight: 600;
     font-size: 11.5px;
     color: var(--text-muted);
@@ -284,7 +285,7 @@
   table.preview-table td.diffneg { color: var(--danger); }
   table.preview-table td.diffpos { color: var(--success); }
   .preview-tag {
-    font-family: "Noto Sans KR", sans-serif;
+    font-family: Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
     font-size: 11px;
     color: var(--text-muted);
     padding: 8px 10px 0;
@@ -309,10 +310,7 @@
 <div class="page">
   <div class="hero">
     <span class="eyebrow">오산센터 · 월말 실사</span>
-    <h1>재고실사 콘솔</h1>
-    <p>WMS에서 내려받은 재고 원본 파일을 올리면 냉동 / 상온·냉장 실사표를 자동으로 나눠드립니다.
-      현장 카운트 후 실수량을 채운 파일을 다시 올리면 차이수량·실사요약·폐기대상까지 한 번에 정리합니다.
-      처리는 이 브라우저 안에서만 이루어지며 파일은 서버로 전송되지 않습니다.</p>
+    <h1>재고실사</h1>
   </div>
 
   <div id="banner" class="banner"></div>
@@ -408,7 +406,7 @@
       <div class="step-body">
         <h2 class="step-title">폐기시트 재고조정 파일</h2>
         <p class="step-desc"><code>폐기대상</code> 시트와 같은 기준으로 이상재고(불량/임박/분실/파손/불용, <b>불용(대기) 제외</b>)만 뽑아 조정수량 0으로 채운
-          WMS 재고조정 양식(stock_new_v2, 4행부터 · 모든 값 텍스트)을 만듭니다. 재고상태는 코드로 변환됩니다 (임박=2 · 불량=3 · 분실=4 · 파손=5 · 기타=6).
+          WMS 재고조정 양식(stock_new_v2, 4행부터 · 모든 값 텍스트)을 만듭니다. 재고상태는 코드로 변환됩니다 (불량=2 · 파손=3 · 임박=4 · 대기=6 · 분실=7 · 기타=9).
           유통기한이 오늘 기준 D+3 이상인 불용(임박)은 재고로 두므로 조정하지 않습니다.</p>
         <div class="row">
           <label class="filepick" id="pick3">
@@ -431,7 +429,7 @@
       <div class="step-badge">4</div>
       <div class="step-body">
         <h2 class="step-title">조정수량 → WMS 입고 · 차감 업로드</h2>
-        <p class="step-desc"><code>전체실사요약</code> 시트의 <code>조정수량</code>(F열, 2단계에서 제목만 만들어 둠)에 수량을 적은 파일을 올리세요.
+        <p class="step-desc"><code>전체실사요약</code> 시트의 <code>조정수량</code>(G열, 2단계에서 제목만 만들어 둠)에 수량을 적은 파일을 올리세요. H열 <code>마감실제반영</code> = 가용수량 + 조정수량으로 자동 계산됩니다.
           <b>+수량</b>은 <code>실사요약</code>에서 같은 품목의 ▲입고필요 셀을, <b>−수량</b>은 ▼차감필요 셀을 찾아
           <b>유통기한이 빠른 셀부터</b> 그 셀의 차이수량만큼 채워 나눕니다.<br>
           · 입고: put_insert 양식(.xlsx, 모든 값 텍스트, 재고상태 가용)<br>
@@ -452,7 +450,7 @@
           <button class="ghost" id="dl4a">⬇ WMS_입고_put_insert.xlsx</button>
           <button class="ghost" id="dl4b">⬇ WMS_차감조정.xlsx</button>
         </div>
-        <div class="note"><strong>참고</strong> — 로케이션2·3은 두 자리 텍스트(예: 1 → "01")로 맞춥니다. Lot/Batch는 파일에 Sheet1이 있으면 같은 품목·로케이션·유통기한 행에서 가져옵니다.</div>
+        <div class="note"><strong>참고</strong><br>-100 중 -80개만 조정 → -80<br>+326 중 50개만 입고 → 50 (+없어도됨)<br>*조정 수량만 입력할것.</div>
       </div>
     </section>
   </div>
@@ -730,7 +728,7 @@
     function buildShortageSummary(workbook) {
       removeIfExists(workbook, "실사요약");
       const ws = workbook.addWorksheet("실사요약");
-      const headers = ["시트", "품목코드", "품목명", "로케이션1", "로케이션2", "로케이션3", "유통기한", "가용수량", "실수량", "차이수량", "구분"];
+      const headers = ["시트", "품목코드", "업체품목코드", "품목명", "로케이션1", "로케이션2", "로케이션3", "유통기한", "가용수량", "실수량", "차이수량", "구분"];
       headers.forEach((h, i) => (ws.getRow(1).getCell(i + 1).value = h));
       const rowsOut = [];
       ["냉동", "상온,냉장"].forEach((name) => {
@@ -739,34 +737,34 @@
         for (let r = 2; r <= src.rowCount; r++) {
           const diffRaw = src.getRow(r).getCell(11).value;
           if (typeof diffRaw !== "number" || diffRaw === 0) continue;
-          rowsOut.push([name, cellRaw(src, r, 1), cellRaw(src, r, 3), cellRaw(src, r, 4), cellRaw(src, r, 5), cellRaw(src, r, 6),
+          rowsOut.push([name, cellRaw(src, r, 1), cellRaw(src, r, 2), cellRaw(src, r, 3), cellRaw(src, r, 4), cellRaw(src, r, 5), cellRaw(src, r, 6),
             fmtExpiry(cellRaw(src, r, 7)), cellRaw(src, r, 8), cellRaw(src, r, 9), diffRaw, diffRaw < 0 ? "▼ 차감필요" : "▲ 입고필요"]);
         }
       });
-      rowsOut.sort((a, b) => a[9] - b[9]);
+      rowsOut.sort((a, b) => a[10] - b[10]);
       rowsOut.forEach((row, idx) => {
         const r = idx + 2;
         row.forEach((v, c) => (ws.getRow(r).getCell(c + 1).value = v));
-        const diffCell = ws.getRow(r).getCell(10); diffCell.numFmt = "#,##0";
-        const noteCell = ws.getRow(r).getCell(11);
-        if (row[9] < 0) { noteCell.font = { color: { argb: "FFC00000" } }; diffCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: ARGB.neg } }; }
+        const diffCell = ws.getRow(r).getCell(11); diffCell.numFmt = "#,##0";
+        const noteCell = ws.getRow(r).getCell(12);
+        if (row[10] < 0) { noteCell.font = { color: { argb: "FFC00000" } }; diffCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: ARGB.neg } }; }
         else { noteCell.font = { color: { argb: "FF007000" } }; diffCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: ARGB.pos } }; }
       });
       const lastRow = Math.max(rowsOut.length + 1, 1);
-      applyBaseStyle(ws, lastRow, 11);
-      for (let c = 1; c <= 11; c++) ws.getRow(1).getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: ARGB.header } };
+      applyBaseStyle(ws, lastRow, 12);
+      for (let c = 1; c <= 12; c++) ws.getRow(1).getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: ARGB.header } };
       ws.views = [{ state: "frozen", ySplit: 1 }];
       ws.__moveCount = writeCellMoves(ws, rowsOut);
       return rowsOut.length;
     }
-    // 같은 품목에서 ▼부족 셀과 ▲남음 셀이 같이 있으면, 재고조정 대신 두 셀 사이 전산 수량만 옮기면 됨 → 실사요약 M열부터 표시
+    // 같은 품목에서 ▼부족 셀과 ▲남음 셀이 같이 있으면, 재고조정 대신 두 셀 사이 전산 수량만 옮기면 됨 → 실사요약 N열부터 표시
     function writeCellMoves(ws, rowsOut) {
       const byCode = new Map();
       rowsOut.forEach((row) => {
         const code = String(row[1] == null ? "" : row[1]).trim();
         if (!code) return;
         if (!byCode.has(code)) byCode.set(code, []);
-        byCode.get(code).push({ name: row[2], c1: row[3], c2: row[4], c3: row[5], exp: row[6], avail: toNum(row[7]), left: Math.abs(row[9]), short: row[9] < 0, moved: 0, diffExp: false });
+        byCode.get(code).push({ vcode: row[2], name: row[3], c1: row[4], c2: row[5], c3: row[6], exp: row[7], avail: toNum(row[8]), left: Math.abs(row[10]), short: row[10] < 0, moved: 0, diffExp: false });
       });
       const groups = [];
       byCode.forEach((list, code) => {
@@ -783,25 +781,25 @@
         if (cells.length) groups.push({ code, cells });
       });
       // WMS 재고실사 화면과 같은 순서: 품목코드 · 품목명 · 분류1~3 · 유통기한 · 가용수량 → 수정할 가용수량
-      const C0 = 13, H = ["품목코드", "품목명", "분류1", "분류2", "분류3", "유통기한", "현재 가용수량", "→ 수정할 가용수량", "증감", "비고"];
+      const C0 = 14, H = ["품목코드", "업체품목코드", "품목명", "분류1", "분류2", "분류3", "유통기한", "현재 가용수량", "→ 수정할 가용수량", "증감", "비고"];
       const thin = { style: "thin", color: { argb: "FF000000" } };
       H.forEach((h, i) => (ws.getRow(1).getCell(C0 + i).value = h));
       const out = [];
-      groups.forEach((g, gi) => g.cells.forEach((x) => out.push({ gi, vals: [g.code, x.name, x.c1, x.c2, x.c3, x.exp, x.avail, x.avail + x.moved, x.moved, x.diffExp ? "유통기한 다른 셀과 이동 · 확인" : ""] })));
+      groups.forEach((g, gi) => g.cells.forEach((x) => out.push({ gi, vals: [g.code, x.vcode ?? "", x.name, x.c1, x.c2, x.c3, x.exp, x.avail, x.avail + x.moved, x.moved, x.diffExp ? "유통기한 다른 셀과 이동 · 확인" : ""] })));
       if (!out.length) ws.getRow(2).getCell(C0).value = "셀 이동으로 맞출 건이 없습니다";
       out.forEach((o, i) => o.vals.forEach((v, j) => (ws.getRow(i + 2).getCell(C0 + j).value = v)));
       const last = Math.max(out.length + 1, 2);
       for (let r = 1; r <= last; r++) for (let j = 0; j < H.length; j++) {
         const cell = ws.getRow(r).getCell(C0 + j), o = out[r - 2];
-        const isNew = j === 7 && r > 1, isDelta = j === 8 && o;
+        const isNew = j === 8 && r > 1, isDelta = j === 9 && o;
         cell.font = { name: FONT_NAME, size: 14, bold: r === 1 || isNew,
-          color: j === 9 && o ? { argb: "FFC00000" } : isDelta ? { argb: o.vals[8] < 0 ? "FFC00000" : "FF007000" } : undefined };
+          color: j === 10 && o ? { argb: "FFC00000" } : isDelta ? { argb: o.vals[9] < 0 ? "FFC00000" : "FF007000" } : undefined };
         cell.alignment = { horizontal: "center", vertical: "middle" };
         cell.border = { top: thin, bottom: thin, left: thin, right: thin };
-        if (r === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: j === 7 ? "FFFFC000" : "FFFFE699" } };
+        if (r === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: j === 8 ? "FFFFC000" : "FFFFE699" } };
         else if (o && isNew) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF2CC" } };
         else if (o && o.gi % 2 === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F2F2" } };
-        if (o && j >= 6 && j <= 8) cell.numFmt = j === 8 ? "+#,##0;-#,##0;0" : "#,##0";
+        if (o && j >= 7 && j <= 9) cell.numFmt = j === 9 ? "+#,##0;-#,##0;0" : "#,##0";
       }
       // 품목이 바뀔 때 굵은 위쪽 선
       out.forEach((o, i) => { if (i > 0 && out[i - 1].gi !== o.gi) for (let j = 0; j < H.length; j++) { const cell = ws.getRow(i + 2).getCell(C0 + j); cell.border = { ...cell.border, top: { style: "medium", color: { argb: "FF000000" } } }; } });
@@ -839,7 +837,7 @@
         const status = cellText(wsRaw, r, COL_STATUS);
         if (!/분실|파손/.test(status)) continue;
         const raw = cellRaw(wsRaw, r, COL_EXPIRY);
-        cand.push({ r, code, name: cellText(wsRaw, r, COL_NAME), c1: cellText(wsRaw, r, COL_CAT1), c2: cellText(wsRaw, r, COL_CAT2), c3: cellText(wsRaw, r, COL_CAT3),
+        cand.push({ r, code, vcode: cellText(wsRaw, r, 2), name: cellText(wsRaw, r, COL_NAME), c1: cellText(wsRaw, r, COL_CAT1), c2: cellText(wsRaw, r, COL_CAT2), c3: cellText(wsRaw, r, COL_CAT3),
           exp: fmtExpiry(raw), t: expiryTime(raw), status, qty: toNum(cellRaw(wsRaw, r, COL_STOCK)) });
       }
       cand.sort((a, b) => (a.t ?? Infinity) - (b.t ?? Infinity));
@@ -850,8 +848,8 @@
     function valOfCell(v) { return (v && typeof v === "object" && !(v instanceof Date) && v.result !== undefined) ? v.result : v; }
     function convByCode(list) { const m = new Map(); list.forEach((c) => m.set(c.code, (m.get(c.code) || 0) + c.conv)); return m; }
     function writeConversions(ws, list) {
-      const C0 = 13, top = (ws.__movesLast || 2) + 3;
-      const H = ["품목코드", "품목명", "분류1", "분류2", "분류3", "유통기한", "재고상태", "현재 수량", "→ 가용 전환수량", "비고"];
+      const C0 = 14, top = (ws.__movesLast || 2) + 3;
+      const H = ["품목코드", "업체품목코드", "품목명", "분류1", "분류2", "분류3", "유통기한", "재고상태", "현재 수량", "→ 가용 전환수량", "비고"];
       const thin = { style: "thin", color: { argb: "FF000000" } };
       const t = ws.getRow(top).getCell(C0);
       t.value = "불용(분실·파손) → 가용 전환  ·  재고조정 파일에 반영 완료";
@@ -859,18 +857,18 @@
       const hr = top + 1;
       H.forEach((h, i) => (ws.getRow(hr).getCell(C0 + i).value = h));
       if (!list.length) ws.getRow(hr + 1).getCell(C0).value = "전환할 불용(분실·파손) 재고가 없습니다";
-      list.forEach((c, i) => [c.code, c.name, c.c1, c.c2, c.c3, c.exp, c.status, c.qty, c.conv,
+      list.forEach((c, i) => [c.code, c.vcode, c.name, c.c1, c.c2, c.c3, c.exp, c.status, c.qty, c.conv,
         c.conv < c.qty ? `나머지 ${c.qty - c.conv}개는 폐기 · WMS에서 ${c.conv}개 가용으로 상태변경` : `WMS에서 가용으로 상태변경`]
         .forEach((v, j) => (ws.getRow(hr + 1 + i).getCell(C0 + j).value = v)));
       const last = hr + Math.max(list.length, 1);
       for (let r = hr; r <= last; r++) for (let j = 0; j < H.length; j++) {
         const cell = ws.getRow(r).getCell(C0 + j);
-        cell.font = { name: FONT_NAME, size: 14, bold: r === hr || j === 8 };
+        cell.font = { name: FONT_NAME, size: 14, bold: r === hr || j === 9 };
         cell.alignment = { horizontal: "center", vertical: "middle" };
         cell.border = { top: thin, bottom: thin, left: thin, right: thin };
-        if (r === hr) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: j === 8 ? "FF9BD3B4" : "FFC6EFCE" } };
-        else if (j === 8 && list.length) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2F4E8" } };
-        if (r > hr && (j === 7 || j === 8)) cell.numFmt = "#,##0";
+        if (r === hr) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: j === 9 ? "FF9BD3B4" : "FFC6EFCE" } };
+        else if (j === 9 && list.length) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2F4E8" } };
+        if (r > hr && (j === 8 || j === 9)) cell.numFmt = "#,##0";
       }
       for (let j = 0; j < H.length; j++) {
         let max = (ws.getColumn(C0 + j).width || 8) - 2;
@@ -890,8 +888,9 @@
           if (code === null || code === undefined || String(code).trim() === "") continue;
           const nameVal = cellRaw(src, r, 3);
           const key = `${code}\u0001${nameVal}`;
-          if (!agg.has(key)) { agg.set(key, { code, name: nameVal, avail: 0, actual: 0, diff: 0 }); order.push(key); }
+          if (!agg.has(key)) { agg.set(key, { code, vcode: cellRaw(src, r, 2), name: nameVal, avail: 0, actual: 0, diff: 0 }); order.push(key); }
           const rec = agg.get(key);
+          if ((rec.vcode == null || String(rec.vcode).trim() === "") && cellRaw(src, r, 2) != null) rec.vcode = cellRaw(src, r, 2);
           rec.avail += toNum(cellRaw(src, r, 8));
           rec.actual += toNum(cellRaw(src, r, 9));
           rec.diff += toNum(src.getRow(r).getCell(11).value);
@@ -901,7 +900,7 @@
       order.forEach((key) => {
         const rec = agg.get(key), cv = convLeft.get(String(rec.code).trim()) || 0;
         if (!cv) return;
-        rec.diff -= cv; rec.conv = cv;
+        rec.diff -= cv; rec.conv = cv; // 가용수량은 절대 변경하지 않음
         convLeft.delete(String(rec.code).trim());
       });
       removeIfExists(workbook, "전체실사요약");
@@ -910,21 +909,40 @@
       ws.getRow(1).getCell(1).font = { bold: true, size: 14 };
       ws.getRow(2).getCell(1).value = "※ 불용(분실·파손) → 가용 전환분 반영됨 (차이수량에서만 뺌 · 가용수량은 그대로)";
       ws.getRow(2).getCell(1).font = { size: 10, color: { argb: "FF1F6F5C" } };
-      const headers = ["품목코드", "품목명", "합계 : 가용수량", "합계 : 실수량", "합계 : 차이수량", "조정수량"];
+      const headers = ["품목코드", "업체품목코드", "품목명", "합계 : 가용수량", "합계 : 실수량", "합계 : 차이수량", "조정수량", "마감실제반영"];
       headers.forEach((h, i) => {
         const cell = ws.getRow(3).getCell(i + 1);
-        cell.value = h; cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: ARGB.header } }; cell.font = { bold: true };
+        cell.value = h; cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: i === 7 ? "FFCCC0DA" : ARGB.header } }; cell.font = { bold: true };
       });
+      ws.views = [{ state: "frozen", xSplit: 3, ySplit: 3 }];
+      // 제외품목 중 가용수량이 0이 아닌 품목을 마지막에 붙임 (실수량 = 가용수량)
+      const wsEx = workbook.getWorksheet("제외품목"), wsS1 = workbook.getWorksheet("Sheet1"), vByCode = new Map();
+      if (wsS1) for (let r = 2; r <= wsS1.rowCount; r++) { const c = cellText(wsS1, r, COL_CODE), v = cellRaw(wsS1, r, 2); if (c && !vByCode.has(c) && v != null && String(v).trim() !== "") vByCode.set(c, v); }
+      if (wsEx) for (let r = 2; r <= wsEx.rowCount; r++) {
+        const code = cellText(wsEx, r, 1), q = toNum(valOfCell(wsEx.getRow(r).getCell(3).value));
+        if (!code || !q) continue;
+        const key = `ex\u0001${code}`;
+        agg.set(key, { code, vcode: vByCode.get(code) ?? null, name: cellRaw(wsEx, r, 2), avail: q, actual: q, diff: 0, ex: true }); order.push(key);
+      }
       order.forEach((key, idx) => {
         const rec = agg.get(key); const r = idx + 4;
-        ws.getRow(r).getCell(1).value = rec.code;
-        ws.getRow(r).getCell(2).value = rec.name;
-        ws.getRow(r).getCell(3).value = rec.avail; ws.getRow(r).getCell(3).numFmt = "#,##0";
-        ws.getRow(r).getCell(4).value = rec.actual; ws.getRow(r).getCell(4).numFmt = "#,##0";
-        ws.getRow(r).getCell(5).value = rec.diff; ws.getRow(r).getCell(5).numFmt = "#,##0";
-        ws.getRow(r).getCell(6).numFmt = "#,##0";
+        const row = ws.getRow(r);
+        row.getCell(1).value = rec.code;
+        row.getCell(2).value = rec.vcode ?? null;
+        row.getCell(3).value = rec.name;
+        row.getCell(4).value = rec.avail; row.getCell(4).numFmt = "#,##0";
+        row.getCell(5).value = rec.actual; row.getCell(5).numFmt = "#,##0";
+        row.getCell(6).value = rec.conv ? rec.diff : { formula: `E${r}-D${r}`, result: rec.diff }; row.getCell(6).numFmt = "#,##0";
+        row.getCell(7).numFmt = "#,##0";
+        // 마감실제반영 = 가용수량 + 조정수량 (조정 비어 있으면 0 → 가용수량 그대로)
+        row.getCell(8).value = { formula: `D${r}+G${r}`, result: rec.avail }; row.getCell(8).numFmt = "#,##0";
+        if (rec.ex) { row.getCell(9).value = "제외품목"; row.getCell(9).font = { color: { argb: "FF6B7280" } }; }
+        if (rec.conv) {
+          row.getCell(9).value = `${rec.conv}개 가용전환`;
+          row.getCell(9).font = { color: { argb: "FF1F6F5C" } };
+        }
       });
-      for (let c = 1; c <= 6; c++) {
+      for (let c = 1; c <= 9; c++) {
         let max = 0;
         for (let r = 3; r <= order.length + 3; r++) max = Math.max(max, textWidth(ws.getRow(r).getCell(c).value));
         ws.getColumn(c).width = Math.min(Math.max(Math.ceil(max + 3), 8), 80);
@@ -997,7 +1015,7 @@
     function buildWmsCsv(workbook) {
       const wsRaw = workbook.getWorksheet("Sheet1");
       const exclude = loadExcludeSet(workbook);
-      const statusCodeMap = [["임박", "2"], ["불량", "3"], ["분실", "4"], ["파손", "5"], ["대기", "1"]];
+      const statusCodeMap = [["반품불량", "11"], ["불량", "2"], ["파손", "3"], ["임박", "4"], ["만료", "5"], ["대기", "6"], ["분실", "7"], ["폐기", "8"], ["기타", "9"], ["기부", "10"]];
       const rows = [];
       const convMap = new Map(computeConversions(workbook).map((c) => [c.r, c.conv]));
       let convCount = 0, convQty = 0;
@@ -1014,12 +1032,12 @@
         const cv = convMap.get(r) || 0;
         if (cv) { convCount++; convQty += cv; }
         if (cv && cv >= toNum(cellRaw(wsRaw, r, COL_STOCK))) continue;
-        let stCode = "6";
+        let stCode = "1";
         for (const [kw, sc] of statusCodeMap) { if (status.includes(kw)) { stCode = sc; break; } }
         const expiry = fmtExpiry(cellRaw(wsRaw, r, COL_EXPIRY));
         const loc1 = cellText(wsRaw, r, COL_CAT1), loc2 = cellText(wsRaw, r, COL_CAT2), loc3 = cellText(wsRaw, r, COL_CAT3);
         const lot = cellText(wsRaw, r, COL_LOT), batch = cellText(wsRaw, r, COL_BATCH);
-        const mfg = colMfg ? fmtExpiry(cellRaw(wsRaw, r, colMfg)) : "";
+        const mfg = colMfg ? fmtExpiry(cellRaw(wsRaw, r, colMfg)).replace(/^0000-00-00$/, "") : "";
         rows.push(["", code, cellText(wsRaw, r, COL_NAME), mfg, expiry, lot, batch, String(cv), loc1, loc2, loc3, "", "", "", stCode]);
       }
       return { rows, count: rows.length, convCount, convQty };
@@ -1072,7 +1090,7 @@
         const code = cellText(wsEx, r, 1);
         if (!code) continue;
         const info = lookup.get(code);
-        if (!info) continue;
+        if (!info) { wsEx.getRow(r).getCell(3).value = 0; continue; } // Sheet1에 없음 = 가용 0, 품목명은 그대로 둠
         const nameCell = wsEx.getRow(r).getCell(2);
         if (nameCell.value === null || nameCell.value === undefined || String(nameCell.value).trim() === "") nameCell.value = info.name;
         // 가용수량(현기준)은 항상 이번에 올린 Sheet1 기준으로 다시 계산해 최신값으로 갱신한다.
@@ -1166,7 +1184,7 @@
           const code = cellText(wsRaw, r, COL_CODE);
           if (!code) continue;
           const key = [code, locText(cellRaw(wsRaw, r, COL_CAT1)), locText(cellRaw(wsRaw, r, COL_CAT2), true), locText(cellRaw(wsRaw, r, COL_CAT3), true), fmtExpiry(cellRaw(wsRaw, r, COL_EXPIRY))].join("|");
-          if (!raw.has(key)) raw.set(key, { lot: cellText(wsRaw, r, COL_LOT), batch: cellText(wsRaw, r, COL_BATCH), status: cellText(wsRaw, r, COL_STATUS), name: cellText(wsRaw, r, COL_NAME), mfg: colMfg ? fmtExpiry(cellRaw(wsRaw, r, colMfg)) : "" });
+          if (!raw.has(key)) raw.set(key, { lot: cellText(wsRaw, r, COL_LOT), batch: cellText(wsRaw, r, COL_BATCH), status: cellText(wsRaw, r, COL_STATUS), name: cellText(wsRaw, r, COL_NAME), mfg: colMfg ? fmtExpiry(cellRaw(wsRaw, r, colMfg)).replace(/^0000-00-00$/, "") : "" });
         }
       }
       const rawOf = (c) => raw.get([c.code, c.loc[0], c.loc[1], c.loc[2], c.expiry].join("|")) || { lot: "", batch: "", status: "", name: "", mfg: "" };
@@ -1193,7 +1211,7 @@
             inRows.push([c.code, "", c.expiry, String(take), c.loc[0], c.loc[1], c.loc[2], "", "", "", x.lot, x.batch, "가용", ""]);
             inQty += take;
           } else {
-            const st = x.status.includes("대기") ? "1" : "0";
+            const st = x.status.includes("대기") ? "6" : "0";
             // stock_new_v2 양식: PLANT, 품목코드, 품목명, 제조일자, 유통기한, Lot No., Batch No., 조정수량, 분류명1~6, 현 재고상태
             outRows.push(["", c.code, c.name || x.name || (pname !== code ? pname : ""), x.mfg || "", c.expiry, x.lot, x.batch, String(Math.max(c.avail - take, 0)), c.loc[0], c.loc[1], c.loc[2], "", "", "", st]);
             outQty += take;
@@ -1303,9 +1321,21 @@
       } catch (e) { /* 브라우저 저장소를 쓸 수 없으면 그냥 없는 것으로 처리 */ }
       return null;
     }
-    function savePinnedExcludes(codes, fileName) {
+    const EX_NAME_KEY = "invaudit_exclude_names_v1";
+    function loadExNames() { try { return JSON.parse(localStorage.getItem(EX_NAME_KEY) || "{}") || {}; } catch (e) { return {}; } }
+    function saveExNames(m) { try { localStorage.setItem(EX_NAME_KEY, JSON.stringify(m)); } catch (e) {} }
+    function exSheetNames(wb) {
+      const m = {}, ws = wb.getWorksheet("제외품목"); if (!ws) return m;
+      for (let r = 2; r <= ws.rowCount; r++) {
+        const c = ws.getRow(r).getCell(1).value, n = ws.getRow(r).getCell(2).value;
+        if (c != null && String(c).trim() && n != null && String(n).trim()) m[String(c).trim()] = String(n).trim();
+      }
+      return m;
+    }
+    function savePinnedExcludes(codes, fileName, names) {
       try {
-        localStorage.setItem(PIN_KEY, JSON.stringify({ codes, fileName, savedAt: new Date().toISOString() }));
+        if (names) saveExNames({ ...loadExNames(), ...names });
+        localStorage.setItem(PIN_KEY, JSON.stringify({ codes, fileName, names: names || {}, savedAt: new Date().toISOString() }));
         return true;
       } catch (e) { return false; }
     }
@@ -1349,7 +1379,18 @@
     function prepareExcludeSheet(workbook) {
       InventoryLogic.ensureExcludeSheet(workbook);
       applyPinnedExclusions(workbook);
+      // 품목명 기억: Sheet1에 없어(가용 0) 비게 되는 품목명은 예전에 기억한 이름으로 채움
+      const memo = { ...loadExNames(), ...exSheetNames(workbook) };
       InventoryLogic.enrichExcludeSheet(workbook);
+      const ws = workbook.getWorksheet("제외품목");
+      if (ws) for (let r = 2; r <= ws.rowCount; r++) {
+        const c = ws.getRow(r).getCell(1).value; if (c == null || !String(c).trim()) continue;
+        const code = String(c).trim(), nc = ws.getRow(r).getCell(2), qc = ws.getRow(r).getCell(3);
+        if ((nc.value == null || !String(nc.value).trim()) && memo[code]) nc.value = memo[code];
+        if (qc.value == null || String(qc.value).trim() === "") qc.value = 0;
+        if (nc.value != null && String(nc.value).trim()) memo[code] = String(nc.value).trim();
+      }
+      saveExNames(memo);
     }
     document.getElementById("runEx").addEventListener("click", async () => {
       const input = document.getElementById("fileEx");
@@ -1363,7 +1404,7 @@
         await wb.xlsx.load(buf);
         const set = InventoryLogic.loadExcludeSet(wb);
         if (!set.size) throw new Error("'제외품목' 시트에서 품목코드를 찾지 못했습니다.");
-        const ok = savePinnedExcludes(Array.from(set), input.files[0].name);
+        const ok = savePinnedExcludes(Array.from(set), input.files[0].name, exSheetNames(wb));
         renderPinnedInfo();
         setStatus("statusEx", ok ? `고정 완료: ${fmtN(set.size)}개` : "이 브라우저에서는 저장할 수 없습니다.", ok ? "ok" : "err");
       } catch (e) {
