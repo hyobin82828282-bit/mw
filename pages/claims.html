@@ -2,39 +2,39 @@
 <meta charset="utf-8">
 <title>9월 클레임 관리</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <style>
 :root {
-  --bg: #EEF1F7; --surface: #FFFFFF; --surface2: #F5F7FB; --border: #DDE2ED;
-  --text: #0F1624; --muted: #6B7689;
-  --our: #1A4ED8; --our-bg: #EEF3FF;
+  --bg: #F5F7FA; --surface: #FFFFFF; --surface2: #F9FAFB; --border: #E5E7EB;
+  --text: #0F172A; --muted: #6B7280;
+  --our: #2563EB; --our-bg: #EFF4FF;
   --courier: #C62828; --courier-bg: #FFF0F0;
-  --accent: #1A4ED8; --accent-hover: #1340BC;
+  --accent: #2563EB; --accent-hover: #1D4ED8;
   --warn: #B45309; --warn-bg: #FFFBEB;
   --success: #047857; --success-bg: #ECFDF5;
   --danger: #C62828; --danger-bg: #FFF0F0;
   --shadow: 0 1px 3px rgba(0,0,0,.08); --shadow-md: 0 4px 16px rgba(0,0,0,.12);
-  --radius: 8px; --row-hover: #F0F4FF; --row-exclude: #FFF8F8;
-  --computed-bg: #F0F5FF;
+  --radius: 8px; --row-hover: #F5F8FF; --row-exclude: #FFF8F8;
+  --computed-bg: #F5F8FF;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg:#0C0F1A; --surface:#141826; --surface2:#1A1F32; --border:#252C42;
-  --text:#E8EAF0; --muted:#8891A8; --our:#6B9EFF; --our-bg:#1A2345;
-  --courier:#FF7070; --courier-bg:#2A1515; --accent:#5B8AFF; --accent-hover:#7BA3FF;
+  --bg:#0B1120; --surface:#111827; --surface2:#1F2937; --border:#374151;
+  --text:#E5E7EB; --muted:#9CA3AF; --our:#60A5FA; --our-bg:#172554;
+  --courier:#FF7070; --courier-bg:#2A1515; --accent:#60A5FA; --accent-hover:#93C5FD;
   --warn:#FBBF24; --warn-bg:#1C1800; --success:#34D399; --success-bg:#001A10;
-  --danger:#FF7070; --danger-bg:#2A1515; --row-hover:#1A2340; --row-exclude:#1F1010;
-  --computed-bg:#1A2345;
+  --danger:#FF7070; --danger-bg:#2A1515; --row-hover:#1E293B; --row-exclude:#1F1010;
+  --computed-bg:#172554;
 }}
 :root[data-theme="dark"] {
-  --bg:#0C0F1A; --surface:#141826; --surface2:#1A1F32; --border:#252C42;
-  --text:#E8EAF0; --muted:#8891A8; --our:#6B9EFF; --our-bg:#1A2345;
-  --courier:#FF7070; --courier-bg:#2A1515; --accent:#5B8AFF; --accent-hover:#7BA3FF;
+  --bg:#0B1120; --surface:#111827; --surface2:#1F2937; --border:#374151;
+  --text:#E5E7EB; --muted:#9CA3AF; --our:#60A5FA; --our-bg:#172554;
+  --courier:#FF7070; --courier-bg:#2A1515; --accent:#60A5FA; --accent-hover:#93C5FD;
   --warn:#FBBF24; --warn-bg:#1C1800; --success:#34D399; --success-bg:#001A10;
-  --danger:#FF7070; --danger-bg:#2A1515; --row-hover:#1A2340; --row-exclude:#1F1010;
-  --computed-bg:#1A2345;
+  --danger:#FF7070; --danger-bg:#2A1515; --row-hover:#1E293B; --row-exclude:#1F1010;
+  --computed-bg:#172554;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;}
-html,body{height:100%;font-family:'Noto Sans KR',system-ui,sans-serif;}
+html,body{height:100%;font-family:Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;}
 body{background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;padding:0;display:flex;flex-direction:column;overflow:hidden;}
 
 /* TOOLBAR */
@@ -211,6 +211,7 @@ function calcMaterial(boxCode, tempZone) {
 <script src="office-decrypt.js"></script>
 <script src="../wb-store.js"></script>
 <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display:none">
+<input type="file" id="photo-file-input" accept="image/*" multiple style="display:none">
 
 <!-- LAYOUT -->
 <div id="toolbar">
@@ -232,7 +233,8 @@ function calcMaterial(boxCode, tempZone) {
   </div>
   <div class="toolbar-right">
     <button class="btn" id="btn-memo" title="원송장번호별 비고·실결제금액·재출고송장 일괄 수정">📝 클레임 메모</button>
-    <button class="btn" id="btn-import-excel" title="엑셀 클레임 시트 가져오기">📂 엑셀 가져오기</button>
+    <button class="btn" id="btn-import-photo" title="사진 속 송장번호와 클레임 송장이 일치하면 사진 칸에 등록">🖼 사진 가져오기</button>
+    <button class="btn" id="btn-save-photo" title="체크한 행의 사진을 원래 파일명으로 저장" disabled>💾 사진저장</button>
     <button class="btn" id="btn-import-wb" title="통합내역 데이터 가져오기">📥 통합내역 가져오기</button>
     <button class="btn" id="btn-export-csv" title="현재 탭·필터 기준 CSV 내보내기">⬇ CSV 내보내기</button>
     <button class="btn" id="btn-reset-data" title="Excel 원본 데이터로 초기화">↺ 초기화</button>
@@ -260,7 +262,7 @@ function calcMaterial(boxCode, tempZone) {
     <table id="tbl-claims">
       <thead><tr>
         <th style="width:28px;text-align:center"><input type="checkbox" id="sel-all" title="전체 선택"></th><th>일수</th><th>쇼핑몰</th><th>접수일</th><th>출고일</th>
-        <th>운송장번호</th><th style="max-width:70px">수취인</th><th>구분</th><th>사유</th>
+        <th>운송장번호</th><th style="text-align:center" data-noexport>사진</th><th style="max-width:70px">수취인</th><th>구분</th><th>사유</th>
         <th>품목코드</th><th>상품명</th><th class="num">수량</th>
         <th>품목코드</th><th>누락제품</th><th class="num">누락수량</th>
         <th>품목코드</th><th>오배송/사고제품</th><th class="num">사고수량</th>
@@ -352,10 +354,22 @@ function calcMaterial(boxCode, tempZone) {
     </div>
     <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
       <label for="import-pw" style="font-size:12.5px;font-weight:600;color:#3D4248;white-space:nowrap">엑셀 비밀번호</label>
-      <input type="password" id="import-pw" autocomplete="off" placeholder="암호가 걸린 파일만 입력" style="flex:1;min-width:0;height:34px;padding:0 10px;border:1px solid #D9D6D0;border-radius:8px;font-size:13px">
+      <input type="text" id="import-pw" autocomplete="off" value="muc" placeholder="암호가 걸린 파일만 입력" style="flex:1;min-width:0;height:34px;padding:0 10px;border:1px solid #D9D6D0;border-radius:8px;font-size:13px">
     </div>
     <div id="import-result"></div>
     <div id="import-preview"><table><thead><tr><th>송장번호</th><th>쇼핑몰</th><th>수취인</th><th>출고일</th><th>품목코드</th><th>상품명</th><th>수량</th><th>실결제금액</th></tr></thead><tbody id="import-preview-body"></tbody></table></div>
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <h3 style="font-size:13px;font-weight:700;margin:0">보관 중인 통합내역</h3>
+        <span id="wbm-total" style="font-size:11.5px;color:var(--muted)"></span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:8px">출고월 기준 최근 6개월만 보관하고 지난 내역은 자동으로 지웁니다. 클레임에 연결된 송장은 기간과 상관없이 남깁니다.</div>
+      <div id="wbm-auto" style="display:none;font-size:11.5px;color:var(--success);margin-bottom:8px"></div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="color:var(--muted);text-align:left"><th style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600">출고월</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600;text-align:right">송장</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600;text-align:right">클레임 연결</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600;text-align:right">용량</th><th style="padding:6px 8px;border-bottom:1px solid var(--border)"></th></tr></thead>
+        <tbody id="wbm-body"></tbody>
+      </table>
+    </div>
     <div class="modal-actions" style="margin-top:12px;">
       <button class="btn" id="import-cancel">취소</button>
       <button class="btn primary" id="import-run">📥 가져오기</button>
@@ -375,7 +389,7 @@ function calcMaterial(boxCode, tempZone) {
     </div>
     <textarea id="memo-text" placeholder="여기에 붙여넣거나 파일을 불러오세요" style="height:140px;resize:vertical;font-family:inherit;font-size:12px;padding:8px;border:1px solid #DDE2ED;border-radius:6px"></textarea>
     <div style="max-height:240px;overflow:auto;border:1px solid #DDE2ED;border-radius:6px"><table style="width:100%"><thead><tr><th>원송장번호</th><th>비고</th><th class="num">실결제금액</th><th>재출고송장</th><th>대상</th></tr></thead><tbody id="memo-tbody"></tbody></table></div>
-    <div style="color:#5B6475">같은 송장에 여러 행이 있으면 비고·재출고는 모든 행에, 실결제금액은 첫 행에만 들어갑니다. 빨간 줄은 현재 월 목록에 없는 송장입니다.</div>
+    <div style="color:#5B6475">같은 송장에 여러 행이 있으면 재출고는 모든 행에, 비고·실결제금액은 첫 행에만 들어갑니다. 빨간 줄은 현재 월 목록에 없는 송장입니다.</div>
     <div class="modal-actions"><button class="btn" id="memo-cancel">취소</button><button class="btn primary" id="memo-run" disabled>반영</button></div>
   </div>
 </div>
@@ -778,10 +792,11 @@ function renderClaims() {
   const tbody = document.getElementById('tbody-claims');
   tbody.innerHTML = '';
   if(!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="32" class="empty-state">조건에 맞는 데이터가 없습니다</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="33" class="empty-state">조건에 맞는 데이터가 없습니다</td></tr>';
     updateSelUI(filtered);
     return;
   }
+  const photoSeen = new Set();
   // 중복 송장 그룹 색상 지정
   const wbColorMap = {};
   let colorToggle = 0;
@@ -793,6 +808,7 @@ function renderClaims() {
   });
 
   filtered.forEach(row => {
+    const _pw = String(row.waybill || '').replace(/\D/g, ''), photoFirst = !!_pw && !photoSeen.has(_pw); if (_pw) photoSeen.add(_pw);
     const isOver = typeof row.days === 'number' && row.days > 14;
     const tr = document.createElement('tr');
     if(isOver) tr.classList.add('excluded');
@@ -817,6 +833,7 @@ function renderClaims() {
       <td>${fmt(row.recv)}</td>
       <td>${fmt(row.ship)}</td>
       <td class="mono">${fmt(row.waybill)}</td>
+      <td style="text-align:center">${window.photoCell && photoFirst ? window.photoCell(row.waybill) : ''}</td>
       <td style="max-width:70px;overflow:hidden;text-overflow:ellipsis">${fmt(row.name)}</td>
       <td><span class="type-badge ${typeCls}">${fmt(row.type)}</span></td>
       <td><span class="reason-chip">${fmt(row.reason)}</span></td>
@@ -858,6 +875,7 @@ function updateSelUI(filtered) {
   [...selIds].forEach(id => { if (!ids.has(id)) selIds.delete(id); });
   document.getElementById('sel-count').textContent = selIds.size;
   document.getElementById('btn-del-sel').disabled = !selIds.size;
+  document.getElementById('btn-save-photo').disabled = !selIds.size;
   const all = document.getElementById('sel-all');
   const vis = (filtered || []).filter(r => selIds.has(r.id)).length;
   all.checked = !!filtered && filtered.length > 0 && vis === filtered.length;
@@ -1231,7 +1249,7 @@ function exportClaimsCsv() {
   const table = tbody.closest('table');
   const ths = [...table.querySelectorAll('thead tr:last-child th')];
   const first = tbody.querySelector('tr');
-  const keep = ths.map((th, i) => i).filter(i => !(first && first.children[i] && first.children[i].querySelector('button')));
+  const keep = ths.map((th, i) => i).filter(i => !ths[i].hasAttribute('data-noexport') && !(first && first.children[i] && first.children[i].querySelector('button')));
   const head = keep.map(i => ths[i].textContent.trim());
   const body = [...tbody.querySelectorAll('tr')].filter(tr => !tr.querySelector('.empty-state')).map(tr => {
     const tds = [...tr.children];
@@ -1291,7 +1309,7 @@ function uiDialog(msg, buttons) {
     const row = document.createElement('div'); row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end';
     buttons.forEach((b, i) => {
       const el = document.createElement('button'); el.textContent = b.label;
-      el.style.cssText = 'height:32px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid ' + (b.primary ? '#1A4ED8;background:#1A4ED8;color:#fff' : '#DDE2ED;background:#F5F7FB;color:#0F1624');
+      el.style.cssText = 'height:32px;padding:0 12px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid ' + (b.primary ? '#2563EB;background:#2563EB;color:#fff' : '#DDE2ED;background:#F5F7FB;color:#0F1624');
       el.onclick = () => { back.remove(); resolve(b.value); };
       row.appendChild(el);
     });
@@ -1360,7 +1378,7 @@ document.getElementById('memo-run').addEventListener('click', () => {
     const t = memoTargets(p.waybill); if (!t.length) return;
     lines++;
     t.forEach((r, i) => {
-      if (p.note) r.note = p.note;
+      if (p.note && i === 0) r.note = p.note;
       if (p.reship) r.reship = p.reship;
       if (p.price != null && i === 0) r.price = p.price;
       rows++;
@@ -1371,7 +1389,7 @@ document.getElementById('memo-run').addEventListener('click', () => {
   uiAlert(`${lines}건(${rows}행) 반영했습니다.`);
 });
 
-document.getElementById('btn-import-excel').addEventListener('click', () => {
+document.getElementById('btn-import-excel')?.addEventListener('click', () => {
   document.getElementById('excel-file-input').value = '';
   document.getElementById('excel-file-input').click();
 });
@@ -2086,7 +2104,15 @@ const WB_CACHE_KEY = 'wb_cache_v1';
 
 // Load custom waybillCache from localStorage (merged on top of baked-in)
 let runtimeWbCache = {};
-const wbReady = (window.WbStore ? WbStore.load() : Promise.resolve({})).then(v => { Object.assign(runtimeWbCache, v || {}); migrateMultiWbKeys(); }).catch(() => {});
+let wbAutoMsg = '';
+const wbReady = (window.WbStore ? WbStore.load() : Promise.resolve({})).then(v => {
+  Object.assign(runtimeWbCache, v || {}); migrateMultiWbKeys();
+  // 자동 정리: 6개월 지난 통합내역 (클레임 연결 송장 제외)
+  if (WbStore.prune) {
+    const gone = WbStore.prune(runtimeWbCache);
+    if (gone.length) { wbAutoMsg = `오늘 ${WbStore.KEEP}개월 지난 송장 ${gone.length.toLocaleString()}건을 자동 정리했습니다.`; saveWbCache().catch(() => {}); }
+  }
+}).catch(() => {});
 const saveWbCache = () => window.WbStore ? WbStore.save(runtimeWbCache) : Promise.reject(new Error('저장소를 불러오지 못했습니다'));
 
 // 송장번호 정규화: 공백·하이픈 제거, 엑셀 숫자형(302041045904.0) 소수점 제거
@@ -2153,6 +2179,44 @@ function lookupWaybill(wbNum) {
   }
 }
 
+// 출고일 → YYYYMM (연도를 알 수 있을 때만)
+function parseShipYm(raw) {
+  if(typeof raw === 'number') { try { const d = XLSX.SSF.parse_date_code(raw); if(d && d.y) return d.y * 100 + d.m; } catch(e) {} return 0; }
+  const m = String(raw == null ? '' : raw).match(/(\d{4})[\/\-.](\d{1,2})/);
+  return m ? +m[1] * 100 + +m[2] : 0;
+}
+
+function renderWbManage() {
+  const body = document.getElementById('wbm-body'); if(!body || !window.WbStore || !WbStore.monthOf) return;
+  const cs = WbStore.claimSet(), g = {};
+  let total = 0;
+  Object.keys(runtimeWbCache).forEach(k => {
+    const e = runtimeWbCache[k], ym = WbStore.monthOf(e), b = WbStore.size(e);
+    const r = g[ym] || (g[ym] = { n: 0, c: 0, b: 0 });
+    r.n++; r.b += b; total += b; if(WbStore.linked(k, e, cs)) r.c++;
+  });
+  const kb = n => n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
+  const cell = 'padding:6px 8px;border-bottom:1px solid var(--border);';
+  const yms = Object.keys(g).map(Number).sort((a, b) => b - a);
+  body.innerHTML = yms.length ? yms.map(ym => {
+    const r = g[ym], label = ym ? `${Math.floor(ym / 100)}년 ${ym % 100}월` : '출고일 없음';
+    const can = ym && r.n > r.c;
+    return `<tr><td style="${cell}font-weight:600">${label}</td><td style="${cell}text-align:right;font-variant-numeric:tabular-nums">${r.n.toLocaleString()}건</td><td style="${cell}text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)">${r.c ? r.c.toLocaleString() + '건' : '-'}</td><td style="${cell}text-align:right;font-variant-numeric:tabular-nums">${kb(r.b)}</td><td style="${cell}text-align:right">${can ? `<button class="btn" data-wbm-del="${ym}" style="height:26px;color:var(--danger)">지우기</button>` : ''}</td></tr>`;
+  }).join('') : `<tr><td colspan="5" style="${cell}color:var(--muted);text-align:center">보관 중인 통합내역이 없습니다.</td></tr>`;
+  document.getElementById('wbm-total').textContent = `${Object.keys(runtimeWbCache).length.toLocaleString()}건 · ${kb(total)}`;
+  const au = document.getElementById('wbm-auto'); au.textContent = wbAutoMsg; au.style.display = wbAutoMsg ? 'block' : 'none';
+}
+document.getElementById('wbm-body').addEventListener('click', async e => {
+  const b = e.target.closest('[data-wbm-del]'); if(!b) return;
+  const ym = +b.dataset.wbmDel;
+  if(!confirm(`${Math.floor(ym / 100)}년 ${ym % 100}월 통합내역을 지울까요?\n클레임에 연결된 송장은 남습니다.`)) return;
+  WbStore.dropMonth(ym);
+  const gone = WbStore.prune(runtimeWbCache);
+  try { await saveWbCache(); } catch(err) { alert('저장하지 못했습니다: ' + (err && err.message || err)); }
+  wbAutoMsg = `${Math.floor(ym / 100)}년 ${ym % 100}월 송장 ${gone.length.toLocaleString()}건을 지웠습니다.`;
+  renderWbManage();
+});
+
 function parseShipDate(raw) {
   if(raw === '' || raw == null) return '';
   if(typeof raw === 'number') {
@@ -2173,6 +2237,7 @@ document.getElementById('btn-import-wb').addEventListener('click', () => {
   document.getElementById('import-result').style.display = 'none';
   document.getElementById('import-preview').style.display = 'none';
   document.getElementById('import-overlay').hidden = false;
+  wbReady.then(renderWbManage);
 });
 document.getElementById('import-file').addEventListener('change', e => {
   const f = e.target.files[0];
@@ -2276,9 +2341,11 @@ document.getElementById('import-run').addEventListener('click', async () => {
     if(channel.replace(/\s+/g, '') === '스마트스토어(도착보장)') mall = '도착보장';
     const name = str(cell('name'));
     const ship = parseShipDate(cell('ship'));
+    const ym = parseShipYm(cell('ship'));
     const item = { code: normWb(cell('code')), product: str(cell('product')), qty: num(cell('qty')), amount: num(cell('amount')) };
 
-    const e = wbList.map(w => newCache[w]).find(Boolean) || { mall, name, ship, products: [], items: [] };
+    const e = wbList.map(w => newCache[w]).find(Boolean) || { mall, name, ship, ym, products: [], items: [] };
+    if(!e.ym && ym) e.ym = ym;
     wbList.forEach(w => { newCache[w] = e; });
     if(wbList.length > 1 || e.group) e.group = [...new Set([...(e.group || []), ...wbList])];
     if(!e.mall && mall) e.mall = mall;
@@ -2307,10 +2374,13 @@ document.getElementById('import-run').addEventListener('click', async () => {
     cur.items = cur.items || [];
     n.products.forEach(p => { if(!cur.products.includes(p)) cur.products.push(p); });
     n.items.forEach(it => { if(!cur.items.some(x => x.product === it.product)) cur.items.push(it); });
-    ['mall','name','ship'].forEach(k => { if(!cur[k] && n[k]) cur[k] = n[k]; });
+    ['mall','name','ship','ym'].forEach(k => { if(!cur[k] && n[k]) cur[k] = n[k]; });
     if(n.group) cur.group = [...new Set([...(cur.group || []), ...n.group])];
     if(JSON.stringify(cur) !== before) { runtimeWbCache[wb] = cur; updated++; }
   });
+  // 직접 지웠던 달을 다시 가져오면 그 달은 다시 보관
+  const impYms = [...new Set(wbs.map(w => WbStore.monthOf(newCache[w])).filter(Boolean))];
+  if(WbStore.undrop) WbStore.undrop(impYms);
   try { await saveWbCache(); }
   catch(e) { return fail('저장하지 못했습니다: ' + (e && e.message || e)); }
 
@@ -2341,9 +2411,193 @@ document.getElementById('import-run').addEventListener('click', async () => {
   resEl.textContent = `✔ 완료! 신규 추가 ${added.length}건, 기존 운송장 보충 ${updated}건, 변경 없음 ${wbs.length - added.length - updated}건 (송장번호 없는 행 ${skipped}행 제외). 현재 운송장 캐시: ${total}건`;
   resEl.style.display = 'block';
   render();
+  renderWbManage();
 });
 
 // ===== INIT =====
 render();
 claimSync.connect();
+</script>
+<script>
+// ===== 클레임 사진: 사진 속 송장번호 ↔ 클레임 송장 매칭 (IndexedDB 보관, 파일 해시로 중복 차단) =====
+(() => {
+  const DB = 'mw_claim_photos', ST = 'photos';
+  let PH = [];
+  const norm = w => String(w || '').replace(/\D/g, '');
+  const openDb = () => new Promise((res, rej) => {
+    const q = indexedDB.open(DB, 1);
+    q.onupgradeneeded = () => q.result.createObjectStore(ST, { keyPath: 'hash' });
+    q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
+  });
+  const tx = async (mode, fn) => { const db = await openDb(); return new Promise((res, rej) => { const t = db.transaction(ST, mode), s = t.objectStore(ST); const r = fn(s); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); }); };
+  const loadAll = async () => { try { PH = (await tx('readonly', s => s.getAll())) || []; } catch (e) { PH = []; } };
+  const forWb = wb => { const n = norm(wb); return n ? PH.filter(p => p.waybills.includes(n)) : []; };
+  // 공유: 실시간 공유 주소가 있으면 Firebase(mwclaimidx = 목록, mwclaimphotos = 압축 사진)에 함께 저장
+  const SURL = () => (localStorage.getItem('mw_sync_url') || '').trim().replace(/\/+$/, '');
+  const key = h => String(h).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const rget = async p => { const r = await fetch(SURL() + '/' + p + '.json'); if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? '권한 없음 (데이터베이스 규칙에 mwclaimidx·mwclaimphotos 추가 필요)' : 'HTTP ' + r.status); return r.json(); };
+  const rput = async (p, v) => { const r = await fetch(SURL() + '/' + p + '.json', v == null ? { method: 'DELETE' } : { method: 'PUT', body: JSON.stringify(v) }); if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? '권한 없음 (데이터베이스 규칙에 mwclaimidx·mwclaimphotos 추가 필요)' : 'HTTP ' + r.status); };
+  const meta = p => ({ hash: p.hash, name: p.name, type: p.type, size: p.size, waybills: p.waybills, at: p.at });
+  const upload = async p => { const c = await toCanvas(p.blob, 1000); await rput('mwclaimphotos/' + key(p.hash), c.toDataURL('image/jpeg', 0.75)); await rput('mwclaimidx/' + key(p.hash), meta(p)); };
+  let syncing = false, pruned = false;
+  const OLD = 90 * 864e5;
+  const syncRemote = async () => {
+    if (!SURL() || syncing) return; syncing = true;
+    try {
+      const idx = (await rget('mwclaimidx')) || {};
+      const remote = new Map(Object.values(idx).filter(m => m && m.hash).map(m => [m.hash, m]));
+      if (!pruned) {
+        pruned = true;
+        for (const [h, m] of remote) {
+          if (m.del || m.exp || !(Date.now() - (m.at || 0) > OLD)) continue;
+          try { await rput('mwclaimphotos/' + key(h), null); const e = { hash: h, exp: true, at: m.at }; await rput('mwclaimidx/' + key(h), e); remote.set(h, e); } catch (err) { break; }
+        }
+      }
+      for (const [h, m] of remote) {
+        const p = PH.find(x => x.hash === h);
+        if (m.del) { if (p) { PH = PH.filter(x => x !== p); try { await tx('readwrite', s => s.delete(h)); } catch (e) {} } }
+        else if (m.exp) { if (p && !p.blob) PH = PH.filter(x => x !== p); }
+        else if (p) p.waybills = m.waybills || p.waybills;
+        else PH.push({ ...m, waybills: m.waybills || [], blob: null });
+      }
+      for (const p of PH.filter(x => x.blob && !remote.has(x.hash) && Date.now() - (x.at || 0) <= OLD)) { try { await upload(p); } catch (e) { console.warn('클레임 사진 공유 저장 실패', e); break; } }
+      renderClaims();
+    } catch (e) { console.warn('클레임 사진 공유 불러오기 실패', e); }
+    syncing = false;
+  };
+  const ensureBlob = async p => {
+    if (p.blob || !SURL()) return p;
+    try { const d = await rget('mwclaimphotos/' + key(p.hash)); if (d) { p.blob = await (await fetch(d)).blob(); await tx('readwrite', s => s.put(p)); } } catch (e) {}
+    return p;
+  };
+
+  window.photoCell = wb => {
+    const n = forWb(wb).length;
+    if (!n) return '';
+    return `<button data-photo="${norm(wb)}" title="사진 보기" style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border:1px solid #BFD3FB;background:#EEF4FF;color:#2F5BD3;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="11" r="2"></circle><path d="M21 17l-5-5-8 7"></path></svg>${n}</button>`;
+  };
+
+  const hashOf = async f => {
+    try { const b = await crypto.subtle.digest('SHA-256', await f.arrayBuffer()); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+    catch (e) { return 'n:' + f.name + ':' + f.size + ':' + f.lastModified; }
+  };
+  const loadScript = src => new Promise((res, rej) => { if (document.querySelector(`script[src="${src}"]`)) return res(); const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  const toCanvas = async (f, max = 2200) => {
+    const bmp = await createImageBitmap(f); const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); return c;
+  };
+  const hits = (text, known) => {
+    const out = new Set(), lines = String(text || '').split(/\n/).map(norm).concat([norm(text)]);
+    known.forEach(k => { if (lines.some(l => l.includes(k))) out.add(k); });
+    return [...out];
+  };
+  let worker = null;
+  const ocr = async c => {
+    await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+    if (!worker) { worker = await Tesseract.createWorker('eng'); await worker.setParameters({ tessedit_char_whitelist: '0123456789-' }); }
+    return (await worker.recognize(c)).data.text;
+  };
+  const barcodes = async c => {
+    let txt = '';
+    try { if ('BarcodeDetector' in window) { const r = await new BarcodeDetector().detect(c); txt += r.map(x => x.rawValue).join('\n'); } } catch (e) {}
+    if (!txt) try {
+      await loadScript('https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js');
+      const r = new ZXing.BrowserMultiFormatReader(); txt += (await r.decodeFromImageUrl(c.toDataURL('image/jpeg', 0.9))).getText();
+    } catch (e) {}
+    return txt;
+  };
+  const matchFile = async (f, known) => {
+    let m = hits(f.name, known); if (m.length) return m;
+    const c = await toCanvas(f);
+    m = hits(await barcodes(c), known); if (m.length) return m;
+    return hits(await ocr(c), known);
+  };
+
+  const btnImp = document.getElementById('btn-import-photo'), inp = document.getElementById('photo-file-input');
+  btnImp.addEventListener('click', () => { inp.value = ''; inp.click(); });
+  inp.addEventListener('change', async () => {
+    const files = [...inp.files]; if (!files.length) return;
+    const known = [...new Set(data.map(r => norm(r.waybill)).filter(w => w.length >= 9))];
+    const label = btnImp.textContent; btnImp.disabled = true;
+    await syncRemote();
+    const res = { ok: 0, dup: [], miss: [], upErr: '' }, seen = new Set(PH.map(p => p.hash));
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]; btnImp.textContent = `🖼 인식 중 ${i + 1}/${files.length}`;
+      try {
+        const h = await hashOf(f);
+        if (seen.has(h)) { res.dup.push(f.name); continue; }
+        const m = await matchFile(f, known);
+        if (!m.length) { res.miss.push(f.name); continue; }
+        if (PH.some(p => p.name === f.name && p.size === f.size && m.every(w => p.waybills.includes(w)))) { res.dup.push(f.name); continue; }
+        const rec = { hash: h, name: f.name, type: f.type, size: f.size, blob: f, waybills: m, at: Date.now() };
+        await tx('readwrite', s => s.put(rec)); PH.push(rec); seen.add(h); res.ok++;
+        if (SURL() && !res.upErr) { try { await upload(rec); } catch (e) { res.upErr = e.message; } }
+      } catch (e) { res.miss.push(f.name); }
+    }
+    btnImp.textContent = label; btnImp.disabled = false;
+    renderClaims();
+    let msg = `사진 ${files.length}장 처리\n· 등록 ${res.ok}장`;
+    if (res.dup.length) msg += `\n· 이미 등록된 사진 ${res.dup.length}장 (건너뜀)\n  ${res.dup.slice(0, 10).join(', ')}`;
+    if (res.miss.length) msg += `\n· 송장 불일치 ${res.miss.length}장\n  ${res.miss.slice(0, 10).join(', ')}`;
+    if (res.upErr) msg += `\n\n⚠ 다른 컴퓨터와 공유 저장 실패: ${res.upErr}\n  (이 컴퓨터에는 저장됨)`;
+    else if (!SURL() && res.ok) msg += `\n\n※ 실시간 공유가 연결되지 않아 이 컴퓨터에만 저장됩니다.`;
+    alert(msg);
+  });
+
+  const dl = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
+  document.getElementById('btn-save-photo').addEventListener('click', async () => {
+    const wbs = new Set(data.filter(r => selIds.has(r.id)).map(r => norm(r.waybill)).filter(Boolean));
+    let list = PH.filter(p => p.waybills.some(w => wbs.has(w)));
+    if (!list.length) { alert('선택한 행에 등록된 사진이 없습니다.'); return; }
+    await Promise.all(list.map(ensureBlob)); list = list.filter(p => p.blob);
+    if (!list.length) { alert('공유된 사진을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return; }
+    let dir = null;
+    if (window.showDirectoryPicker) { try { dir = await showDirectoryPicker({ mode: 'readwrite' }); } catch (e) { if (e && e.name === 'AbortError') return; dir = null; } }
+    if (dir) {
+      for (const p of list) { const fh = await dir.getFileHandle(p.name, { create: true }); const w = await fh.createWritable(); await w.write(p.blob); await w.close(); }
+      alert(`사진 ${list.length}장을 저장했습니다.`);
+    } else if (list.length === 1) {
+      dl(list[0].blob, list[0].name);
+    } else {
+      try {
+        await loadScript('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js');
+        const zip = new JSZip(), used = {};
+        list.forEach(p => { let n = p.name; if (used[n]) { const k = n.lastIndexOf('.'); n = k > 0 ? `${n.slice(0, k)} (${used[p.name]})${n.slice(k)}` : `${n} (${used[p.name]})`; } used[p.name] = (used[p.name] || 0) + 1; zip.file(n, p.blob); });
+        const d = new Date(), ds = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+        dl(await zip.generateAsync({ type: 'blob' }), `클레임사진_${ds}_${list.length}장.zip`);
+      } catch (e) { for (const p of list) { dl(p.blob, p.name); await new Promise(r => setTimeout(r, 350)); } }
+    }
+  });
+
+  const view = async wb => {
+    let list = PH.filter(p => p.waybills.includes(wb)); if (!list.length) return;
+    await Promise.all(list.map(ensureBlob)); list = list.filter(p => p.blob);
+    if (!list.length) { alert('공유된 사진을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'); return; }
+    const ov = document.createElement('div'); const urls = [];
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px';
+    ov.innerHTML = `<div style="background:#fff;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow:auto;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><strong style="font-size:14px">사진 · ${wb}</strong><span style="color:var(--muted);font-size:12px">${list.length}장</span><button class="btn" data-x style="margin-left:auto">닫기</button></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">${list.map(p => { const u = URL.createObjectURL(p.blob); urls.push(u); return `<figure style="margin:0;display:flex;flex-direction:column;gap:6px"><a href="${u}" target="_blank"><img src="${u}" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--border)"></a><figcaption style="display:flex;align-items:center;gap:6px;font-size:11px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.name}">${p.name}</span><button class="btn" data-del="${p.hash}" style="height:22px;padding:0 8px;font-size:11px">삭제</button></figcaption></figure>`; }).join('')}</div></div>`;
+    const close = () => { urls.forEach(u => URL.revokeObjectURL(u)); ov.remove(); };
+    ov.addEventListener('click', async e => {
+      if (e.target === ov || e.target.closest('[data-x]')) return close();
+      const d = e.target.closest('[data-del]'); if (!d) return;
+      const p = PH.find(x => x.hash === d.dataset.del); if (!p || !confirm(`'${p.name}' 사진을 삭제할까요?`)) return;
+      const rest = p.waybills.filter(w => w !== wb);
+      if (rest.length) { p.waybills = rest; await tx('readwrite', s => s.put(p)); } else { await tx('readwrite', s => s.delete(p.hash)); PH = PH.filter(x => x !== p); }
+      if (SURL() && Date.now() - (p.at || 0) <= OLD) try {
+        if (rest.length) await rput('mwclaimidx/' + key(p.hash), meta(p));
+        else { await rput('mwclaimidx/' + key(p.hash), { hash: p.hash, del: true, at: Date.now() }); await rput('mwclaimphotos/' + key(p.hash), null); }
+      } catch (err) { alert('다른 컴퓨터 공유본 삭제 실패: ' + err.message); }
+      close(); renderClaims(); if (forWb(wb).length) view(wb);
+    });
+    document.body.appendChild(ov);
+  };
+  document.getElementById('tbody-claims').addEventListener('click', e => { const b = e.target.closest('[data-photo]'); if (b) view(b.dataset.photo); });
+
+  loadAll().then(() => { renderClaims(); syncRemote(); });
+  window.addEventListener('focus', () => syncRemote());
+  setInterval(() => { if (!document.hidden) syncRemote(); }, 60000);
+})();
 </script>
