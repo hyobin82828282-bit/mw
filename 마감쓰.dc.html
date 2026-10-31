@@ -1135,7 +1135,7 @@
 
     <sc-if value="{{ keepClaims }}">
       <div style="display:{{ dispClaims }};flex:1;flex-direction:column;min-height:0">
-        <iframe src="pages/claims.html?v=20261017g" style="flex:1;width:100%;min-height:100vh;border:0;background:#fff"></iframe>
+        <iframe src="pages/claims.html?v=20261031c" style="flex:1;width:100%;min-height:100vh;border:0;background:#fff"></iframe>
       </div>
     </sc-if>
     <sc-if value="{{ keepClaimsX }}">
@@ -2050,6 +2050,7 @@ class Component extends DCLogic {
     this._onMsg = e => { if (e && e.data && e.data.type === "mw-ret-photo") this.flushPending(); };
     window.addEventListener("message", this._onMsg);
     setTimeout(() => this.flushPending(), 1500);
+    setTimeout(() => this.photoPrune().catch(() => {}), 15000);
     this.syncInit();
     this.mergeInvoices();
     import("./exclude-list.js").then(m => this.setState({ excludeCount: m.EXCLUDE.length })).catch(() => {});
@@ -3231,12 +3232,27 @@ class Component extends DCLogic {
     if (this._flushAgain) { this._flushAgain = false; this.flushPending(); }
   }
   photoLive() { const S = window.MwSync; return S && S.url() && S.photoGet ? S : null; }
+  photoOld(id) {
+    const r = (this.state.returns || []).find(x => x.id === id), d = r && (r.inbound || r.requested || r.confirmed);
+    if (!d) return false;
+    const t = new Date(String(d).slice(0, 10)).getTime();
+    return !isNaN(t) && Date.now() - t > 90 * 864e5;
+  }
+  async photoPrune() {
+    const S = this.photoLive(); if (!S) return;
+    const K = "mw_photo_prune_at", today = todayStr();
+    if (localStorage.getItem(K) === today) return;
+    const old = (this.state.returns || []).filter(r => r.photos && this.photoOld(r.id));
+    for (const r of old) { const w = await S.photoPut(r.id, []); if (!w.ok) return; }
+    try { localStorage.setItem(K, today); } catch (e) {}
+  }
   async photoGet(id) {
     const local = await this.photoLocalGet(id), S = this.photoLive();
     if (!S) return { list: local };
     const r = await S.photoGet(id);
     if (!r.ok) return { list: local, err: r.msg };
     if (r.list.length) { this.photoLocalPut(id, r.list); return { list: r.list }; }
+    if (this.photoOld(id)) return { list: local, pruned: true };
     if (local.length) { const w = await S.photoPut(id, local); return { list: local, err: w.ok ? "" : w.msg }; }
     return { list: [] };
   }
@@ -3251,10 +3267,10 @@ class Component extends DCLogic {
     return Promise.all([...(files || [])].filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name || "")).map(f => new Promise(res => {
       const url = URL.createObjectURL(f), img = new Image();
       img.onload = () => {
-        const k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+        const k = Math.min(1, 1000 / Math.max(img.width, img.height)), c = document.createElement("canvas");
         c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-        URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", 0.82));
+        URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", 0.75));
       };
       img.onerror = () => { URL.revokeObjectURL(url); res(null); };
       img.src = url;
@@ -3270,8 +3286,8 @@ class Component extends DCLogic {
   openPhotoView(r) {
     this.setState({ photoView: { id: r.id, invoice: r.invoice, list: [], loading: true, err: "" } });
     this.photoGet(r.id).then(g => this.setState(p => p.photoView && p.photoView.id === r.id ? {
-      photoView: { ...p.photoView, list: g.list, loading: false, err: g.err || "" },
-      returns: (p.returns.find(x => x.id === r.id) || {}).photos !== g.list.length && !g.err ? p.returns.map(x => x.id === r.id ? Object.assign({}, x, { photos: g.list.length }) : x) : p.returns
+      photoView: { ...p.photoView, list: g.list, loading: false, err: g.err || (g.pruned && !g.list.length ? "3개월이 지나 공유 사진이 삭제됐습니다. 처음 올린 컴퓨터에서만 볼 수 있습니다." : "") },
+      returns: (p.returns.find(x => x.id === r.id) || {}).photos !== g.list.length && !g.err && !g.pruned ? p.returns.map(x => x.id === r.id ? Object.assign({}, x, { photos: g.list.length }) : x) : p.returns
     } : null));
   }
   setPhotos(id, list) {
