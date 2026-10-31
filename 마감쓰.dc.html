@@ -1467,15 +1467,6 @@
             <button onClick="{{ syncClose }}" style="width:28px;height:28px;border:1px solid #E5E7EB;border-radius:7px;background:#fff;color:#6B7280;font-size:13px;cursor:pointer">✕</button>
           </div>
           <div style="padding:18px 22px;display:flex;flex-direction:column;gap:14px">
-            <div style="padding:14px 16px;border-radius:10px;background:#F9FAFB;border:1px solid #E5E7EB;font-size:12.5px;color:#4B5563;line-height:1.7">
-              <div style="font-weight:700;color:#0F172A;margin-bottom:4px">처음 한 번만 (한 사람이)</div>
-              <div>1. console.firebase.google.com 에서 프로젝트 만들기 (무료)</div>
-              <div>2. 빌드 → Realtime Database → 데이터베이스 만들기 → 테스트 모드로 시작</div>
-              <div>3. 규칙 탭에 아래 내용을 붙여넣고 게시</div>
-              <div style="margin:4px 0;padding:6px 10px;border-radius:6px;background:#fff;border:1px solid #E5E7EB;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#0F172A">{ "rules": { "mw": { ".read": true, ".write": true }, "mwphotos": { ".read": true, ".write": true } } }</div>
-              <div>4. 데이터 탭 상단의 주소를 복사해 아래에 붙여넣기. 같이 쓸 사람도 같은 주소를 넣으면 됩니다.</div>
-              <div style="margin-top:6px;color:#6B7280">주소를 아는 사람은 누구나 읽고 쓸 수 있으니 외부에 공유하지 마세요.</div>
-            </div>
             <div>
               <label style="display:block;font-size:12px;font-weight:600;color:#6B7280;margin-bottom:5px">데이터베이스 주소</label>
               <input value="{{ syncUrlDraft }}" onChange="{{ onSyncUrl }}" placeholder="https://프로젝트-default-rtdb.asia-southeast1.firebasedatabase.app" style="width:100%;height:38px;padding:0 11px;border:1px solid #D1D5DB;border-radius:8px;background:#F9FAFB;font-size:13px;outline:none" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px #EFF4FF">
@@ -2144,8 +2135,13 @@ class Component extends DCLogic {
         local = local || {};
         const synced = this._wbSynced || (this._wbSynced = {}), up = {};
         let changed = false;
-        Object.keys(rm).forEach(k => { const t = JSON.stringify(rm[k]); synced[k] = t; if (JSON.stringify(local[k]) !== t) { local[k] = rm[k]; changed = true; } });
-        if (join) Object.keys(local).forEach(k => { if (!(k in rm)) { up[k] = local[k]; synced[k] = JSON.stringify(local[k]); } });
+        const W = window.WbStore, cp = W.compact || (x => x), cs = W.claimSet ? W.claimSet() : null, dl = W.drops ? W.drops() : [];
+        Object.keys(rm).forEach(k => {
+          if (cs && W.prunable(k, rm[k], cs, dl)) { up[k] = null; delete synced[k]; if (k in local) { delete local[k]; changed = true; } return; }
+          const t = JSON.stringify(rm[k]); synced[k] = t;
+          if (!(k in local) || JSON.stringify(cp(local[k])) !== t) { local[k] = W.hydrate ? W.hydrate(rm[k]) : rm[k]; changed = true; }
+        });
+        if (join) Object.keys(local).forEach(k => { if (!(k in rm)) { up[k] = cp(local[k]); synced[k] = JSON.stringify(up[k]); } });
         if (Object.keys(up).length) S.putMap("wb", up);
         if (changed) WbStore.save(local).then(() => { this._runtime = local; this.mergeInvoices(); });
       }).catch(() => {});
@@ -2157,7 +2153,10 @@ class Component extends DCLogic {
     const S = window.MwSync;
     if (!S || !S.url() || !S.ready() || !v) return;
     const synced = this._wbSynced || (this._wbSynced = {}), up = {};
-    Object.keys(v).forEach(k => { const t = JSON.stringify(v[k]); if (synced[k] !== t) { up[k] = v[k]; synced[k] = t; } });
+    const cp = window.WbStore && WbStore.compact || (x => x);
+    Object.keys(v).forEach(k => { const c = cp(v[k]), t = JSON.stringify(c); if (synced[k] !== t) { up[k] = c; synced[k] = t; } });
+    // 통합내역에서 지운 송장은 공유 저장소에서도 지움
+    if (Object.keys(v).length) Object.keys(synced).forEach(k => { if (!(k in v)) { up[k] = null; delete synced[k]; } });
     if (Object.keys(up).length) S.putMap("wb", up);
   }
   pushDiff(f, pv, cur) {

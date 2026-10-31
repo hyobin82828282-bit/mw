@@ -56,6 +56,7 @@ input:focus-visible,button:focus-visible,label:focus-visible{outline:2px solid #
             전체선택 <span style="color:#6B7280">{{ selLabel }}</span>
           </label>
           <button type="button" onClick="{{ saveSel }}" disabled="{{ selDisabled }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #2563EB;background:#fff;color:#2563EB;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ selOpacity }}" style-hover="background:#EFF4FF">{{ selSaveLabel }}</button>
+          <button type="button" onClick="{{ delSel }}" disabled="{{ delSelDisabled }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #D1D5DB;background:#fff;color:#b42318;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ delSelOpacity }}" style-hover="background:#fdecea;border-color:#b42318">{{ delSelLabel }}</button>
           <button type="button" onClick="{{ clearAll }}" style="font:inherit;font-size:13px;font-weight:600;border:1px solid #D1D5DB;background:#fff;color:#0F172A;border-radius:8px;padding:8px 14px;cursor:pointer" style-hover="background:#F5F7FA">비우기</button>
           <button type="button" onClick="{{ saveZip }}" disabled="{{ zipDisabled }}" style="font:inherit;font-size:13px;font-weight:700;border:1px solid #2563EB;background:#2563EB;color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;opacity:{{ zipOpacity }}" style-hover="background:#1E40AF">{{ zipLabel }}</button>
         </div>
@@ -324,7 +325,7 @@ class Component extends DCLogic {
       }
       const blob = await buildZip(entries);
       const d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-      await this.downloads.save({ filename: `return_photos_${stamp}.zip`, data: blob });
+      await this.downloads.save({ filename: `목우촌반품_${stamp}.zip`, data: blob });
       this.showToast(`${entries.length}장 저장 · ${mb(before)} → ${mb(after)}` + (skipped ? ` · 번호 없는 ${skipped}장 제외` : ''));
     } catch (e) { if (e.code !== 'declined') this.showToast('저장 안 됨: ' + (e.message || e.code)); }
     finally { this.setState({ zipping: false }); }
@@ -400,6 +401,15 @@ class Component extends DCLogic {
           selDisabled: dis, selOpacity: dis ? 0.45 : 1,
           selSaveLabel: s.zipping ? '저장 중…' : picked.length ? `선택 ${ready.length}장 저장` : '선택 저장',
           saveSel: () => this.saveZip(true),
+          delSelDisabled: !picked.length, delSelOpacity: picked.length ? 1 : 0.45,
+          delSelLabel: picked.length ? `선택 ${picked.length}장 삭제` : '선택 삭제',
+          delSel: () => {
+            if (!picked.length || !confirm(`선택한 ${picked.length}장을 삭제할까요?`)) return;
+            const ids = new Set(picked.map(i => i.id));
+            picked.forEach(i => URL.revokeObjectURL(i.url));
+            this.queue = this.queue.filter(q => !ids.has(q.id));
+            this.setState(x => ({ items: x.items.filter(y => !ids.has(y.id)), sel: {}, viewId: ids.has(x.viewId) ? null : x.viewId }));
+          },
         };
       })(),
       clearAll: () => { s.items.forEach(i => URL.revokeObjectURL(i.url)); this.queue = []; this.setState({ items: [], sel: {} }); },

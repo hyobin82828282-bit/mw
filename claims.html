@@ -352,10 +352,22 @@ function calcMaterial(boxCode, tempZone) {
     </div>
     <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
       <label for="import-pw" style="font-size:12.5px;font-weight:600;color:#3D4248;white-space:nowrap">엑셀 비밀번호</label>
-      <input type="password" id="import-pw" autocomplete="off" placeholder="암호가 걸린 파일만 입력" style="flex:1;min-width:0;height:34px;padding:0 10px;border:1px solid #D9D6D0;border-radius:8px;font-size:13px">
+      <input type="text" id="import-pw" autocomplete="off" value="muc" placeholder="암호가 걸린 파일만 입력" style="flex:1;min-width:0;height:34px;padding:0 10px;border:1px solid #D9D6D0;border-radius:8px;font-size:13px">
     </div>
     <div id="import-result"></div>
     <div id="import-preview"><table><thead><tr><th>송장번호</th><th>쇼핑몰</th><th>수취인</th><th>출고일</th><th>품목코드</th><th>상품명</th><th>수량</th><th>실결제금액</th></tr></thead><tbody id="import-preview-body"></tbody></table></div>
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <h3 style="font-size:13px;font-weight:700;margin:0">보관 중인 통합내역</h3>
+        <span id="wbm-total" style="font-size:11.5px;color:var(--muted)"></span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:8px">출고월 기준 최근 6개월만 보관하고 지난 내역은 자동으로 지웁니다. 클레임에 연결된 송장은 기간과 상관없이 남깁니다.</div>
+      <div id="wbm-auto" style="display:none;font-size:11.5px;color:var(--success);margin-bottom:8px"></div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="color:var(--muted);text-align:left"><th style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600">출고월</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600;text-align:right">송장</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600;text-align:right">클레임 연결</th><th style="padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600;text-align:right">용량</th><th style="padding:6px 8px;border-bottom:1px solid var(--border)"></th></tr></thead>
+        <tbody id="wbm-body"></tbody>
+      </table>
+    </div>
     <div class="modal-actions" style="margin-top:12px;">
       <button class="btn" id="import-cancel">취소</button>
       <button class="btn primary" id="import-run">📥 가져오기</button>
@@ -2086,7 +2098,15 @@ const WB_CACHE_KEY = 'wb_cache_v1';
 
 // Load custom waybillCache from localStorage (merged on top of baked-in)
 let runtimeWbCache = {};
-const wbReady = (window.WbStore ? WbStore.load() : Promise.resolve({})).then(v => { Object.assign(runtimeWbCache, v || {}); migrateMultiWbKeys(); }).catch(() => {});
+let wbAutoMsg = '';
+const wbReady = (window.WbStore ? WbStore.load() : Promise.resolve({})).then(v => {
+  Object.assign(runtimeWbCache, v || {}); migrateMultiWbKeys();
+  // 자동 정리: 6개월 지난 통합내역 (클레임 연결 송장 제외)
+  if (WbStore.prune) {
+    const gone = WbStore.prune(runtimeWbCache);
+    if (gone.length) { wbAutoMsg = `오늘 ${WbStore.KEEP}개월 지난 송장 ${gone.length.toLocaleString()}건을 자동 정리했습니다.`; saveWbCache().catch(() => {}); }
+  }
+}).catch(() => {});
 const saveWbCache = () => window.WbStore ? WbStore.save(runtimeWbCache) : Promise.reject(new Error('저장소를 불러오지 못했습니다'));
 
 // 송장번호 정규화: 공백·하이픈 제거, 엑셀 숫자형(302041045904.0) 소수점 제거
@@ -2153,6 +2173,44 @@ function lookupWaybill(wbNum) {
   }
 }
 
+// 출고일 → YYYYMM (연도를 알 수 있을 때만)
+function parseShipYm(raw) {
+  if(typeof raw === 'number') { try { const d = XLSX.SSF.parse_date_code(raw); if(d && d.y) return d.y * 100 + d.m; } catch(e) {} return 0; }
+  const m = String(raw == null ? '' : raw).match(/(\d{4})[\/\-.](\d{1,2})/);
+  return m ? +m[1] * 100 + +m[2] : 0;
+}
+
+function renderWbManage() {
+  const body = document.getElementById('wbm-body'); if(!body || !window.WbStore || !WbStore.monthOf) return;
+  const cs = WbStore.claimSet(), g = {};
+  let total = 0;
+  Object.keys(runtimeWbCache).forEach(k => {
+    const e = runtimeWbCache[k], ym = WbStore.monthOf(e), b = WbStore.size(e);
+    const r = g[ym] || (g[ym] = { n: 0, c: 0, b: 0 });
+    r.n++; r.b += b; total += b; if(WbStore.linked(k, e, cs)) r.c++;
+  });
+  const kb = n => n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
+  const cell = 'padding:6px 8px;border-bottom:1px solid var(--border);';
+  const yms = Object.keys(g).map(Number).sort((a, b) => b - a);
+  body.innerHTML = yms.length ? yms.map(ym => {
+    const r = g[ym], label = ym ? `${Math.floor(ym / 100)}년 ${ym % 100}월` : '출고일 없음';
+    const can = ym && r.n > r.c;
+    return `<tr><td style="${cell}font-weight:600">${label}</td><td style="${cell}text-align:right;font-variant-numeric:tabular-nums">${r.n.toLocaleString()}건</td><td style="${cell}text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)">${r.c ? r.c.toLocaleString() + '건' : '-'}</td><td style="${cell}text-align:right;font-variant-numeric:tabular-nums">${kb(r.b)}</td><td style="${cell}text-align:right">${can ? `<button class="btn" data-wbm-del="${ym}" style="height:26px;color:var(--danger)">지우기</button>` : ''}</td></tr>`;
+  }).join('') : `<tr><td colspan="5" style="${cell}color:var(--muted);text-align:center">보관 중인 통합내역이 없습니다.</td></tr>`;
+  document.getElementById('wbm-total').textContent = `${Object.keys(runtimeWbCache).length.toLocaleString()}건 · ${kb(total)}`;
+  const au = document.getElementById('wbm-auto'); au.textContent = wbAutoMsg; au.style.display = wbAutoMsg ? 'block' : 'none';
+}
+document.getElementById('wbm-body').addEventListener('click', async e => {
+  const b = e.target.closest('[data-wbm-del]'); if(!b) return;
+  const ym = +b.dataset.wbmDel;
+  if(!confirm(`${Math.floor(ym / 100)}년 ${ym % 100}월 통합내역을 지울까요?\n클레임에 연결된 송장은 남습니다.`)) return;
+  WbStore.dropMonth(ym);
+  const gone = WbStore.prune(runtimeWbCache);
+  try { await saveWbCache(); } catch(err) { alert('저장하지 못했습니다: ' + (err && err.message || err)); }
+  wbAutoMsg = `${Math.floor(ym / 100)}년 ${ym % 100}월 송장 ${gone.length.toLocaleString()}건을 지웠습니다.`;
+  renderWbManage();
+});
+
 function parseShipDate(raw) {
   if(raw === '' || raw == null) return '';
   if(typeof raw === 'number') {
@@ -2173,6 +2231,7 @@ document.getElementById('btn-import-wb').addEventListener('click', () => {
   document.getElementById('import-result').style.display = 'none';
   document.getElementById('import-preview').style.display = 'none';
   document.getElementById('import-overlay').hidden = false;
+  wbReady.then(renderWbManage);
 });
 document.getElementById('import-file').addEventListener('change', e => {
   const f = e.target.files[0];
@@ -2276,9 +2335,11 @@ document.getElementById('import-run').addEventListener('click', async () => {
     if(channel.replace(/\s+/g, '') === '스마트스토어(도착보장)') mall = '도착보장';
     const name = str(cell('name'));
     const ship = parseShipDate(cell('ship'));
+    const ym = parseShipYm(cell('ship'));
     const item = { code: normWb(cell('code')), product: str(cell('product')), qty: num(cell('qty')), amount: num(cell('amount')) };
 
-    const e = wbList.map(w => newCache[w]).find(Boolean) || { mall, name, ship, products: [], items: [] };
+    const e = wbList.map(w => newCache[w]).find(Boolean) || { mall, name, ship, ym, products: [], items: [] };
+    if(!e.ym && ym) e.ym = ym;
     wbList.forEach(w => { newCache[w] = e; });
     if(wbList.length > 1 || e.group) e.group = [...new Set([...(e.group || []), ...wbList])];
     if(!e.mall && mall) e.mall = mall;
@@ -2307,10 +2368,13 @@ document.getElementById('import-run').addEventListener('click', async () => {
     cur.items = cur.items || [];
     n.products.forEach(p => { if(!cur.products.includes(p)) cur.products.push(p); });
     n.items.forEach(it => { if(!cur.items.some(x => x.product === it.product)) cur.items.push(it); });
-    ['mall','name','ship'].forEach(k => { if(!cur[k] && n[k]) cur[k] = n[k]; });
+    ['mall','name','ship','ym'].forEach(k => { if(!cur[k] && n[k]) cur[k] = n[k]; });
     if(n.group) cur.group = [...new Set([...(cur.group || []), ...n.group])];
     if(JSON.stringify(cur) !== before) { runtimeWbCache[wb] = cur; updated++; }
   });
+  // 직접 지웠던 달을 다시 가져오면 그 달은 다시 보관
+  const impYms = [...new Set(wbs.map(w => WbStore.monthOf(newCache[w])).filter(Boolean))];
+  if(WbStore.undrop) WbStore.undrop(impYms);
   try { await saveWbCache(); }
   catch(e) { return fail('저장하지 못했습니다: ' + (e && e.message || e)); }
 
@@ -2341,6 +2405,7 @@ document.getElementById('import-run').addEventListener('click', async () => {
   resEl.textContent = `✔ 완료! 신규 추가 ${added.length}건, 기존 운송장 보충 ${updated}건, 변경 없음 ${wbs.length - added.length - updated}건 (송장번호 없는 행 ${skipped}행 제외). 현재 운송장 캐시: ${total}건`;
   resEl.style.display = 'block';
   render();
+  renderWbManage();
 });
 
 // ===== INIT =====
