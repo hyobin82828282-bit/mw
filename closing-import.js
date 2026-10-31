@@ -304,14 +304,67 @@
     ['boxTotal', '박스비합계'], ['iceTotal', '냉매제합계'], ['otherTotal', '기타부자재합계'], ['workTotal', '작업비합계'], ['movTotal', '파렛트이동합계'],
     ['car', '차량'], ['note', '비고'], ['closed', '마감반영']
   ];
+  // 새 양식 (2026-10~): 출고일·상차지·도착지·제품 … 합계 열은 마감 시트 수식이 계산
+  const VEHICLE2_COLS = {
+    date: '출고일', from: '상차지', to: '도착지', name: '제품', box: 'BOX', plt: 'P/T',
+    ice: '아이스팩', dry: '드라이', other: '기타부자재',
+    boxUnit: '박스 단가', iceUnit: '아이스팩 단가', dryUnit: '드라이아이스 단가', otherUnit: '기타부자재 단가',
+    workUnit: '작업비 단가', loadUnit: '상하차비 단가', movUnit: '파렛트 이동전표 단가', car: '배차비용', note: '비고'
+  };
+  const V2_TOTALS = ['박스비합계', '아이스팩합계', '드라이합계', '기타부자재합계', '작업비합계', '상하차비합계', '파렛트이동합계', '배차비용'];
+  const xlSerial = (y, m, d) => Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000);
+  const fromSerial = n => { const t = new Date(Date.UTC(1899, 11, 30) + n * 86400000); return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate() }; };
+  function vehicleLayout(wb) {
+    const En = E(), sh = wb.byName['차량출고']; if (!sh) return 'v1';
+    for (let r = 1; r <= 6; r++) for (let c = 1; c <= sh.maxC; c++) { const h = noSpace(wb.display(sh, En.colName(c) + r)); if (h === '출고일') return 'v2'; if (h === '출고정보') return 'v1'; }
+    return 'v1';
+  }
+  function vehicle2Groups(wb, sh, hr, ym) {
+    const En = E(), ns = v => String(v ?? '').replace(/\s+/g, '');
+    const heads = []; for (let c = 1; c <= sh.maxC; c++) heads[c] = ns(wb.value(sh, En.colName(c) + hr));
+    const colOf = h => { const w = ns(h); const i = heads.findIndex(x => x === w); return i > 0 ? i : -1; };
+    const col = {}; for (const [id, h] of Object.entries(VEHICLE2_COLS)) { const c = colOf(h); if (c > 0) col[id] = c; }
+    const totalCols = V2_TOTALS.map(colOf).filter(c => c > 0), totalCol = colOf('총합계');
+    const year = ym ? +ym.slice(0, 4) : new Date().getFullYear(), month = ym ? +ym.slice(4) : null;
+    const out = [];
+    for (let r = hr + 1; r <= sh.maxR; r++) {
+      const raw = c => (c > 0 ? wb.value(sh, En.colName(c) + r) : null);
+      const get = id => raw(col[id] || -1);
+      const first = String(raw(1) ?? '').trim();
+      if (/^\s*합\s*계/.test(first) || /^\s*합\s*계/.test(String(raw(2) ?? ''))) break;
+      const dv = get('date'), name = String(get('name') ?? '').trim();
+      if ((dv === null || dv === '' || dv === 0) && !name) continue;
+      const md = typeof dv === 'number' && dv > 20000 ? fromSerial(dv) : monthOf(String(dv ?? '').trim());
+      const row = {};
+      for (const id of Object.keys(VEHICLE2_COLS)) {
+        const v = get(id);
+        row[id] = typeof v === 'number' ? (v === 0 && id !== 'box' ? '' : v) : v && typeof v === 'object' ? '' : String(v ?? '').trim();
+      }
+      const from = row.from, to = row.to;
+      row.info = md ? `${md.m}/${md.d} ${from}${to ? '→' + to : ''}` : String(dv ?? '');
+      const num = c => { const v = raw(c); return typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/[,원\s]/g, '')) || 0; };
+      const amount = totalCol > 0 && num(totalCol) ? num(totalCol) : totalCols.reduce((s, c) => s + num(c), 0);
+      const otherMonth = !!(month && md && md.m !== month);
+      const flags = [];
+      if (otherMonth) flags.push(`다른 달 (${md.m}월)`);
+      if (!md) flags.push('출고일 날짜를 읽지 못했어요');
+      const bx = typeof row.box === 'number' ? row.box : 0, pl = typeof row.plt === 'number' ? row.plt : 0;
+      out.push({
+        key: 'y' + r, include: !otherMonth && !!md, flags, rows: [row], layout: 'v2',
+        summary: { title: row.info, sub: `${name || '-'} · ${pl ? `${pl}PLT · ` : ''}${bx.toLocaleString()}박스`, amount: Math.round(amount) }
+      });
+    }
+    return out;
+  }
   async function vehicleGroupsFromXlsx(buf, ym) {
     const En = E(), wb = await En.Workbook.load(buf);
     const sh = wb.byName['차량출고'] || wb.sheets.find(s => s.name.includes('차량출고'));
     if (!sh) throw new Error("엑셀에 '차량출고' 시트가 없어요");
     const ns = v => String(v ?? '').replace(/\s+/g, '');
-    let hr = 0;
-    for (let r = 1; r <= 6 && !hr; r++) for (let c = 1; c <= sh.maxC; c++) if (ns(wb.value(sh, En.colName(c) + r)) === '출고정보') { hr = r; break; }
-    if (!hr) throw new Error("차량출고 시트에서 '출고정보' 머리글을 찾지 못했어요");
+    let hr = 0, v2 = false;
+    for (let r = 1; r <= 6 && !hr; r++) for (let c = 1; c <= sh.maxC; c++) { const h = ns(wb.value(sh, En.colName(c) + r)); if (h === '출고정보' || h === '출고일') { hr = r; v2 = h === '출고일'; break; } }
+    if (!hr) throw new Error("차량출고 시트에서 '출고일'(또는 '출고정보') 머리글을 찾지 못했어요");
+    if (v2) return vehicle2Groups(wb, sh, hr, ym);
     const heads = []; for (let c = 1; c <= sh.maxC; c++) heads[c] = ns(wb.value(sh, En.colName(c) + hr));
     const col = {};
     for (const [id, h] of XLSX_COLS) { const want = h.replace(/\s+/g, ''); const ex = heads.findIndex(x => x === want); const c = ex > 0 ? ex : heads.findIndex(x => !!x && x.startsWith(want)); if (c > 0) col[id] = c; }
@@ -934,7 +987,7 @@
     RETURNS_COLS, returnsFromCsv, returnsFromXlsx,
     CLAIMS_COLS, CLAIMS_MERGE_COLS, claimsFromXlsx, claimGroups,
     applyTable,
-    VEHICLE_COLS, VEHICLE_OVERWRITE, vehicleFromCsv, vehicleGroups, vehicleGroupsFromXlsx, withRowFormulas,
+    VEHICLE_COLS, VEHICLE_OVERWRITE, vehicleFromCsv, vehicleGroups, vehicleGroupsFromXlsx, withRowFormulas, VEHICLE2_COLS, vehicleLayout,
     DISPOSAL_STATES, DISPOSAL_COLS, readDisposal, disposalItems, disposalGroups, loadWeights, saveWeights,
     JEJU_COLS, JEJU_TOTAL, JEJU_KINDS, readJejuFile, jejuGroups, jejuTotals,
     planTable, saveTable, clearSheet,

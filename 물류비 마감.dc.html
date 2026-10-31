@@ -14,7 +14,7 @@
 <meta name="ext-resource-dependency" content="./items-db.js" data-resource-id="itemsDb">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
 <script src="./closing-engine.js"></script>
-<script src="./closing-import.js?v=8"></script>
+<script src="./closing-import.js?v=14"></script>
 <style>
   html,body{margin:0;height:100%;background:#F4F3EF;font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;color:#16181A}
   a{color:#1F6F5C;text-decoration:none}
@@ -333,6 +333,7 @@
             <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
               <span style="font-size:12px;color:#6E7379">{{ bxSaved }}</span>
               <button onClick="{{ airToIlban }}" title="에어캡 계산기 결과 → 일반 시트 '에어캡' · '작업료_세트/홈쇼핑' 머리글 열" style="height:36px;padding:0 14px;border:1px solid #1F6F5C;border-radius:8px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#1F6F5C" style-hover="background:#EEF4F1">{{ airLabel }}</button>
+              <button onClick="{{ airToArrival }}" title="에어캡 계산기 도착보장 결과 → 도착보장 시트 '도착_에어캡' · '도착_작업료_세트/홈쇼핑' 머리글 열" style="height:36px;padding:0 14px;border:1px solid #1F6F5C;border-radius:8px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#1F6F5C" style-hover="background:#EEF4F1">{{ airALabel }}</button>
               <sc-if value="{{ bxHasDay }}"><button onClick="{{ bxToIlban }}" style="height:36px;padding:0 14px;border:1px solid #1F6F5C;border-radius:8px;background:#1F6F5C;font-size:13px;font-weight:700;cursor:pointer;color:#fff">일반 시트에 넣기</button></sc-if>
               <sc-if value="{{ bxHasDay }}"><button onClick="{{ bxClear }}" style="height:36px;padding:0 14px;border:1px solid #D6D3CC;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#A5432F" style-hover="background:#F4F3EF">이 날짜 비우기</button></sc-if>
             </div>
@@ -606,9 +607,9 @@ class Component extends DCLogic {
         ['302041292654 · 고희권', '제주 · 20260901 · [M냉장]생생황기닭백숙1000g** · 일반_택배사변경', [], 3000], ['302054283696 · 이숙희', '제주 · 20260902 · [M상온]뚝심 200g · 도착보장_택배사변경', [], 3000],
         ['302054336373 · 정유선', '도서산간 · 20260902 · [M냉장]주부9단프랑크소시지 500g** · 도착보장_택배사변경', [], 7000], ['302041394036 · 박정언', '도서산간 · 20260903 · [M냉장]주부9단 로스구이햄250g** · 일반_택배사변경', [], 5000],
         ['302055190701 · 최영준', '제주 · 20261001 · [M냉장]주부9단 나주배 오리훈제200g · 도착보장_택배사변경', [['warn', '다른 달 (10월)']], 3000, false]] },
-    { key: 'returns', kind: 'table', title: '반품', sheet: '반품', btn: '반품이력 CSV 열기', accept: '.csv', unit: '건',
-      rule: '반품이력 CSV · 고객사 요청 · 고객 반품 · 쿠팡 회송 · 주소오류 반송만 청구',
-      emptyText: '반품이력 파일(고객반품이력_날짜.csv)을 열어 주세요.',
+    { key: 'returns', kind: 'table', title: '반품', sheet: '반품', btn: '반품이력 파일 열기', accept: '.csv,.xlsx,.xlsm,.xls', unit: '건',
+      rule: '반품이력 CSV·엑셀 · 고객사 요청 · 고객 반품 · 쿠팡 회송 · 주소오류 반송만 청구',
+      emptyText: '반품이력 파일(고객반품이력_날짜.csv)이나 반품목록 엑셀(.xlsx)을 열어 주세요.',
       heads: [['내역'], ['확인할 점'], ['금액', 'right']],
       rows: [
         ['302040000101 · 목우촌생생쇠고기육포35g', '고객사요청 · 2026-09-02', [], 2475], ['302040000102 · [M상온]★번들★뚝심200gx3', '고객사요청 · 2026-09-01', [], 2640],
@@ -961,7 +962,7 @@ class Component extends DCLogic {
       const ym = this.ymStr(), rc = { kind: 'list', flags: [], sel: {} };
       if (c.key === 'coupang') { rc.kind = 'box'; rc.lines = await CI.coupangLines(buf); if (!rc.lines.length) throw new Error('파일에서 출고 줄을 찾지 못했어요'); this.buildCoupang(rc); }
       else {
-        if (c.key === 'returns') { rc.groups = CI.returnsFromCsv(CI.decodeText(buf), ym); rc.statMain = String(rc.groups.length); rc.statSub = '건'; }
+        if (c.key === 'returns') { rc.groups = /\.csv$/i.test(f.name) ? CI.returnsFromCsv(CI.decodeText(buf), ym) : await CI.returnsFromXlsx(buf, ym); rc.statMain = String(rc.groups.length); rc.statSub = '건'; }
         if (c.key === 'claims') {
           const recs = await CI.claimsFromXlsx(buf, ym); if (!recs.length) throw new Error('클레임 데이터를 찾지 못했어요');
           rc.groups = CI.claimGroups(recs, ym, { excludeMissingPrice: true }); rc.statMain = String(rc.groups.length); rc.statSub = `송장 · ${recs.length}행`;
@@ -1014,7 +1015,11 @@ class Component extends DCLogic {
     const CI = window.ClosingImport, wb = this.wb;
     if (key === 'returns') return CI.applyTable(wb, '반품', CI.RETURNS_COLS, groups, { anchor: '원송장번호' });
     if (key === 'claims') return CI.applyTable(wb, '클레임', CI.CLAIMS_COLS, groups, { anchor: '송장번호', fill: { company: '목우촌' }, mergeCols: CI.CLAIMS_MERGE_COLS });
-    if (key === 'vehicle') return CI.applyTable(wb, '차량출고', CI.VEHICLE_COLS, CI.withRowFormulas(groups, 2), { anchor: '출고정보', overwrite: CI.VEHICLE_OVERWRITE });
+    if (key === 'vehicle') {
+      const v2 = CI.vehicleLayout(wb) === 'v2', src2 = groups.some(g => g.layout === 'v2');
+      if (v2 !== src2 && groups.some(g => g.include)) throw new Error(v2 ? '마감 파일의 차량출고 시트는 새 양식(출고일·상차지·도착지)인데, 연 파일은 예전 양식이에요. 새 양식 차량출고목록 엑셀을 열어 주세요.' : '마감 파일의 차량출고 시트가 예전 양식(출고정보)이에요. 새 양식 마감 파일을 열어 주세요.');
+      return v2 ? CI.applyTable(wb, '차량출고', CI.VEHICLE2_COLS, groups, { anchor: '출고일' }) : CI.applyTable(wb, '차량출고', CI.VEHICLE_COLS, CI.withRowFormulas(groups, 2), { anchor: '출고정보', overwrite: CI.VEHICLE_OVERWRITE });
+    }
     if (key === 'disposal') return CI.applyTable(wb, '폐기', CI.DISPOSAL_COLS, groups, { anchor: '품목명' });
     if (key === 'stockcount') return CI.applyTable(wb, '재고실사', CI.STOCKCOUNT_COLS, groups, { anchor: '품목코드' });
     if (key === 'jeju') return CI.applyTable(wb, '제주도서', CI.JEJU_COLS, groups, { anchor: '운송장번호', total: CI.JEJU_TOTAL });
@@ -1188,48 +1193,50 @@ class Component extends DCLogic {
     if (r.noRecipient) chips.push({ text: `수령인 없는 ${r.noRecipient}줄은 빠져요`, style: flagStyle('warn') });
     if (r.unmapped.length) chips.push({ text: `열 지정 필요 ${r.unmapped.length}개 품목 · 지정 전에는 빠져요`, style: flagStyle('warn') });
     const plan = CI.planShip(fn, sheet, ym, r.cells, r.days), mine = rules.filter(x => x.channel === 'homeshop');
+    const hsSame = (x, u) => x.channel === 'homeshop' && x.mall === u.mall && (u.combo ? x.combo === u.combo : (!x.combo && x.code === u.code && +x.qty === +u.qty));
+    const hsRule = (u, col) => u.combo ? { channel: 'homeshop', mall: u.mall, combo: u.combo, col } : { channel: 'homeshop', code: u.code, mall: u.mall, qty: u.qty, col };
     const refresh = () => this.setState({ rev: this.state.rev + 1 });
     Object.assign(out, {
       statMain: String(r.lines), statSub: `줄 · ${r.days.length}일치`, chips,
-      accumText: plan.fresh ? '이번 달 첫 반영이에요 · 지난달 값은 지우고 채워요' : `누적: 이전에 반영한 ${plan.kept}일 유지 · 이 파일 ${plan.added}일 추가 · 같은 ${plan.replaced}일은 이 파일 값으로 교체`,
+      accumText: `이 파일에 있는 ${r.days.length}일만 새로 채워요 · 다른 날짜에 이미 들어 있는 값은 그대로 둠` + (plan.replaced ? ` · 같은 ${plan.replaced}일은 이 파일 값으로 교체` : ''),
       showClear: !plan.fresh,
       onClear: () => { try { CI.applyShip(this.wb, sheet, {}, null); CI.clearSheet(fn, sheet); this.saveEdits(); refresh(); this.flash(`${sheet} 시트의 이번 달 누적을 비웠어요`); } catch (err) { this.flash(err.message || String(err)); } },
       hasCols: true, cols: cols.map(col => ({ col, label: label(col), n: String(sums[col]) })),
       hasUnmapped: r.unmapped.length > 0, unmQtyHead: '박스', unmAssignHead: '넣을 열',
       unmapped: r.unmapped.map(u => {
-        const k = u.code + '|' + u.mall, pick = st.pick[k] || '';
+        const k = u.mall + '|' + (u.combo || u.code + '*' + u.qty), pick = st.pick[k] || '';
         return {
-          name: u.name, sub: `${u.code} · ${u.mall || '쇼핑몰명 없음(공영쇼핑)'} · ${u.days.map(d => +d.slice(8)).sort((a, b) => a - b).join(', ')}일`, qty: `${u.boxes}박스`, hasPer: false, per: '', col: pick,
+          name: u.label, sub: `${u.code} · ${u.mall || '쇼핑몰명 없음(공영쇼핑)'} · ${u.days.map(d => +d.slice(8)).sort((a, b) => a - b).join(', ')}일`, qty: `${u.boxes}박스`, hasPer: false, per: '', col: pick,
           options: bc.cols.map(x => ({ col: x.col, text: `${x.col} · ${x.label}` })),
           onCol: e => this.setImp(c.key, { pick: { ...st.pick, [k]: e.target.value } }),
-          onAssign: () => { if (!pick) { this.flash('넣을 열을 골라 주세요'); return; } CI.saveShipRules(rules.filter(x => !(x.channel === 'homeshop' && x.code === u.code && x.mall === u.mall)).concat({ channel: 'homeshop', code: u.code, mall: u.mall, col: pick })); refresh(); },
+          onAssign: () => { if (!pick) { this.flash('넣을 열을 골라 주세요'); return; } CI.saveShipRules(rules.filter(x => !hsSame(x, u)).concat(hsRule(u, pick))); refresh(); },
           btnStyle: { padding: '6px 12px', border: '1px solid #D6D3CC', borderRadius: '8px', background: '#fff', fontSize: '12px', fontWeight: 600, cursor: pick ? 'pointer' : 'default', opacity: pick ? 1 : 0.45 }
         };
       }),
       ...this.matchedVals(c, (r.matched || []).map(u => {
-        const k = u.code + '|' + u.mall, pick = (st.mpick || {})[k] || u.col, changed = pick !== u.col;
+        const k = u.mall + '|' + (u.combo || u.code + '*' + u.qty), pick = (st.mpick || {})[k] || u.col, changed = pick !== u.col;
         return {
-          name: u.name, sub: `${u.code} · ${u.mall || '쇼핑몰명 없음(공영쇼핑)'} · ${u.days.map(d => +d.slice(8)).sort((a, b) => a - b).join(', ')}일`, qty: `${u.boxes}박스`, hasPer: false, per: '', col: pick, custom: u.custom,
+          name: u.label, sub: `${u.code} · ${u.mall || '쇼핑몰명 없음(공영쇼핑)'} · ${u.days.map(d => +d.slice(8)).sort((a, b) => a - b).join(', ')}일`, qty: `${u.boxes}박스`, hasPer: false, per: '', col: pick, custom: u.custom,
           options: bc.cols.map(x => ({ col: x.col, text: `${x.col} · ${x.label}` })),
           onCol: e => this.setImp(c.key, { mpick: { ...(st.mpick || {}), [k]: e.target.value } }),
           onAssign: () => {
             if (!changed) return;
-            CI.saveShipRules(rules.filter(x => !(x.channel === 'homeshop' && x.code === u.code && x.mall === u.mall)).concat({ channel: 'homeshop', code: u.code, mall: u.mall, col: pick }));
-            const mp = { ...(st.mpick || {}) }; delete mp[k]; this.setImp(c.key, { mpick: mp }); this.flash(`${u.name} → ${pick}열로 바꿨어요`);
+            CI.saveShipRules(rules.filter(x => !hsSame(x, u)).concat(hsRule(u, pick)));
+            const mp = { ...(st.mpick || {}) }; delete mp[k]; this.setImp(c.key, { mpick: mp }); this.flash(`${u.label} → ${pick}열로 바꿨어요`);
           },
           btnStyle: this.chgBtn(changed)
         };
       })),
       hasRules: mine.length > 0, rulesCount: String(mine.length),
-      rules: mine.map(x => ({ text: `${x.code} (${x.mall || '쇼핑몰 없음'}) → ${x.col}`, remove: () => { CI.saveShipRules(rules.filter(y => y !== x)); refresh(); } })),
+      rules: mine.map(x => ({ text: x.combo ? `합포장 ${x.combo.replace(/\*/g, ' ×').replace(/\+/g, ' + ')} (${x.mall || '쇼핑몰 없음'}) → ${x.col}` : `${x.code} (${x.mall || '쇼핑몰 없음'}) · ${x.qty != null ? '송장당 ' + x.qty + '개' : '전체 수량'} → ${x.col}`, remove: () => { CI.saveShipRules(rules.filter(y => y !== x)); refresh(); } })),
       totals: `합계 ${total}박스`,
       onApply: () => {
         if (!r.days.length) { this.flash('넣을 박스가 없어요'); return; }
         try {
-          const res = CI.applyShip(this.wb, sheet, plan.merged, ym);
+          const res = CI.applyShip(this.wb, sheet, r.cells, ym, r.days);
           CI.saveShip(fn, sheet, ym, plan.merged); this.saveEdits(); this.setImp(c.key, { applied: true });
           const miss = res.missingDays.length ? ` · 시트에 없는 날짜 ${res.missingDays.length}일은 빠짐` : '';
-          this.flash(`${sheet} 시트에 ${Object.keys(plan.merged).length}일치 ${res.boxes}박스를 채웠어요${res.datesMoved ? ' · 날짜를 ' + +ym.slice(4) + '월로 바꿈' : ''}${miss}`);
+          this.flash(`${sheet} 시트에 이 파일 ${r.days.length}일치 ${res.boxes}박스를 채웠어요 · 다른 날짜는 그대로${res.datesMoved ? ' · 날짜를 ' + +ym.slice(4) + '월로 바꿈' : ''}${miss}`);
           this.goto(sheet, 'A1');
         } catch (err) { this.flash(err.message || String(err)); }
       }
@@ -1690,43 +1697,51 @@ temp는 "상온"|"냉장"|"냉동", extra는 추가송장 줄이면 true.`;
     };
   }
   // 에어캡 계산기 → 일반 시트 AP(에어캡) · AV(작업료_세트/홈쇼핑)
-  airDays() {
-    let d = {}; try { d = (JSON.parse(localStorage.getItem('aircap.days.v2') || 'null') || {}).days || {}; } catch (e) {}
-    if (!Object.keys(d).length) { const b = window.MwSync && window.MwSync.blob('aircap'); if (b && b.val && b.val.days) d = b.val.days; }
-    return d;
+  airDays(src = 'days') {
+    let d = {}; try { d = (JSON.parse(localStorage.getItem('aircap.days.v2') || 'null') || {})[src] || {}; } catch (e) {}
+    const localAt = +localStorage.getItem('aircap.days.v2.at') || 0;
+    const b = window.MwSync && window.MwSync.ready && window.MwSync.ready() && window.MwSync.blob('aircap');
+    if (b && b.val && b.val[src] && Object.keys(b.val[src]).length && (!Object.keys(d).length || (b.at || 0) > localAt)) d = b.val[src];
+    // 날짜 키 통일: 2026-10-01 / 2026.10.01 / 2026/10/01 / 20261001 / 엑셀 일련번호 → YYYY-MM-DD
+    const nd = k => { const s = String(k).trim(); if (/^\d{5}(\.\d+)?$/.test(s)) return new Date(Math.round((Math.floor(+s) - 25569) * 864e5)).toISOString().slice(0, 10); const m = s.match(/^(\d{4})\D?(\d{1,2})\D?(\d{1,2})/); return m ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : null; };
+    const out = {};
+    for (const [k, v] of Object.entries(d)) { const key = nd(k); if (!key) continue; const o = out[key]; out[key] = o ? { ...o, airTotal: (o.airTotal || 0) + (v.airTotal || 0), set: (o.set || 0) + (v.set || 0) } : v; }
+    return out;
   }
-  airToIlban() {
+  airToIlban(SN = '일반', src = 'days') {
     if (!this.wb) { this.flash('마감 파일을 먼저 열어 주세요'); return; }
-    if (!Object.keys(this.airDays()).length) { this.flash('에어캡 계산기에 기록이 없어요 · 마감쓰 → 에어캡 계산기에서 출고 파일을 먼저 넣어 주세요'); return; }
-    const sh = this.wb.byName['일반']; if (!sh) { this.flash("'일반' 시트가 없어요"); return; }
+    if (!Object.keys(this.airDays(src)).length) { this.flash(`에어캡 계산기에 ${SN} 기록이 없어요 · 마감쓰 → 에어캡 계산기(${SN === '일반' ? '일반' : '도착보장'} 모드)에서 출고 파일을 먼저 넣어 주세요`); return; }
+    const sh = this.wb.byName[SN]; if (!sh) { this.flash(`'${SN}' 시트가 없어요`); return; }
     const E = window.ClosingEngine, norm = s => String(s ?? '').replace(/\s+/g, '');
     const maxR = Math.min(sh.maxR, 80), maxC = Math.min(sh.maxC || 120, 200);
     // 머리글 이름으로 열 찾기 (열 위치가 바뀌어도 OK)
     const findCol = name => { for (let r = 1; r <= 10; r++) for (let c = 1; c <= maxC; c++) if (norm(this.wb.value(sh, E.colName(c) + r)) === name) return E.colName(c); return null; };
-    const want = [['에어캡', 'airTotal'], ['작업료_세트/홈쇼핑', 'set']].map(([h, k]) => [h, k, findCol(h)]);
+    const pf = SN === '도착보장' ? '도착_' : '';
+    const want = [[pf + '에어캡', 'airTotal'], [pf + '작업료_세트/홈쇼핑', 'set']].map(([h, k]) => [h, k, findCol(h)]);
     const lost = want.filter(w => !w[2]).map(w => w[0]);
-    if (lost.length) { this.flash(`일반 시트에서 '${lost.join("', '")}' 머리글을 찾지 못했어요`); return; }
+    if (lost.length) { this.flash(`${SN} 시트에서 '${lost.join("', '")}' 머리글을 찾지 못했어요`); return; }
     // 날짜 열: 날짜가 가장 많이 들어 있는 열
     let dateCol = 'A', best = 0;
-    for (let c = 1; c <= Math.min(maxC, 10); c++) { let k = 0; for (let r = 1; r <= maxR; r++) { const a = this.wb.value(sh, E.colName(c) + r); if (typeof a === 'number' && a > 40000 && a < 60000) k++; } if (k > best) { best = k; dateCol = E.colName(c); } }
-    const days = this.airDays(), rows = {};
+    const yr = (Object.keys(this.airDays(src)).sort().pop() || String(new Date().getFullYear())).slice(0, 4);
+    const dkey = a => { if (typeof a === 'number' && a > 30000 && a < 80000) return new Date(Math.round((Math.floor(a) - 25569) * 864e5)).toISOString().slice(0, 10); const m = typeof a === 'string' && a.trim().match(/^(?:(\d{4})[.\/-])?(\d{1,2})[.\/-](\d{1,2})/); return m ? `${m[1] || yr}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : null; };
+    for (let c = 1; c <= Math.min(maxC, 10); c++) { let k = 0; for (let r = 1; r <= maxR; r++) if (dkey(this.wb.value(sh, E.colName(c) + r))) k++; if (k > best) { best = k; dateCol = E.colName(c); } }
+    const days = this.airDays(src), rows = {};
     for (let r = 1; r <= maxR; r++) {
-      const a = this.wb.value(sh, dateCol + r);
-      if (typeof a === 'number' && a > 30000) rows[new Date(Math.round((Math.floor(a) - 25569) * 864e5)).toISOString().slice(0, 10)] = r;
+      const k = dkey(this.wb.value(sh, dateCol + r)); if (k && !rows[k]) rows[k] = r;
     }
     let done = 0, air = 0, set = 0, changed = 0, skipF = 0; const miss = [];
     for (const [day, d] of Object.entries(days)) {
       const row = rows[day]; if (!row) { miss.push(`${+day.slice(5, 7)}/${+day.slice(8)}`); continue; }
       for (const [col, x] of want.map(([, k, c]) => [c, d[k] || 0])) {
         const cell = sh.cells[col + row]; if (cell && cell.f) { skipF++; continue; }
-        if (String(cell ? cell.v ?? '' : '') !== String(x)) { this.wb.setCell('일반', col + row, x); changed++; }
+        if (String(cell ? cell.v ?? '' : '') !== String(x)) { this.wb.setCell(SN, col + row, x); changed++; }
       }
       done++; air += d.airTotal || 0; set += d.set || 0;
     }
-    if (!done) { this.flash(miss.length ? `일반 시트에 ${miss.join(', ')} 줄이 없어요 · 마감 월을 확인해 주세요` : '에어캡 계산기에 넣을 값이 없어요'); return; }
+    if (!done) { this.flash(miss.length ? `${SN} 시트에 ${miss.join(', ')} 줄이 없어요 · 마감 월을 확인해 주세요` : '에어캡 계산기에 넣을 값이 없어요'); return; }
     this.saveEdits(); this.setState({ rev: this.state.rev + 1 });
-    this.flash(`일반 시트 ${done}일치 · 에어캡 ${air.toLocaleString('ko-KR')} · 세트 ${set.toLocaleString('ko-KR')} · 바뀐 칸 ${changed}개` + (skipF ? ` · 수식 칸 ${skipF}개 건너뜀` : '') + (miss.length ? ` · 다른 달 ${miss.length}일 빠짐` : ''));
-    this.goto('일반', want[0][2] + Math.min(...Object.keys(days).map(k => rows[k]).filter(Boolean)));
+    this.flash(`${SN} 시트 ${done}일치 · 에어캡 ${air.toLocaleString('ko-KR')} · 세트 ${set.toLocaleString('ko-KR')} · 바뀐 칸 ${changed}개` + (skipF ? ` · 수식 칸 ${skipF}개 건너뜀` : '') + (miss.length ? ` · 다른 달 ${miss.length}일 빠짐` : ''));
+    this.goto(SN, want[0][2] + Math.min(...Object.keys(days).map(k => rows[k]).filter(Boolean)));
   }
   // 박스정리표 → 일반 시트 (그 날짜 줄, 1~3차·추가송장 합)
   ILBAN_MAP = { 1: { 1: 'B', 2: 'C', 3: 'D', 4: 'E', 5: 'F', 6: 'G', 7: 'H', 8: 'I', 9: 'J', 16: 'AH' }, 2: { 2: 'K', 3: 'L', 4: 'M', 5: 'N', 6: 'O', 7: 'P', 8: 'Q', 9: 'R', 15: 'S', 16: 'AH' }, 0: { 10: 'T', 11: 'U', 12: 'W', 13: 'X', 14: 'Y', 15: 'Z', 16: 'AH' } };
@@ -1785,7 +1800,7 @@ temp는 "상온"|"냉장"|"냉동", extra는 추가송장 줄이면 true.`;
         this.boxSave(); this.flash('표에 넣었어요');
       },
       bxToIlban: () => this.bxToIlban(),
-      ...(() => { const n = Object.keys(this.airDays()).length; return { airHas: n > 0, airLabel: n ? `에어캡·세트 넣기 (${n}일)` : '에어캡·세트 넣기', airToIlban: () => this.airToIlban() }; })(),
+      ...(() => { const n = Object.keys(this.airDays()).length, m = Object.keys(this.airDays('ad')).length; return { airHas: n > 0, airLabel: n ? `에어캡·세트 넣기 (${n}일)` : '에어캡·세트 넣기', airToIlban: () => this.airToIlban(), airALabel: m ? `도착보장 에어캡·세트 넣기 (${m}일)` : '도착보장 에어캡·세트 넣기', airToArrival: () => this.airToIlban('도착보장', 'ad') }; })(),
       bxText: text,
       bxCopy: () => { if (!text) { this.flash('복사할 내용이 없어요'); return; } const p = navigator.clipboard && navigator.clipboard.writeText(text); if (!p) { this.flash('복사가 막혀 있어요 · 텍스트를 직접 선택해 복사하세요'); return; } p.then(() => this.flash('복사됨 · 일반 출고 텍스트 붙여넣기에 넣으세요'), () => this.flash('복사가 막혀 있어요 · 텍스트를 직접 선택해 복사하세요')); }
     };
