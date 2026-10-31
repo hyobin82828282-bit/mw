@@ -159,6 +159,16 @@ async function buildZip(entries) {
   end.setUint32(12, csize, true); end.setUint32(16, off, true);
   return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
 }
+function toJpeg(file) {
+  return new Promise(res => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { const k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.82)); };
+    img.onerror = () => { URL.revokeObjectURL(url); res(null); };
+    img.src = url;
+  });
+}
 async function shrink(file, max = 2000) {
   try {
     const bmp = await createImageBitmap(file);
@@ -242,6 +252,30 @@ class Component extends DCLogic {
     this.state.items.forEach(i => URL.revokeObjectURL(i.url));
   }
 
+  componentDidUpdate() { clearTimeout(this._lt); this._lt = setTimeout(() => this.linkScan(), 1200); }
+  async linkScan() {
+    this.linked = this.linked || {};
+    const todo = this.state.items.filter(i => valid(i.num) && i.status === 'ok' && !i.unsure && this.linked[i.id] !== i.num);
+    if (!todo.length || this._linking) return;
+    this._linking = true;
+    try {
+      const db = await new Promise((res, rej) => { const q = indexedDB.open('mw_photos', 1); q.onupgradeneeded = () => q.result.createObjectStore('p'); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+      const d = new Date(), today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      const adds = [];
+      for (const it of todo) adds.push({ it, num: it.num, src: await toJpeg(it.file) });
+      await new Promise(res => { const tx = db.transaction('p', 'readwrite'), st = tx.objectStore('p'), q = st.get('pend');
+        q.onsuccess = () => { const cur = q.result || {};
+          adds.forEach(a => { const k = a.it.file.name + '|' + a.it.file.size + '|' + a.it.file.lastModified;
+            Object.keys(cur).forEach(n => { cur[n] = cur[n].filter(x => x.k !== k); if (!cur[n].length) delete cur[n]; });
+            if (a.src) (cur[a.num] = cur[a.num] || []).push({ k, src: a.src, date: today }); });
+          st.put(cur, 'pend'); };
+        tx.oncomplete = res; tx.onerror = res; });
+      adds.forEach(a => { this.linked[a.it.id] = a.num; });
+      try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'mw-ret-photo' }, '*'); } catch (e) {}
+      this.showToast('반품목록 사진 연동 ' + adds.length + '장');
+    } catch (e) {}
+    this._linking = false;
+  }
   patch(id, p) { this.setState(s => ({ items: s.items.map(i => i.id === id ? { ...i, ...p } : i) })); }
   showToast(msg) { clearTimeout(this._t); this.setState({ toast: msg }); this._t = setTimeout(() => this.setState({ toast: '' }), 2600); }
 

@@ -467,7 +467,7 @@
               </sc-if>
             </div>
             <div style="display:flex;flex-direction:column;gap:6px">
-              <label style="font-size:12.5px;font-weight:600;color:#374151">구분</label>
+              <label style="font-size:12.5px;font-weight:600;color:#374151">구분 <span style="color:#B3261E">*</span></label>
               <select value="{{ rType }}" onChange="{{ onRType }}" style="height:40px;padding:0 10px;border:1px solid #D1D5DB;border-radius:8px;font-size:13.5px;background:#fff;outline:none" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px #EFF4FF">
                 <option value="">선택</option>
                 <option value="고객사요청">고객사요청</option>
@@ -537,7 +537,7 @@
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">
             <div style="display:flex;flex-direction:column;gap:6px">
-              <label style="font-size:12.5px;font-weight:600;color:#374151">반품 확인일</label>
+              <label style="font-size:12.5px;font-weight:600;color:#374151">반품 확인일 (양품화 시 자동)</label>
               <input type="date" value="{{ rConfirmed }}" onChange="{{ onRConfirmed }}" style="height:40px;padding:0 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:13.5px;background:#fff;outline:none" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px #EFF4FF">
             </div>
             <div style="display:flex;flex-direction:column;gap:6px">
@@ -596,6 +596,9 @@
           <button onClick="{{ saveReturn }}" style="flex:1;height:44px;border:none;border-radius:9px;background:#2563EB;color:#fff;font-size:14px;font-weight:700;cursor:pointer" style-hover="background:#1D4ED8">저장</button>
           <button onClick="{{ resetReturn }}" style="flex:0 0 110px;height:44px;border:1px solid #D1D5DB;border-radius:9px;background:#fff;color:#4B5563;font-size:13.5px;font-weight:600;cursor:pointer" style-hover="border-color:#B3261E;color:#B3261E">↩ 초기화</button>
         </div>
+        <sc-if value="{{ rHasErr }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12.5px;line-height:1.5;color:#B3261E;background:#FDECEA;border-radius:8px;padding:8px 12px">{{ rErrMsg }}</div>
+        </sc-if>
         <div style="display:flex;flex-direction:column;gap:10px">
           <label style="display:flex;align-items:center;justify-content:center;gap:7px;height:42px;border:1px dashed #9FC3B6;border-radius:9px;background:#F7F9FF;color:#2563EB;font-size:13px;font-weight:700;cursor:pointer" style-hover="background:#EFF4FF">반품사진 등록 <span style="font-weight:500;color:#6E8F84">(선택) {{ rPhotoCount }}</span>
             <span style="font-weight:500;color:#6B7280;font-size:11.5px">· 여러 장 선택 또는 Ctrl+V 붙여넣기</span>
@@ -661,6 +664,7 @@
                 <th style="padding:11px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E5E7EB">품목명</th>
                 <th style="padding:11px 12px;font-weight:600;border-bottom:1px solid #E5E7EB">수량</th>
                 <th onClick="{{ retSortRequested }}" style="padding:11px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E5E7EB;cursor:pointer">회수요청일 {{ requestedArrow }}</th>
+                <th style="padding:11px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E5E7EB">입고일</th>
                 <th onClick="{{ retSortConfirmed }}" style="padding:11px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E5E7EB;cursor:pointer">반품확인일 {{ confirmedArrow }}</th>
                 <th style="padding:11px 12px;text-align:center;font-weight:600;border-bottom:1px solid #E5E7EB">양품화</th>
                 <th style="padding:11px 12px;text-align:center;font-weight:600;border-bottom:1px solid #E5E7EB">목우촌공유</th>
@@ -678,6 +682,7 @@
                   <td style="padding:11px 12px;text-align:left;color:#4B5563;border-bottom:1px solid #F3F4F6"><div title="{{ r.itemName }}" style="width:260px;max-width:260px;overflow-x:auto;white-space:nowrap;scrollbar-width:thin;padding-bottom:2px">{{ r.itemName }}</div></td>
                   <td style="padding:11px 12px;border-bottom:1px solid #F3F4F6">{{ r.qty }}</td>
                   <td style="padding:11px 12px;text-align:left;border-bottom:1px solid #F3F4F6">{{ r.requested }}</td>
+                  <td style="padding:11px 12px;text-align:left;border-bottom:1px solid #F3F4F6">{{ r.inbound }}</td>
                   <td style="padding:11px 12px;text-align:left;border-bottom:1px solid #F3F4F6">{{ r.confirmed }}</td>
                   <td style="padding:8px 12px;text-align:center;border-bottom:1px solid #F3F4F6"><div style="display:flex;align-items:center;justify-content:center;gap:6px"><span>{{ r.good }}</span><button onClick="{{ r.toGood }}" title="이 반품 내용으로 반품양품화 입력" style="height:26px;padding:0 8px;border:1px solid #BFD3FE;border-radius:6px;background:#F5F8FF;color:#1E40AF;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap" style-hover="background:#DBE7FF">양품화</button></div></td>
                   <td style="padding:11px 12px;text-align:center;border-bottom:1px solid #F3F4F6"><span style="{{ r.sharedStyle }}">{{ r.sharedLabel }}</span></td>
@@ -1820,7 +1825,7 @@ const REC_FIELDS = [["info","출고정보",1],["name","품명",1],["qty","수량
 const REC_NUM = ["qty","box","plt","box_total","ice_total","other_total","work_all","mov_total","car_fee","total"];
 const RET_FIELDS = [["invoice","원송장번호",1],["customer","고객명",0],["itemCode","품목코드",0],["itemName","품목명",1],["type","구분",0],
   ["qty","수량",0],["box","출고박스 코드",0],["fee","택배비",0],["retfee","반품택배비",0],["amount","금액",0],
-  ["confirmed","반품확인일",0],["requested","회수요청일",0],["good","양품화",0]];
+  ["inbound","입고일",0],["confirmed","반품확인일",0],["requested","회수요청일",0],["good","양품화",0]];
 const RET_NUM = ["qty","fee","retfee","amount"];
 const RET_STORE = "mw_returns_v1";
 const NAV_ON = NAV_BASE + "background:#EFF4FF;color:#1D4ED8;font-weight:600";
@@ -2042,6 +2047,9 @@ class Component extends DCLogic {
     try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
     setTimeout(() => this.dailySnapshot(), 3000);
     window.addEventListener("storage", this._onStorage);
+    this._onMsg = e => { if (e && e.data && e.data.type === "mw-ret-photo") this.flushPending(); };
+    window.addEventListener("message", this._onMsg);
+    setTimeout(() => this.flushPending(), 1500);
     this.syncInit();
     this.mergeInvoices();
     import("./exclude-list.js").then(m => this.setState({ excludeCount: m.EXCLUDE.length })).catch(() => {});
@@ -2296,7 +2304,7 @@ class Component extends DCLogic {
     document.querySelectorAll('input[type="file"][accept^="image"]').forEach(i => { if (!i.multiple) i.multiple = true; });
     document.querySelectorAll("img[data-ph]").forEach(i => { const v = i.getAttribute("data-ph") || ""; if (v && !v.includes("{{") && i.getAttribute("src") !== v) i.setAttribute("src", v); });
   }
-  componentWillUnmount() { clearInterval(this._fmI); if (this._onPaste) document.removeEventListener("paste", this._onPaste, true); if (this._offWb) this._offWb(); if (this._onStorage) window.removeEventListener("storage", this._onStorage); }
+  componentWillUnmount() { if (this._onMsg) window.removeEventListener("message", this._onMsg); clearInterval(this._fmI); if (this._onPaste) document.removeEventListener("paste", this._onPaste, true); if (this._offWb) this._offWb(); if (this._onStorage) window.removeEventListener("storage", this._onStorage); }
 
   // 클레임관리 통합내역(기본 + 가져온 데이터) → 원송장 조회 DB 형식으로 병합
   mergeInvoices() {
@@ -2431,18 +2439,24 @@ class Component extends DCLogic {
       rRequested: s.rRequested, onRRequested: this.set("rRequested"),
       rGood: s.rGood, onRGood: this.set("rGood"),
       rShared: s.rShared, onRShared: this.set("rShared"),
+      ...(() => {
+        const miss = [!s.rInvoice.trim() && "원송장번호", !s.rType && "구분", !s.rItems.length && "품목"].filter(Boolean);
+        return { rHasErr: !!s.rErrOn && miss.length > 0, rErrMsg: miss.join(" · ") + " 을(를) 입력·선택해 주세요." };
+      })(),
       saveReturn: () => {
-        if (!s.rInvoice.trim() || !s.rItems.length) return;
+        if (!s.rInvoice.trim() || !s.rType || !s.rItems.length) return this.setState({ rErrOn: true });
         const rec = { id: String(Date.now()), invoice: s.rInvoice.trim(), customer: s.rCustomer.trim(),
           type: s.rType, itemName: s.rItems.map(i => i.name).join(" / "), itemCode: s.rItems.map(i => i.code || "").filter(Boolean).join(" / "),
           qty: c.qty, box: c.box, fee: c.fee, retfee: c.retfee, amount: c.amount,
+          inbound: (s.rPhotos || []).length ? todayStr() : "",
           confirmed: s.rConfirmed, requested: s.rRequested, good: s.rGood, shared: s.rShared, photos: (s.rPhotos || []).length };
         if ((s.rPhotos || []).length) this.photoPut(rec.id, s.rPhotos);
         this.setState(p => ({ returns: p.returns.concat(rec), rInvoice: "", rCustomer: "", rType: "",
-          rItems: [], rPending: [], rCpFee: "", rPhotos: [], rConfirmed: "", rRequested: todayStr(), rGood: "", rShared: "false" }));
+          rItems: [], rPending: [], rCpFee: "", rPhotos: [], rConfirmed: "", rRequested: todayStr(), rGood: "", rShared: "false", rErrOn: false }));
+        setTimeout(() => this.flushPending(), 300);
       },
       resetReturn: () => this.setState({ rInvoice: "", rCustomer: "", rType: "", rItems: [], rPending: [],
-        rNewCode: "", rNewItem: "", rNewQty: "1", rCpFee: "", rPhotos: [], rConfirmed: "", rRequested: todayStr(), rGood: "", rShared: "false" }),
+        rNewCode: "", rNewItem: "", rNewQty: "1", rCpFee: "", rPhotos: [], rConfirmed: "", rRequested: todayStr(), rGood: "", rShared: "false", rErrOn: false }),
       retMsg: s.retMsg, retErr: s.retErr,
       onRetCsv: e => { const f = e.target.files && e.target.files[0]; e.target.value = ""; this.importReturnCsv(f); },
       rFilterText: s.rFilterText, onRFilterText: this.set("rFilterText"),
@@ -2459,7 +2473,7 @@ class Component extends DCLogic {
         no: i + 1, invoice: r.invoice, customer: r.customer || "—", itemName: r.itemName, itemCode: this.retCode(r) || "—",
         type: r.type || "—", qty: r.qty, boxLabel: BOX_LABELS[r.box] || r.box || "—",
         fee: r.fee ? fmt(r.fee) + "원" : "—", retfee: fmt(r.retfee) + "원", amount: fmt(r.amount) + "원",
-        confirmed: r.confirmed || "—", requested: r.requested || "—", good: r.good || "미확인",
+        confirmed: r.confirmed || "—", requested: r.requested || "—", inbound: r.inbound || "—", good: r.good || "미확인",
         toGood: () => this.grFromRet(r),
         sharedLabel: r.shared === "true" ? "공유완료" : "미공유",
         sharedStyle: r.shared === "true" ? TAG_DONE : TAG_PEND,
@@ -2754,8 +2768,8 @@ class Component extends DCLogic {
         body: s.shItems.filter(shUsed).map((r, i) => { const ea = shEa(r); return [i+1, String(r.name).trim(), r.pack, r.box, r.piece, ea == null ? "" : ea, r.exp, r.note]; }) };
     }
     if (s.tab === "returnlist" || s.tab === "return") {
-      return { name: "반품목록", head: ["NO","원송장번호","고객명","품목코드","품목명","구분","수량","출고박스","택배비","반품택배비","금액","반품확인일","회수요청일","양품화","목우촌공유","마감반영"],
-        body: this.retFiltered().map((r, i) => [i+1, r.invoice, r.customer, this.retCode(r), r.itemName, r.type, r.qty, BOX_LABELS[r.box] || r.box || "", r.fee, r.retfee, r.amount, r.confirmed, r.requested, r.good, r.shared === "true" ? "공유완료" : "미공유", String(r.closed) === "true" ? "반영완료" : "미반영"]) };
+      return { name: "반품목록", head: ["NO","원송장번호","고객명","품목코드","품목명","구분","수량","출고박스","택배비","반품택배비","금액","입고일","반품확인일","회수요청일","양품화","목우촌공유","마감반영"],
+        body: this.retFiltered().map((r, i) => [i+1, r.invoice, r.customer, this.retCode(r), r.itemName, r.type, r.qty, BOX_LABELS[r.box] || r.box || "", r.fee, r.retfee, r.amount, r.inbound || "", r.confirmed, r.requested, r.good, r.shared === "true" ? "공유완료" : "미공유", String(r.closed) === "true" ? "반영완료" : "미반영"]) };
     }
     if (s.tab === "items") {
       return { name: "품목현황", head: ["품목코드","품목명","보관온도","입수량","무게(kg)","총수량","BOX수량"],
@@ -2890,7 +2904,7 @@ class Component extends DCLogic {
         invoice: at(["원송장번호", "송장번호"]), customer: at(["고객명"]),
         itemName: at(["품목명"]), itemCode: at(["품목코드"]), type: at(["구분"]), qty: at(["수량"]),
         box: at(["출고박스"]), fee: at(["택배비"]), retfee: at(["반품택배비"]),
-        amount: at(["금액"]), confirmed: at(["반품확인일"]), requested: at(["회수요청일"]),
+        amount: at(["금액"]), inbound: at(["입고일"]), confirmed: at(["반품확인일"]), requested: at(["회수요청일"]),
         good: at(["양품화여부", "양품화"]), shared: at(["목우촌공유"]), closed: at(["마감반영"])
       };
       if (ix.invoice < 0) throw new Error("원송장번호 열을 찾지 못했습니다");
@@ -2905,7 +2919,7 @@ class Component extends DCLogic {
           itemName: cell(r, ix.itemName), itemCode: ix.itemCode >= 0 ? cell(r, ix.itemCode) : "", type: cell(r, ix.type),
           qty: num(cell(r, ix.qty)), box: labelToKey[rawBox] || rawBox,
           fee: num(cell(r, ix.fee)), retfee: num(cell(r, ix.retfee)), amount: num(cell(r, ix.amount)),
-          confirmed: cell(r, ix.confirmed), requested: cell(r, ix.requested),
+          inbound: ix.inbound >= 0 ? cell(r, ix.inbound) : "", confirmed: cell(r, ix.confirmed), requested: cell(r, ix.requested),
           good: cell(r, ix.good), shared: cell(r, ix.shared) === "공유완료" ? "true" : "false", closed: cell(r, ix.closed) === "반영완료" ? "true" : "false"
         };
       }).filter(x => x.invoice);
@@ -3186,6 +3200,35 @@ class Component extends DCLogic {
   }
   photoLocalPut(id, arr) {
     return this.photoDb().then(db => new Promise(res => { const tx = db.transaction("p", "readwrite"); const st = tx.objectStore("p"); arr.length ? st.put(arr, id) : st.delete(id); tx.oncomplete = () => res(); tx.onerror = () => res(); })).catch(() => {});
+  }
+  async flushPending() {
+    if (this._flushing) { this._flushAgain = true; return; }
+    this._flushing = true;
+    try {
+      const db = await this.photoDb();
+      const pend = await new Promise(res => { const q = db.transaction("p").objectStore("p").get("pend"); q.onsuccess = () => res(q.result || {}); q.onerror = () => res({}); });
+      const rets = this.state.returns || [], used = {}, upd = {};
+      for (const inv of Object.keys(pend)) {
+        const ent = pend[inv] || []; if (!ent.length) continue;
+        const hits = rets.filter(r => String(r.invoice || "").split(/[\s,，\/]+/).map(x => x.replace(/\D/g, "")).includes(inv));
+        if (!hits.length) continue;
+        for (const r of hits) {
+          const list = (await this.photoGet(r.id)).list.slice();
+          ent.forEach(x => { if (!list.includes(x.src)) list.push(x.src); });
+          await this.photoPut(r.id, list);
+          upd[r.id] = { photos: list.length, inbound: r.inbound || ent.map(x => x.date).sort()[0] };
+        }
+        used[inv] = new Set(ent.map(x => x.k));
+      }
+      if (Object.keys(used).length) {
+        await new Promise(res => { const tx = db.transaction("p", "readwrite"), st = tx.objectStore("p"), q = st.get("pend");
+          q.onsuccess = () => { const cur = q.result || {}; Object.keys(used).forEach(k => { cur[k] = (cur[k] || []).filter(x => !used[k].has(x.k)); if (!cur[k].length) delete cur[k]; }); st.put(cur, "pend"); };
+          tx.oncomplete = res; tx.onerror = res; });
+        this.setState(p => ({ returns: p.returns.map(r => upd[r.id] ? Object.assign({}, r, upd[r.id]) : r) }));
+      }
+    } catch (e) {}
+    this._flushing = false;
+    if (this._flushAgain) { this._flushAgain = false; this.flushPending(); }
   }
   photoLive() { const S = window.MwSync; return S && S.url() && S.photoGet ? S : null; }
   async photoGet(id) {
@@ -3678,7 +3721,7 @@ class Component extends DCLogic {
       this.grHistSave((this.state.grHist || []).concat(e));
       this.grSave(list.concat(e), { ...blank, grErr: "", grMsg: "", ghMonth: String(e.date).slice(0, 7),
         ...(keepInv ? {} : { grInv: "", grRetId: "", grPend: [] }) });
-      if (retId) this.setState(p => ({ returns: p.returns.map(r => r.id === retId && r.good !== "양품" ? { ...r, good: "양품" } : r) }));
+      if (retId) this.setState(p => ({ returns: p.returns.map(r => r.id === retId ? { ...r, good: "양품", confirmed: e.date } : r) }));
     };
     const wms = this.grWmsRows(), missing = s.grStock ? wms.filter(w => !w.loc) : [];
     const tag = (bg, fg) => "display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700;background:" + bg + ";color:" + fg;
