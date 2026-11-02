@@ -645,6 +645,9 @@ window.claimSync = (() => {
   const base = (localStorage.getItem('mw_sync_url') || '').trim().replace(/\/+$/, '');
   const who = localStorage.getItem('mw_sync_name') || '';
   let es = null, remote = {}, synced = {}, ready = false, month = null, timer = null, lastJ = {};
+  // 서버에서 지우는 건 사용자가 직접 삭제한 행(또는 접수월로 옮긴 행)뿐 — 그 외 로컬에서 사라진 행은 서버 값으로 되살림
+  const userDel = new Set();
+  const markDel = ids => (ids || []).forEach(id => userDel.add(key(id)));
   const hash = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = (h * 33 ^ s.charCodeAt(i)) >>> 0; return h.toString(36) + ':' + s.length; };
   const sk = () => 'claims_synced_' + month;
   const saveSynced = () => { try { localStorage.setItem(sk(), JSON.stringify(synced)); } catch (e) {} };
@@ -673,7 +676,9 @@ window.claimSync = (() => {
       else { out.push(fill({ ...r }, rv)); keep.add(k); }    // 로컬 변경 우선, 빈 칸만 서버 값
     });
     Object.keys(remote).forEach(k => { const rr = remote[k]; if (seen.has(k) || !rr || rr.del || !rr.j) return; try { out.push(JSON.parse(rr.j)); } catch (e) {} });
-    const clean = moveToRecvMonth(out, month); out.length = 0; clean.forEach(r => out.push(r));
+    const clean = moveToRecvMonth(out, month);
+    if (clean.length !== out.length) { const ks = new Set(clean.map(r => key(r.id))); out.forEach(r => { if (!ks.has(key(r.id))) userDel.add(key(r.id)); }); }
+    out.length = 0; clean.forEach(r => out.push(r));
     Object.keys(remote).forEach(k => { const rr = remote[k]; if (rr && rr.j && !rr.del) lastJ[k] = rr.j; if (rr && rr.j && !rr.del && !keep.has(k)) synced[k] = hash(rr.j); });
     saveSynced();
     const changed = JSON.stringify(out) !== JSON.stringify(data);
@@ -705,6 +710,8 @@ window.claimSync = (() => {
       for (const k of Object.keys(syn)) {
         if (!alive()) return;
         if (now.has(k)) continue;
+        if (!userDel.has(k)) continue;
+        userDel.delete(k);
         delete syn[k];
         // 삭제 표시에 마지막 내용을 함께 남겨 엑셀 동기화가 같은 행을 찾아 지울 수 있게 함
         try { await fetch(u(k), { method: 'PUT', body: JSON.stringify(Object.assign({ del: true, at: Date.now(), by: who }, lj[k] ? { j: lj[k] } : {})) }); } catch (e) {}
@@ -715,7 +722,7 @@ window.claimSync = (() => {
   function connect() {
     if (es) { es.close(); es = null; }
     clearTimeout(timer);
-    remote = {}; synced = {}; lastJ = {}; ready = false;
+    remote = {}; synced = {}; lastJ = {}; ready = false; userDel.clear();
     if (!base || !window.EventSource) return;
     month = currentMonth;
     try { synced = JSON.parse(localStorage.getItem(sk()) || '{}') || {}; } catch (e) { synced = {}; }
@@ -732,7 +739,7 @@ window.claimSync = (() => {
     es.addEventListener('put', e => on('put', e.data));
     es.addEventListener('patch', e => on('patch', e.data));
   }
-  return { connect, push, on: () => !!base };
+  return { markDel, connect, push, on: () => !!base };
 })();
 
 // 클레임 운임 조회(OneDrive 자동 동기화)가 저장하면 바로 반영
@@ -2096,6 +2103,7 @@ document.getElementById('m-save').addEventListener('click', () => {
 document.getElementById('m-delete').addEventListener('click', () => {
   if(editingId == null) return;
   if(!confirm('이 클레임을 삭제하시겠습니까?')) return;
+  if (window.claimSync && claimSync.markDel) claimSync.markDel([editingId]);
   data = data.filter(r=>r.id!==editingId);
   saveData();
   document.getElementById('modal-overlay').hidden = true;
@@ -2127,6 +2135,7 @@ document.getElementById('sel-all').addEventListener('change', e => {
 document.getElementById('btn-del-sel').addEventListener('click', () => {
   if (!selIds.size) return;
   if (!confirm(`선택한 ${selIds.size}건을 삭제하시겠습니까?`)) return;
+  if (window.claimSync && claimSync.markDel) claimSync.markDel([...selIds]);
   data = data.filter(r => !selIds.has(r.id));
   selIds.clear();
   saveData();
