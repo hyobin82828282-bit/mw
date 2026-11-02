@@ -600,7 +600,32 @@ function initData() {
   // 9월 2026만 원본 데이터 사용, 나머지는 빈 배열
   data = currentMonth === '202609' ? JSON.parse(JSON.stringify(CLAIMS_RAW)) : [];
 }
+// 접수일(MM/DD)의 달이 지금 목록의 달과 다르면 그 달 목록으로 옮김 (예: 11월 목록의 10/30 접수 → 10월)
+function recvYm(r, ym) {
+  const m = parseInt(String((r && r.recv) || '').split('/')[0], 10);
+  if (!(m >= 1 && m <= 12)) return null;
+  const y = parseInt(String(ym).slice(0, 4), 10), cm = parseInt(String(ym).slice(4), 10);
+  const yy = m > cm + 6 ? y - 1 : (m < cm - 6 ? y + 1 : y);
+  return yy + String(m).padStart(2, '0');
+}
+function moveToRecvMonth(arr, ym) {
+  const keep = [], moved = {};
+  arr.forEach(r => { const t = recvYm(r, ym); if (t && t !== ym) (moved[t] = moved[t] || []).push(r); else keep.push(r); });
+  const base = (localStorage.getItem('mw_sync_url') || '').trim().replace(/\/+$/, '');
+  const who = localStorage.getItem('mw_sync_name') || '';
+  Object.keys(moved).forEach(t => {
+    let tgt = []; try { tgt = JSON.parse(localStorage.getItem('claims_v3_' + t) || '[]') || []; } catch (e) {}
+    const ids = new Set(tgt.map(x => String(x.id)));
+    moved[t].forEach(r => {
+      if (!ids.has(String(r.id))) tgt.push(r);
+      if (base) { const k = String(r.id).replace(/[.#$\[\]\/%]/g, '_'); fetch(base + '/mw/claims/' + t + '/' + k + '.json', { method: 'PUT', body: JSON.stringify({ j: JSON.stringify(r), at: Date.now(), by: who }) }).catch(() => {}); }
+    });
+    try { localStorage.setItem('claims_v3_' + t, JSON.stringify(tgt)); } catch (e) {}
+  });
+  return keep;
+}
 initData();
+{ const n0 = data.length; data = moveToRecvMonth(data, currentMonth); if (data.length !== n0) try { localStorage.setItem(getStorageKey(), JSON.stringify(data)); } catch (e) {} }
 
 let _lastNewId = 0;
 function getNextId() {
@@ -648,6 +673,7 @@ window.claimSync = (() => {
       else { out.push(fill({ ...r }, rv)); keep.add(k); }    // 로컬 변경 우선, 빈 칸만 서버 값
     });
     Object.keys(remote).forEach(k => { const rr = remote[k]; if (seen.has(k) || !rr || rr.del || !rr.j) return; try { out.push(JSON.parse(rr.j)); } catch (e) {} });
+    const clean = moveToRecvMonth(out, month); out.length = 0; clean.forEach(r => out.push(r));
     Object.keys(remote).forEach(k => { const rr = remote[k]; if (rr && rr.j && !rr.del) lastJ[k] = rr.j; if (rr && rr.j && !rr.del && !keep.has(k)) synced[k] = hash(rr.j); });
     saveSynced();
     const changed = JSON.stringify(out) !== JSON.stringify(data);
@@ -661,27 +687,35 @@ window.claimSync = (() => {
   function push() {
     if (!base || !ready) return;
     clearTimeout(timer);
+    // 시작 시점의 월·목록·기록을 고정 — 업로드 중 월을 바꿔도 다른 달 경로로 올라가지 않게
+    const m0 = month, rows = data, syn = synced, lj = lastJ;
+    const u = k => base + '/mw/claims/' + m0 + '/' + k + '.json';
+    const alive = () => month === m0 && synced === syn;
     timer = setTimeout(async () => {
+      if (!alive()) return;
       const now = new Set();
-      for (const r of data) {
-        const k = key(r.id), s = JSON.stringify(r); now.add(k); lastJ[k] = s;
+      for (const r of rows) {
+        if (!alive()) return;
+        const k = key(r.id), s = JSON.stringify(r); now.add(k); lj[k] = s;
         const hs = hash(s);
-        if (synced[k] === hs) continue;
-        synced[k] = hs;
-        try { await fetch(url(k), { method: 'PUT', body: JSON.stringify({ j: s, at: Date.now(), by: who }) }); } catch (e) { delete synced[k]; }
+        if (syn[k] === hs) continue;
+        syn[k] = hs;
+        try { await fetch(u(k), { method: 'PUT', body: JSON.stringify({ j: s, at: Date.now(), by: who }) }); } catch (e) { delete syn[k]; }
       }
-      for (const k of Object.keys(synced)) {
+      for (const k of Object.keys(syn)) {
+        if (!alive()) return;
         if (now.has(k)) continue;
-        delete synced[k];
+        delete syn[k];
         // 삭제 표시에 마지막 내용을 함께 남겨 엑셀 동기화가 같은 행을 찾아 지울 수 있게 함
-        try { await fetch(url(k), { method: 'PUT', body: JSON.stringify(Object.assign({ del: true, at: Date.now(), by: who }, lastJ[k] ? { j: lastJ[k] } : {})) }); } catch (e) {}
+        try { await fetch(u(k), { method: 'PUT', body: JSON.stringify(Object.assign({ del: true, at: Date.now(), by: who }, lj[k] ? { j: lj[k] } : {})) }); } catch (e) {}
       }
-      saveSynced();
+      if (alive()) saveSynced();
     }, 300);
   }
   function connect() {
     if (es) { es.close(); es = null; }
-    remote = {}; synced = {}; ready = false;
+    clearTimeout(timer);
+    remote = {}; synced = {}; lastJ = {}; ready = false;
     if (!base || !window.EventSource) return;
     month = currentMonth;
     try { synced = JSON.parse(localStorage.getItem(sk()) || '{}') || {}; } catch (e) { synced = {}; }
