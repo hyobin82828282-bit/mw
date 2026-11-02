@@ -799,7 +799,7 @@ function getFiltered() {
     return true;
   }).map((r, i) => [r, i]).sort((a, b) => claimOrder(a[0], b[0]) || a[1] - b[1]).map(x => x[0]);
 }
-// 접수일 → 출고일 → 입력순(id) 순서로 정렬 (MM/DD, 연말·연초 넘김 처리)
+// 접수일 → 입력일 → 출고일 순서로 정렬 (MM/DD, 연말·연초 넘김 처리)
 function mdKey(s) {
   const p = String(s || '').match(/(\d{1,2})\D+(\d{1,2})/);
   if (!p) return 99999;
@@ -807,8 +807,9 @@ function mdKey(s) {
   const off = m > cm + 6 ? -12 : (m < cm - 6 ? 12 : 0);
   return (m + off + 12) * 100 + (+p[2]);
 }
+// 접수일 → 입력일(입력 순서 = id) → 출고일
 function claimOrder(a, b) {
-  return mdKey(a.recv) - mdKey(b.recv) || mdKey(a.ship) - mdKey(b.ship) || (+a.id || 0) - (+b.id || 0);
+  return mdKey(a.recv) - mdKey(b.recv) || (+a.id || 0) - (+b.id || 0) || mdKey(a.ship) - mdKey(b.ship);
 }
 
 function getMagangRows(filtered) {
