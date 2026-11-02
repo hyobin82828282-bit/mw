@@ -3830,7 +3830,7 @@ class Component extends DCLogic {
       keepAircap: keep("aircap"), dispAircap: disp("aircap"),
       keepClaims: keep("claims"), dispClaims: disp("claims"),
       keepClaimsX: keep("claimsx"), dispClaimsX: disp("claimsx"),
-      claimsXSrc: "https://hyobin82828282-bit.github.io/-/claims.html?v=20261102e#month=" + (localStorage.getItem("claims_cur_month") || todayStr().slice(0, 7).replace("-", "")) + ((localStorage.getItem("mw_sync_url") || "").trim() ? "&sync=" + encodeURIComponent(localStorage.getItem("mw_sync_url").trim()) : ""),
+      claimsXSrc: "https://hyobin82828282-bit.github.io/-/claims.html?v=20261102f#month=" + (localStorage.getItem("claims_cur_month") || todayStr().slice(0, 7).replace("-", "")) + ((localStorage.getItem("mw_sync_url") || "").trim() ? "&sync=" + encodeURIComponent(localStorage.getItem("mw_sync_url").trim()) : ""),
       keepStock: keep("stock"), dispStock: disp("stock"),
       keepRetPhoto: keep("retphoto") && retOk, dispRetPhoto: disp("retphoto")
     };
