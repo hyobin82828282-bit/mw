@@ -1006,7 +1006,8 @@ function autoFees() {
     if (blank(r.note) && coolantNote(r.reason)) { r.note = coolantNote(r.reason); changed = true; }
     if (blank(r.deliveryCalc) && r.boxCode && deliveryMap[r.boxCode]) { r.deliveryCalc = deliveryMap[r.boxCode]; changed = true; }
     if (blank(r.workCalc) && r.workType && workMap[r.workType]) { r.workCalc = workMap[r.workType]; changed = true; }
-    if (!blank(r.deliveryCalc) || !blank(r.workCalc)) {
+    // 엑셀에서 배송비를 직접 고친 행은 자동 계산으로 덮어쓰지 않음
+    if (!r.deliveryManual && (!blank(r.deliveryCalc) || !blank(r.workCalc))) {
       const d = (+r.deliveryCalc || 0) + (+r.workCalc || 0);
       if (+r.delivery !== d) { r.delivery = d; changed = true; }
     }
@@ -2044,6 +2045,7 @@ document.getElementById('m-save').addEventListener('click', () => {
     row.deliveryCalc = fees.taxi;
     row.workCalc = fees.work;
     row.delivery = fees.delivery;
+    delete row.deliveryManual;
     row.material = fees.material;
   } else {
     const newRow = {
