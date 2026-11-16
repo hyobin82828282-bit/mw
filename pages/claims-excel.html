@@ -220,8 +220,8 @@ const claimValue = (wb, sh, a) => { const c = sh.cells[a]; return c?.f && c.v !=
 const claimSheet = wb => {
   const cur = (location.hash.match(/month=(\d{6})/) || [])[1] || localStorage.getItem('claims_cur_month') || '', m = /^\d{6}$/.test(cur) ? parseInt(cur.slice(4)) : new Date().getMonth() + 1;
   const clean = s => s.replace(/\s/g, '');
-  return wb.sheets.find(s => clean(s.name) === m + '월클레임') || wb.sheets.find(s => new RegExp('(^|\\D)' + m + '\\s*월').test(s.name) && s.name.includes('클레임') && !s.name.includes('통합'))
-    || wb.sheets.find(s => /\d+월 클레임/.test(s.name)) || wb.sheets.find(s => s.name.includes('클레임')) || wb.sheets[0];
+  // 그 달 시트가 없으면 다른 달 시트로 대신 연결하지 않음 (다른 달 시트에 섞여 들어가는 것 방지)
+  return wb.sheets.find(s => clean(s.name) === m + '월클레임') || wb.sheets.find(s => new RegExp('(^|\\D)' + m + '\\s*월').test(s.name) && s.name.includes('클레임') && !s.name.includes('통합')) || null;
 };
 function headerCol(wb, sh, words, fallback) {
   for (let c = 1; c <= Math.max(sh.maxC, 30); c++) {
@@ -302,7 +302,8 @@ function render() {
     <button class="btn" data-a="cloud" ${S.cloudBusy || !S.clientId || !S.shareUrl ? 'disabled' : ''}>${S.cloudBusy ? '연결 중…' : 'OneDrive 연결 및 파일 열기'}</button>
     <button class="btn" data-a="memo" title="원송장번호별 비고·실결제금액·재출고송장 일괄 수정">📝 클레임 메모</button>
     ${S.cloudFile ? `<span class="muted">연결됨 · ${esc(S.cloudFile.fileName)}</span>` : ''}
-    ${S.syncMsg ? `<span class="muted">🔄 ${esc(S.syncMsg)}</span>` : ''}
+    ${S.cloudFile ? `<button class="btn" data-a="syncNow" title="OneDrive 엑셀과 지금 바로 동기화" ${syncing ? 'disabled' : ''}>${syncing ? '동기화 중…' : '🔄 지금 동기화'}</button>` : ''}
+    ${S.syncMsg ? `<span class="muted">${esc(S.syncMsg)}</span>` : ''}
     <small>Microsoft 앱 ID와 현재 웹주소의 HTTPS 로그인 등록이 필요합니다.</small>
   </div>`;
   if (S.wb && s) {
@@ -351,7 +352,7 @@ async function openCloudFile() {
   const ref = await openSharedWorkbook(S.shareUrl);
   const book = Engine.load(await downloadWorkbook(ref));
   const target = claimSheet(book);
-  if (!target) throw new Error('OneDrive 파일에서 클레임 시트를 찾지 못했습니다.');
+  if (!target) throw new Error('OneDrive 파일에 ' + ((location.hash.match(/month=\d{4}(\d{2})/) || [])[1] || '') .replace(/^0/, '') + '월 클레임 시트가 없습니다. 엑셀에 시트를 먼저 만들어 주세요.');
   localStorage.setItem('claims.graph.clientId', S.clientId); localStorage.setItem('claims.graph.shareUrl', S.shareUrl);
   set({ wb: book, name: ref.fileName, sheetName: target.name, queue: [], cloudFile: ref, settingsOpen: true });
   flash(ref.fileName + ' OneDrive에서 열었습니다.');
@@ -420,6 +421,14 @@ function autoLookup() {
 const SYNC_MIN = 3, NCOL = 33;
 const F_MAP = [[0,'days','n'],[1,'mall'],[2,'recv','d'],[3,'ship','d'],[4,'waybill'],[5,'name'],[6,'type'],[7,'reason'],[8,'productCode'],[9,'product'],[10,'qty','n'],[11,'missingCode'],[12,'missing'],[13,'misQty','n'],[14,'accidentCode'],[15,'accident'],[16,'accQty','n'],[17,'reship'],[18,'courierOk'],[20,'stockAdjDate','d'],[21,'note'],[22,'price','n'],[23,'claimDelivery','n'],[24,'tempZone'],[25,'delivery','n'],[26,'material','n'],[27,'deliveryCalc','n'],[28,'workCalc','n'],[31,'workType'],[32,'boxCode']];
 const isBlank = v => v === undefined || v === null || String(v).trim() === '';
+// 엑셀에서 배송비(Z)를 택배비(AB)+작업료(AC)와 다르게 직접 적었으면 클레임 관리 자동 계산이 덮어쓰지 않게 표시
+function markManualDelivery(a) {
+  const hasCalc = !isBlank(a.deliveryCalc) || !isBlank(a.workCalc);
+  const want = hasCalc && !isBlank(a.delivery) && +a.delivery !== (+a.deliveryCalc || 0) + (+a.workCalc || 0);
+  if (want && !a.deliveryManual) { a.deliveryManual = true; return true; }
+  if (!want && a.deliveryManual) { delete a.deliveryManual; return true; }
+  return false;
+}
 const wbKey = v => String(v ?? '').replace(/[\s\-]/g, '').replace(/\.0+$/, '');
 function fromCell(v, t) {
   if (isBlank(v) || /^#(N\/A|VALUE!|REF!|DIV\/0!|NAME\?|NULL!|NUM!)/.test(String(v))) return '';
@@ -441,22 +450,34 @@ function syncBase() {
 }
 // 클레임 관리 화면에서 사유로 자동 표시되는 누락/사고 칸·택배사고접수도 엑셀에 같이 적음
 function derived(a) {
-  const d = { ...a }, nul = a.reason === '누락', acc = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송','오출고'].includes(a.reason);
+  const type = a.type || WB_TYPE[wbKey(a.waybill)] || '';
+  const d = { ...a }, nul = a.reason === '누락', acc = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송','오출고'].includes(a.reason)
+    || (type === '아워사고' && (a.reason === 'PCM터짐' || a.reason === '아이스팩터짐'));
   const fill = (f, v) => { if (isBlank(d[f]) && !isBlank(v)) d[f] = v; };
   if (nul) { fill('missingCode', a.productCode); fill('missing', a.product); fill('misQty', a.qty); }
   if (acc) { fill('accidentCode', a.productCode); fill('accident', a.product); fill('accQty', a.qty); }
-  if (a.type === '택배사고') fill('courierOk', '필요');
-  if (a.type === '아워사고') d.courierOk = 'X';
+  const late = !isBlank(a.days) && +a.days >= 15;
+  if (type === '택배사고' && !late) fill('courierOk', '필요');
+  if (type === '아워사고' || late) d.courierOk = 'X';
+  fill('note', a.reason === 'PCM터짐' ? '그린어스' : a.reason === '아이스팩터짐' ? '빙고' : '');
   return d;
 }
-let syncTimer = 0, syncing = false;
-function startAutoSync() { clearInterval(syncTimer); runSync(); syncTimer = setInterval(runSync, SYNC_MIN * 60000); }
-async function runSync() {
+let syncTimer = 0, syncing = false, WB_TYPE = {};
+const protectOk = new Set(); // '예'를 누른 보호 시트(월) — 이 창을 닫기 전까지만 유지
+function startAutoSync(manual) { clearInterval(syncTimer); runSync(manual === true); syncTimer = setInterval(runSync, SYNC_MIN * 60000); }
+async function runSync(manual) {
   if (syncing || S.busy || S.autoBusy || !S.cloudFile) return;
   if (!hasMicrosoftToken()) { clearInterval(syncTimer); set({ syncMsg: '로그인 만료 · OneDrive 다시 연결하면 동기화 재개' }); return; }
   const ym = claimMonthKey();
   if (!ym) { set({ syncMsg: '시트 이름에서 월을 찾지 못해 동기화하지 않았습니다' }); return; }
-  syncing = true;
+  // 10월 이전 클레임 시트는 동기화로 수정하지 않음 (보호)
+  if (String(ym) <= '202610' && !protectOk.has(ym)) {
+    const mn = (+String(ym).slice(4)) + '월';
+    if (manual !== true) { set({ syncMsg: mn + ' 시트는 보호 중이라 자동 동기화하지 않습니다 · 동기화하려면 [지금 동기화]를 눌러 주세요' }); return; }
+    if (!confirm(mn + ' 클레임 시트는 보호 중입니다.\n지금 엑셀 ' + mn + ' 시트와 동기화할까요?\n\n[확인] 예, 동기화합니다\n[취소] 아니요')) { set({ syncMsg: mn + ' 시트 동기화를 취소했습니다' }); return; }
+    protectOk.add(ym);
+  }
+  syncing = true; render();
   try {
     const ref = S.cloudFile, sheet = S.sheetName, ws = `/drives/${ref.driveId}/items/${ref.itemId}/workbook/worksheets('${encodeURIComponent(sheet.replace(/'/g, "''"))}')`;
     const ur = await (await g(ws + '/usedRange?$select=address')).json();
@@ -479,8 +500,15 @@ async function runSync() {
         if (rows.length) { app = rows; remoteOk = true; }
       } catch {}
     }
+    WB_TYPE = {};
+    app.forEach(a => { const w = wbKey(a.waybill); if (w && a.type && !WB_TYPE[w]) WB_TYPE[w] = a.type; });
+    xl.forEach(r => { const w = wbKey(vals[r][4]), t = fromCell(vals[r][6]); if (w && t && !WB_TYPE[w]) WB_TYPE[w] = t; });
     const before = new Map(app.map(a => [a.id, JSON.stringify(a)]));
     const SNAP_KEY = 'claims-excel.snap.' + ym; let snap = {}; try { snap = JSON.parse(localStorage.getItem(SNAP_KEY) || '{}') || {}; } catch {}
+    // 지난 동기화 기록을 서버에도 둬서 다른 PC·다른 주소에서 동기화해도 엑셀 수정분을 되돌리지 않게 함
+    const SNAP_URL = base ? base + '/mw/claims_xsnap/' + ym + '.json' : '';
+    if (SNAP_URL) { try { const sr = await (await fetch(SNAP_URL)).json(); if (sr && sr.j) Object.assign(snap, JSON.parse(sr.j) || {}); } catch {} }
+    const prevSnap = JSON.parse(JSON.stringify(snap));
     const sv = v => { const s = String(v ?? '').trim(); return /^-?[\d,]+(\.\d+)?$/.test(s) ? String(+s.replace(/,/g, '')) : s; };
     const same = (a, b) => sv(a) === sv(b);
     const snapOf = a => { const o = {}; F_MAP.forEach(([, f]) => { o[f] = sv(a[f]); }); return o; };
@@ -497,6 +525,7 @@ async function runSync() {
     };
     // 입력값 칸: 엑셀에 수식(통합내역 조회 등)이 있어도 결과가 비어 있으면 클레임 관리 값을 적음
     const INPUT = new Set(['mall','recv','ship','waybill','name','type','reason','productCode','product','qty','reship','courierOk','stockAdjDate','note','price','claimDelivery','workType','boxCode']);
+    const DERIVED = new Set(['missingCode','missing','misQty','accidentCode','accident','accQty']);
     const ACC = ['파손반송','파손수령','배송지연','송장흐름없음','분실','오배송','오출고'];
     for (const r of xl) {
       const row = vals[r], obj = {}; F_MAP.forEach(([c, f, t]) => obj[f] = fromCell(row[c], t));
@@ -513,6 +542,7 @@ async function runSync() {
         const n = { id: idBase++, ...obj, productList: obj.product, excluded: false };
         if (!n.missingCode && obj.reason === '누락') n.missingCode = obj.productCode;
         if (!n.accidentCode && ACC.includes(obj.reason)) n.accidentCode = obj.productCode;
+        markManualDelivery(n);
         app.push(n); fromXl.add(n); addApp++; continue;
       }
       matched.add(hit);
@@ -521,9 +551,15 @@ async function runSync() {
       F_MAP.forEach(([c, f]) => {
         const xv = obj[f], av = derived(hit)[f];
         // 아워사고는 택배사고접수 항상 X
-        if (f === 'courierOk' && hit.type === '아워사고') {
+        if (f === 'courierOk' && ((hit.type || WB_TYPE[wbKey(hit.waybill)]) === '아워사고' || (!isBlank(hit.days) && +hit.days >= 15))) {
           if (hit.courierOk !== 'X') { hit.courierOk = 'X'; fillApp++; }
           if (!same(xv, 'X') && !isF(r, c)) { out[c] = 'X'; changed = true; fillXl++; }
+          return;
+        }
+        // 누락/사고 품목·수량: 클레임 관리에 직접 입력한 값이 없으면 엑셀 값을 그대로 씀 (상품 수량으로 덮어쓰지 않음)
+        if (DERIVED.has(f) && isBlank(hit[f])) {
+          if (!isBlank(xv)) { hit[f] = xv; fillApp++; }
+          else if (!isBlank(av) && !isF(r, c)) { out[c] = av; changed = true; fillXl++; }
           return;
         }
         if (same(av, xv)) return;
@@ -537,7 +573,10 @@ async function runSync() {
         // 재출고송장 칸의 '재출고' 같은 표시 글자는 엑셀의 실제 송장번호로 교체
         const placeholder = f === 'reship' && !isBlank(av) && !/\d{6,}/.test(String(av)) && /\d{6,}/.test(String(xv ?? ''));
         // 지난 동기화 이후 어느 쪽이 바뀌었는지 보고 바뀐 쪽 값을 반영 (기록이 없으면 클레임 관리 기준)
-        const xlChanged = b !== undefined ? (same(av, b) && !same(xv, b)) : (isBlank(av) || placeholder);
+        // 기록이 없으면 엑셀에 값이 있을 때 엑셀 기준 (엑셀에서 고친 값을 되돌리지 않음)
+        const xlChanged = b !== undefined ? (same(av, b) && !same(xv, b)) : (!isBlank(xv) || placeholder);
+        // 누락/사고 품목·수량을 클레임 관리에 입력했으면 엑셀 수식 결과로 되돌리지 않고 입력값을 엑셀에 적음
+        if (DERIVED.has(f) && !isBlank(av) && isF(r, c)) { out[c] = av; changed = true; fillXl++; return; }
         if (isF(r, c)) {
           if (b !== undefined && !isBlank(av) && !same(av, b) && same(xv, b)) { out[c] = av; changed = true; fillXl++; }
           else if (INPUT.has(f)) { if (isBlank(av)) { hit[f] = xv; fillApp++; } else if (isBlank(xv)) { out[c] = av; changed = true; fillXl++; } }
@@ -546,45 +585,106 @@ async function runSync() {
         else if (xlChanged) { hit[f] = isBlank(xv) ? '' : xv; fillApp++; }
         else if (!isF(r, c) && !(isBlank(av) && b === undefined)) { out[c] = isBlank(av) ? '' : av; changed = true; fillXl++; }
       });
+      if (markManualDelivery(hit)) fillApp++;
       snap[hit.id] = snapOf(derived(hit));
       if (changed) rowWrites.push({ r, out });
     }
-    // 클레임 관리에만 있는 행 → 엑셀 마지막 송장 행 아래 빈 줄에 추가 (수식 칸은 그대로 / 없으면 윗줄 수식 복사)
+    // 클레임 관리에만 있는 행 → 접수일·입력일·출고일 순서에 맞는 자리에 행을 끼워 넣음 (맨 아래에 붙이지 않음)
     const appOnly = app.filter(a => !matched.has(a) && !fromXl.has(a) && !isBlank(a.waybill));
-    let r = last + 1;
-    for (const a of appOnly) {
-      while (r < vals.length && (vals[r] || []).some((v, c) => !isF(r, c) && !isBlank(v))) r++;
-      const out = [];
-      const d = derived(a);
-      for (let c = 0; c < endCol; c++) {
-        const m = F_MAP.find(x => x[0] === c), v = m ? d[m[1]] : '';
-        if (m && INPUT.has(m[1]) && !isBlank(v)) out.push(v);
-        else if (r < vals.length && isF(r, c)) out.push(fms[r][c]);
-        else if (isF(last, c)) out.push(Engine.shiftFormula(fms[last][c], 0, r - last));
-        else out.push(isBlank(v) ? '' : v);
-      }
-      rowWrites.push({ r, out }); addXl++; r++;
-    }
+    const cm = parseInt(String(ym).slice(4), 10) || 1;
+    const md = v => {
+      let m, d;
+      if (typeof v === 'number' && v > 20000) { const t = new Date(Math.round((v - 25569) * 864e5)); m = t.getUTCMonth() + 1; d = t.getUTCDate(); }
+      else { const p = String(v ?? '').match(/(\d{1,2})\D+(\d{1,2})/); if (!p) return 99999; m = +p[1]; d = +p[2]; }
+      return (m + (m > cm + 6 ? -12 : (m < cm - 6 ? 12 : 0)) + 12) * 100 + d;
+    };
+    // 접수일 → 입력일(입력 순서) → 출고일: 같은 접수일이면 이미 엑셀에 있는 행 뒤, 입력한 순서대로
+    const ordOf = rv => md(rv);
+    const xlOrd = xl.map(r => [r, ordOf(vals[r][2])]);
+    const groups = new Map();
+    appOnly.map(a => ({ a, o: ordOf(a.recv) })).sort((x, y) => x.o - y.o || (+x.a.id || 0) - (+y.a.id || 0) || md(x.a.ship) - md(y.a.ship)).forEach(({ a, o }) => {
+      let t = xl.length ? xl[0] : 1;
+      for (const [r, ro] of xlOrd) if (ro <= o) t = r + 1;
+      if (!groups.has(t)) groups.set(t, []);
+      groups.get(t).push(a);
+    });
+    // 마지막 행 뒤에 들어갈 건은 끼워 넣지 않고 아래 빈 줄(미리 넣어둔 수식 줄 포함)에 적음
+    const tailT = last + 1, tail = groups.get(tailT) || [];
+    groups.delete(tailT);
+    { let r = last + 1;
+      for (const a of tail) {
+        while (r < vals.length && (vals[r] || []).some((v, c) => !isF(r, c) && !isBlank(v))) r++;
+        const d = derived(a), out = [], tp = last >= 1 ? last : r;
+        for (let c = 0; c < endCol; c++) {
+          const m = F_MAP.find(x => x[0] === c), v = m ? d[m[1]] : '';
+          if (m && (INPUT.has(m[1]) || DERIVED.has(m[1])) && !isBlank(v)) out.push(v);
+          else if (r < vals.length && isF(r, c)) out.push(fms[r][c]);
+          else if (tp !== r && isF(tp, c)) out.push(Engine.shiftFormula(fms[tp][c], 0, r - tp));
+          else out.push(isBlank(v) ? '' : v);
+        }
+        rowWrites.push({ r, out }); addXl++; r++;
+      } }
+    const ins = [...groups.entries()].sort((x, y) => y[0] - x[0]);
+    const adj = r => r + ins.reduce((s, [t, list]) => s + (t <= r ? list.length : 0), 0);
     // 일시적인 오류(요청 많음 등)로 중간에 멈추지 않도록 재시도
     const gw = async (p, o) => { for (let i = 0; ; i++) { try { return await g(p, o); } catch (e) { if (i >= 3) throw e; await new Promise(res => setTimeout(res, 1200 * (i + 1))); } } };
-    for (const w of rowWrites) await gw(rangeUrl(ref, sheet, `A${w.r + 1}:${col(endCol)}${w.r + 1}`), { method: 'PATCH', body: JSON.stringify({ formulas: [w.out] }) });
+    // 아래 자리부터 끼워 넣어 위쪽 행 번호가 밀리지 않게 함
+    for (const [t, list] of ins) {
+      await gw(rangeUrl(ref, sheet, `${t + 1}:${t + list.length}`) + '/insert', { method: 'POST', body: JSON.stringify({ shift: 'Down' }) });
+      const tp = t - 1 >= 1 ? t - 1 : t;
+      const rows = list.map((a, i) => {
+        const rr = t + i, d = derived(a), out = [];
+        for (let c = 0; c < endCol; c++) {
+          const m = F_MAP.find(x => x[0] === c), v = m ? d[m[1]] : '';
+          if (m && (INPUT.has(m[1]) || DERIVED.has(m[1])) && !isBlank(v)) out.push(v);
+          else if (isF(tp, c)) out.push(Engine.shiftFormula(fms[tp][c], 0, rr - tp));
+          else out.push(isBlank(v) ? '' : v);
+        }
+        return out;
+      });
+      await gw(rangeUrl(ref, sheet, `A${t + 1}:${col(endCol)}${t + list.length}`), { method: 'PATCH', body: JSON.stringify({ formulas: rows }) });
+      addXl += list.length;
+    }
+    for (const w of rowWrites) { const rr = adj(w.r); await gw(rangeUrl(ref, sheet, `A${rr + 1}:${col(endCol)}${rr + 1}`), { method: 'PATCH', body: JSON.stringify({ formulas: [w.out] }) }); }
     // 삭제는 아래 행부터 (위 행 번호가 밀리지 않게)
-    for (const dr of rowDeletes.sort((a, b) => b - a)) { await gw(rangeUrl(ref, sheet, `${dr + 1}:${dr + 1}`) + '/delete', { method: 'POST', body: JSON.stringify({ shift: 'Up' }) }); delXl++; }
+    for (const dr0 of rowDeletes.sort((a, b) => b - a)) { const dr = adj(dr0); await gw(rangeUrl(ref, sheet, `${dr + 1}:${dr + 1}`) + '/delete', { method: 'POST', body: JSON.stringify({ shift: 'Up' }) }); delXl++; }
     appOnly.forEach(a => { snap[a.id] = snapOf(derived(a)); });
     try { localStorage.setItem(SNAP_KEY, JSON.stringify(snap)); } catch {}
     if (addApp || fillApp) {
       localStorage.setItem(key, JSON.stringify(app));
-      if (base && (remoteOk || !before.size)) for (const a of app) {
+      // 엑셀에서 가져온 값이 서버에 저장되지 못하면 기록을 이전 상태로 되돌려 다음 동기화 때 다시 반영 (엑셀 값을 덮어쓰지 않게)
+      const undoSnap = a => { if (prevSnap[a.id] !== undefined) snap[a.id] = prevSnap[a.id]; else delete snap[a.id]; };
+      const canPut = base && (remoteOk || !before.size);
+      for (const a of app) {
         const s = JSON.stringify(a); if (before.get(a.id) === s) continue;
-        try { const res = await fetch(base + '/mw/claims/' + ym + '/' + rkey(a.id) + '.json', { method: 'PUT', body: JSON.stringify({ j: s, at: Date.now(), by: '엑셀동기화' }) }); if (res.ok && fromXl.has(a)) snap[a.id] = snapOf(a); } catch {}
+        if (!base) continue;
+        if (!canPut) { undoSnap(a); continue; }
+        const u = base + '/mw/claims/' + ym + '/' + rkey(a.id) + '.json';
+        let body = s;
+        // 동기화하는 동안 클레임 관리에서 수정한 행: 그 수정은 살리고 엑셀에서 바뀐 칸만 합쳐서 저장
+        if (before.has(a.id)) {
+          try {
+            const cur = await (await fetch(u)).json();
+            if (cur && cur.j && cur.j !== before.get(a.id)) {
+              const old = JSON.parse(before.get(a.id)), merged = JSON.parse(cur.j);
+              Object.keys(a).forEach(f => { if (JSON.stringify(a[f]) !== JSON.stringify(old[f])) merged[f] = a[f]; });
+              body = JSON.stringify(merged);
+            }
+          } catch {}
+        }
+        try {
+          const res = await fetch(u, { method: 'PUT', body: JSON.stringify({ j: body, at: Date.now(), by: '엑셀동기화' }) });
+          if (!res.ok) undoSnap(a); else if (fromXl.has(a)) snap[a.id] = snapOf(a);
+        } catch { undoSnap(a); }
       }
       try { localStorage.setItem(SNAP_KEY, JSON.stringify(snap)); } catch {}
     }
+    if (SNAP_URL) { try { await fetch(SNAP_URL, { method: 'PUT', body: JSON.stringify({ j: JSON.stringify(snap), at: Date.now() }) }); } catch {} }
     const t = new Date().toTimeString().slice(0, 5);
     set({ syncMsg: `${SYNC_MIN}분마다 자동 동기화 · 마지막 ${t} · 엑셀→클레임 관리 추가 ${addApp}·채움 ${fillApp} / 클레임 관리→엑셀 추가 ${addXl}·채움 ${fillXl}·삭제 ${delXl}` });
     if (rowWrites.length || rowDeletes.length) { const book = Engine.load(await downloadWorkbook(ref)); if (book.byName[S.sheetName]) set({ wb: book }); }
   } catch (err) { set({ syncMsg: '동기화 실패: ' + err.message }); }
-  finally { syncing = false; }
+  finally { syncing = false; render(); }
 }
 
 window.addEventListener('message', event => {
@@ -811,7 +911,7 @@ document.addEventListener('click', e => {
   ({
     open: () => $('#fileIn').click(), import: () => $('#importIn').click(), export: exportFile, cloud: connectCloud,
     settings: () => set({ settingsOpen: true }), closeSettings: () => set({ settingsOpen: false }), build: buildQueue,
-    auto: autoLookup, saveAll: saveAllFares, memo: openMemo,
+    auto: autoLookup, saveAll: saveAllFares, memo: openMemo, syncNow: () => { if (syncing) return; if (S.busy || S.autoBusy) { alert('조회가 끝난 뒤 다시 눌러 주세요'); return; } if (!hasMicrosoftToken()) { alert('OneDrive 로그인이 만료됐어요. 다시 연결해 주세요.'); return; } startAutoSync(true); },
     moreRows: () => { xlLimit += XL_PAGE; render(); }, toggleQueue: () => set({ queueOpen: !S.queueOpen }),
     memoCancel: () => { $('#memo-overlay').style.display = 'none'; }, memoRun: runMemo,
     memoFile: () => { const f = $('#memo-file'); f.value = ''; f.click(); }, skip: () => set({ queue: S.queue.filter(x => x.row !== row) }),
