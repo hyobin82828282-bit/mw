@@ -294,7 +294,7 @@ class Component extends DCLogic {
     return out;
   }
 
-  addFiles(files) {
+  async addFiles(files) {
     const all = [...files];
     const ok = f => /^image\/(jpeg|png|webp|gif|bmp)$/.test(f.type) || (!f.type && /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name));
     const key = f => f.name + '|' + f.size + '|' + f.lastModified;
@@ -303,6 +303,11 @@ class Component extends DCLogic {
     all.forEach(f => { if (!ok(f)) bad.push(f); else if (have.has(key(f))) dup.push(f); else { have.add(key(f)); imgs.push(f); } });
     const msg = [imgs.length ? imgs.length + '장 추가' : '', bad.length ? '형식 안 맞는 ' + bad.length + '장 제외(HEIC 등)' : '', dup.length ? '중복 ' + dup.length + '장 제외' : ''].filter(Boolean).join(' · ');
     if (msg) this.showToast(msg);
+    if (!imgs.length) return;
+    let lost = 0;
+    const copied = (await Promise.all(imgs.map(f => f.arrayBuffer().then(b => new File([b], f.name, { type: f.type, lastModified: f.lastModified })).catch(() => { lost++; return null; })))).filter(Boolean);
+    imgs.length = 0; imgs.push(...copied);
+    if (lost) this.showToast('원본을 읽을 수 없는 ' + lost + '장 제외 (파일이 옮겨졌거나 삭제됨, 다시 올려주세요)');
     if (!imgs.length) return;
     imgs.sort((a, b) => (a.lastModified - b.lastModified) || a.name.localeCompare(b.name, 'ko', { numeric: true }));
     const auto = !!(this.sample && this.canImages);
@@ -340,7 +345,7 @@ class Component extends DCLogic {
   async saveOne(it) {
     const n = this.names()[it.id]; if (!n || !this.downloads) return;
     try { await this.downloads.save({ filename: n, data: it.file }); this.showToast('저장: ' + n); }
-    catch (e) { if (e.code !== 'declined') this.showToast('저장 안 됨: ' + (e.message || e.code)); }
+    catch (e) { if (e.code !== 'declined') this.showToast(e && e.name === 'NotReadableError' ? '저장 안 됨: 원본 사진을 찾을 수 없어요(옮겨졌거나 삭제됨). 비우기 후 다시 올려주세요.' : '저장 안 됨: ' + (e.message || e.code)); }
   }
   async saveZip(onlySel) {
     const sel = this.state.sel || {};
@@ -361,7 +366,7 @@ class Component extends DCLogic {
       const d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
       await this.downloads.save({ filename: `목우촌반품_${stamp}.zip`, data: blob });
       this.showToast(`${entries.length}장 저장 · ${mb(before)} → ${mb(after)}` + (skipped ? ` · 번호 없는 ${skipped}장 제외` : ''));
-    } catch (e) { if (e.code !== 'declined') this.showToast('저장 안 됨: ' + (e.message || e.code)); }
+    } catch (e) { if (e.code !== 'declined') this.showToast(e && e.name === 'NotReadableError' ? '저장 안 됨: 원본 사진을 찾을 수 없어요(옮겨졌거나 삭제됨). 비우기 후 다시 올려주세요.' : '저장 안 됨: ' + (e.message || e.code)); }
     finally { this.setState({ zipping: false }); }
   }
 
