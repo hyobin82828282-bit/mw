@@ -50,6 +50,15 @@
   </div>
 
   <sc-if value="{{ hasDays }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div style="font-size:13px;font-weight:600;color:#6B7280">조회 월</div>
+      <div style="display:flex;gap:2px;padding:2px;border:1px solid #D1D5DB;border-radius:8px;background:#fff;flex-wrap:wrap">
+        <sc-for list="{{ months }}" as="m" hint-placeholder-count="2">
+          <button onClick="{{ m.pick }}" style="height:28px;padding:0 12px;border:0;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;background:{{ m.bg }};color:{{ m.c }}">{{ m.label }}</button>
+        </sc-for>
+      </div>
+      <button onClick="{{ clearMonth }}" style="margin-left:auto;height:32px;padding:0 12px;border:1px solid #D1D5DB;border-radius:8px;background:#fff;font-size:12px;font-weight:600;cursor:pointer;color:#6B7280">{{ clearMonthLabel }}</button>
+    </div>
     <section style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:auto">
       <div style="min-width:620px">
         <div style="display:grid;grid-template-columns:minmax(0,1fr) repeat(5,minmax(0,1fr));padding:10px 20px;border-bottom:1px solid #E5E7EB;font-size:12px;font-weight:600;color:#6B7280">
@@ -241,7 +250,7 @@ class Component extends DCLogic {
     this.setState({ hs, busy2: '' }, () => this.save());
   }
   async fill(file) {
-    const D = this.state[this.dk()], keys = Object.keys(D).sort(), sfx = this.isA() ? '_도착보장_채움.xlsx' : '_채움.xlsx'; if (!keys.length) return;
+    const D = this.state[this.dk()], keys = Object.keys(D).sort().filter(k => !this._mo || k.slice(0, 7) === this._mo), sfx = this.isA() ? '_도착보장_채움.xlsx' : '_채움.xlsx'; if (!keys.length) return;
     this.flash('일별 건수 파일 채우는 중…');
     try {
       const ab0 = await file.arrayBuffer();
@@ -282,7 +291,11 @@ class Component extends DCLogic {
   renderVals() {
     const { busy, busy2, toast, pw } = this.state, A = this.isA(), th = this.th(), days = this.state[this.dk()], cur = this.state[this.ck()];
     const mb = on => ({ bg: on ? '#0F172A' : 'transparent', c: on ? '#fff' : '#6B7280' });
-    const keys = Object.keys(days).sort(), c = days[cur] || days[keys[keys.length - 1]];
+    const allKeys = Object.keys(days).sort(), mos = [...new Set(allKeys.map(k => k.slice(0, 7)))];
+    const mo = mos.includes(this.state.month) ? this.state.month : mos[mos.length - 1];
+    const keys = allKeys.filter(k => k.slice(0, 7) === mo), c = (cur && cur.slice(0, 7) === mo && days[cur]) || days[keys[keys.length - 1]];
+    this._mo = mo;
+    const moLabel = m => { const [y, mm] = (m || '').split('-'); return mm ? (y !== String(new Date().getFullYear()) ? y.slice(2) + '년 ' : '') + (+mm) + '월' : m; };
     const fmt = d => { const [, m, dd] = d.split('-'); return dd ? (+m) + '/' + (+dd) : d; };
     const n = v => (v || 0).toLocaleString();
     const tot = f => keys.reduce((a, k) => a + (f(days[k]) || 0), 0);
@@ -291,6 +304,9 @@ class Component extends DCLogic {
       th, modeN: { ...mb(!A), pick: () => this.setState({ mode: 'normal', q: '' }, () => this.save()) }, modeA: { ...mb(A), pick: () => this.setState({ mode: 'arrival', q: '' }, () => this.save()) },
       pw, pwChange: e => this.setState({ pw: e.target.value }, () => this.save()),
       hasDays: keys.length > 0,
+      months: mos.map(m => ({ label: moLabel(m), ...mb(m === mo), pick: () => this.setState({ month: m }) })),
+      clearMonthLabel: moLabel(mo) + ' 데이터 지우기',
+      clearMonth: () => { if (!confirm(moLabel(mo) + ' 데이터를 지울까요?')) return; const d = {}; allKeys.forEach(k => { if (k.slice(0, 7) !== mo) d[k] = days[k]; }); this.setState({ [this.dk()]: d, month: null }, () => this.save()); this.flash(moLabel(mo) + ' 데이터를 지웠어요'); },
       dz1: this.dz(1, busy || (A ? (keys.length ? '목우촌 도착보장 출고 완료 파일 더 넣기' : '목우촌 도착보장 출고 완료 상세 현황 파일') : (keys.length ? '목우촌 출고 완료 파일 더 넣기' : '목우촌 출고 완료 상세 현황 파일')), f => this.load(f)),
       days: keys.map(k => { const d = days[k]; return { label: fmt(k), invoices: n(d.invoices), air: n(d.airTotal), set: n(d.set), set40: n(d.set40), gift: n(d.gift), bg: c && c.day === k ? '#F5F8FF' : '#fff', pick: () => this.setState({ [this.ck()]: k }, () => this.save()) }; }),
       sum: { invoices: n(tot(d => d.invoices)), air: n(tot(d => d.airTotal)), set: n(tot(d => d.set)), set40: n(tot(d => d.set40)), gift: n(tot(d => d.gift)) },

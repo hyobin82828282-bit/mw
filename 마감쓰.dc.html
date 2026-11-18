@@ -136,7 +136,7 @@
             <div style="display:flex;flex-direction:column;gap:8px">
               <sc-for list="{{ items }}" as="row" hint-placeholder-count="2">
                 <div style="display:flex;flex-direction:column;gap:4px">
-                  <div style="display:grid;grid-template-columns:minmax(0,1fr) 108px 72px 36px;gap:8px;align-items:center">
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) 108px 88px 72px 36px;gap:8px;align-items:center">
                     <div style="position:relative;min-width:0">
                       <input type="text" placeholder="품명 입력" autocomplete="off" value="{{ row.name }}" onChange="{{ row.onName }}" onFocus="{{ row.onFocus }}" onBlur="{{ row.onBlur }}" onKeyDown="{{ row.onKey }}" style="width:100%;box-sizing:border-box;height:38px;padding:0 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:13.5px;background:#fff;outline:none;min-width:0" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px #EFF4FF">
                       <sc-if value="{{ row.hasSugg }}">
@@ -151,6 +151,12 @@
                       </sc-if>
                     </div>
                     <input type="number" placeholder="수량" value="{{ row.qty }}" onChange="{{ row.onQty }}" style="height:38px;padding:0 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:13.5px;text-align:right;background:#fff;outline:none;min-width:0" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px #EFF4FF">
+                    <sc-if value="{{ row.showSplit }}">
+                      <label style="height:38px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#374151;cursor:pointer;white-space:nowrap"><input type="checkbox" checked="{{ row.split }}" onChange="{{ row.onSplit }}" style="width:15px;height:15px;margin:0;accent-color:#2563EB;cursor:pointer">BOX 나누기</label>
+                    </sc-if>
+                    <sc-if value="{{ row.manual }}">
+                      <div style="height:38px"></div>
+                    </sc-if>
                     <sc-if value="{{ row.manual }}">
                       <input type="number" placeholder="BOX" value="{{ row.box }}" onChange="{{ row.onBox }}" style="height:38px;padding:0 9px;border:1px solid #C2A14D;border-radius:8px;font-size:13px;text-align:right;background:#FDFAF1;outline:none;min-width:0" style-focus="border-color:#2563EB;box-shadow:0 0 0 3px #EFF4FF">
                     </sc-if>
@@ -2171,7 +2177,16 @@ class Component extends DCLogic {
   pushDiff(f, pv, cur) {
     const S = window.MwSync, pm = new Map((pv || []).map(x => [x.id, x]));
     (cur || []).forEach(x => { if (pm.get(x.id) !== x) S.put(f, x); pm.delete(x.id); });
-    pm.forEach((x, id) => S.del(f, id));
+    // 한 번에 여러 건이 빠지면(오래된 백업·다른 컴퓨터 목록으로 덮어쓰기 등) 서버에서 지우기 전에 확인
+    if (pm.size >= 2) {
+      const nm = f === "records" ? "차량출고" : "반품", prev = [...pm.values()].slice(0, 10).map(x => "· " + (x.info || x.name || x.invoice || x.id)).join("\n");
+      if (!confirm(nm + " " + pm.size + "건이 한꺼번에 목록에서 빠집니다.\n\n" + prev + (pm.size > 10 ? "\n…" : "") + "\n\n정말 모든 컴퓨터에서 지울까요?\n(취소하면 지우지 않고 그대로 둡니다)")) {
+        const back = [...pm.values()];
+        setTimeout(() => this.setState(p => ({ [f]: (p[f] || []).concat(back.filter(x => !(p[f] || []).some(y => y.id === x.id))) })), 0);
+        return;
+      }
+    }
+    pm.forEach((x, id) => S.del(f, id, x));
   }
   syncVals() {
     const s = this.state, st = s.syncSt || { state: "off" }, S = window.MwSync;
@@ -2257,14 +2272,22 @@ class Component extends DCLogic {
       const all = await new Promise(r => { const g = db.transaction("snaps").objectStore("snaps").getAll(); g.onsuccess = () => r(g.result || []); g.onerror = () => r([]); });
       all.forEach(x => x && x.localStorage && srcs.push(x.localStorage));
     } catch (e) {}
+    // 서버에 남아 있는 지운 기록 내용(_prev)도 찾아봄
+    const S = window.MwSync;
+    if (S && S.deleted) { const sv = {}; [["records", REC_STORE], ["returns", RET_STORE]].forEach(([f, store]) => { sv[store] = JSON.stringify(S.deleted(f).filter(x => x._prev).map(x => x._prev)); }); srcs.push(sv); }
+    const ym = prompt("되살릴 출고 월을 숫자로 입력하세요 (예: 11)\n비워 두면 모든 달에서 찾습니다.", String(new Date().getMonth() + 1));
+    if (ym === null) return;
+    const mon = String(ym).trim().replace(/월$/, "");
+    const inMon = x => !mon || f2m(x) === mon;
+    const f2m = x => { const m = String(x.info || "").match(/^\s*(\d{1,2})\s*\//); if (m) return String(+m[1]); const d = x.date || x.recvDate || ""; const k = String(d).match(/^\d{4}-(\d{2})/); return k ? String(+k[1]) : (x.ts ? String(new Date(x.ts).getMonth() + 1) : ""); };
     const found = { records: [], returns: [] };
     [["records", REC_STORE], ["returns", RET_STORE]].forEach(([f, store]) => {
       const ids = new Set((this.state[f] || []).map(x => x.id)), add = new Map();
-      srcs.forEach(ls => { let a = []; try { a = JSON.parse(ls[store] || "[]"); } catch (e) {} (Array.isArray(a) ? a : []).forEach(x => { if (x && x.id != null && !ids.has(x.id) && !add.has(x.id)) add.set(x.id, x); }); });
+      srcs.forEach(ls => { let a = []; try { a = JSON.parse(ls[store] || "[]"); } catch (e) {} (Array.isArray(a) ? a : []).forEach(x => { if (x && x.id != null && !x._del && !ids.has(x.id) && !add.has(x.id) && inMon(x)) add.set(x.id, x); }); });
       found[f] = [...add.values()];
     });
     const nr = found.records.length, nt = found.returns.length;
-    if (!nr && !nt) return alert("이 컴퓨터의 자동 백업(" + srcs.length + "개)에서 사라진 기록을 찾지 못했습니다.\n10월 기록을 입력했던 다른 컴퓨터·브라우저에서 이 버튼을 눌러보세요.");
+    if (!nr && !nt) return alert("이 컴퓨터의 자동 백업(" + srcs.length + "개)에서 사라진 기록을 찾지 못했습니다.\n그 기록을 입력했거나 보던 다른 컴퓨터·브라우저에서 이 버튼을 눌러보세요.");
     const prev = found.records.slice(0, 15).map(x => "· " + x.info).join("\n");
     if (!confirm("자동 백업에서 찾은 기록\n차량출고 " + nr + "건 · 반품 " + nt + "건\n\n" + prev + (nr > 15 ? "\n…" : "") + "\n\n목록에 되살릴까요? (공유 중이면 서버에도 올라갑니다)")) return;
     this.setState(p => ({ records: p.records.concat(found.records), returns: p.returns.concat(found.returns) }));
@@ -3524,6 +3547,7 @@ class Component extends DCLogic {
 
   rowBox(row) {
     if (MANUAL_BOX.test(row.name || "")) return num(row.box);
+    if (!row.split) return 0;
     const hit = this.lookupItem(row.name);
     const q = num(row.qty);
     if (!hit || !q) return 0;
@@ -3576,7 +3600,7 @@ class Component extends DCLogic {
     const f = r.form || {}, d = r.d || {}, sv = v => v == null || v === 0 || v === "" ? "" : String(v);
     const ourbox = f.ourbox != null ? f.ourbox : (Object.keys(BOX_PRICES).find(k => BOX_PRICES[k] === d.boxUnit && d.boxUnit) || "");
     const material = f.material != null ? f.material : d.otherUnit === PRICES.eerp && d.otherUnit ? "에어캡" : d.otherUnit === PRICES.airp && d.otherUnit ? "에어팩" : "";
-    const items = (r.items && r.items.length ? r.items : [{ name: r.name || "", qty: String(r.qty || "") }]).map(it => ({ name: it.name || "", qty: it.qty == null ? "" : String(it.qty), box: it.box == null ? "" : String(it.box) }));
+    const items = (r.items && r.items.length ? r.items : [{ name: r.name || "", qty: String(r.qty || "") }]).map(it => ({ name: it.name || "", qty: it.qty == null ? "" : String(it.qty), box: it.box == null ? "" : String(it.box), split: it.split == null ? true : !!it.split }));
     const iceM = f.iceM != null ? f.iceM : sv(d.iceM), dryIce = f.dryIce != null ? f.dryIce : sv(d.dry);
     this.setState({
       editingId: r.id, shipInfo: r.info || "", items,
@@ -3830,7 +3854,7 @@ class Component extends DCLogic {
       keepAircap: keep("aircap"), dispAircap: disp("aircap"),
       keepClaims: keep("claims"), dispClaims: disp("claims"),
       keepClaimsX: keep("claimsx"), dispClaimsX: disp("claimsx"),
-      claimsXSrc: "https://hyobin82828282-bit.github.io/-/claims.html?v=20261102g#month=" + (localStorage.getItem("claims_cur_month") || todayStr().slice(0, 7).replace("-", "")) + ((localStorage.getItem("mw_sync_url") || "").trim() ? "&sync=" + encodeURIComponent(localStorage.getItem("mw_sync_url").trim()) : ""),
+      claimsXSrc: "https://hyobin82828282-bit.github.io/-/claims.html?v=20261103a#month=" + (localStorage.getItem("claims_cur_month") || todayStr().slice(0, 7).replace("-", "")) + ((localStorage.getItem("mw_sync_url") || "").trim() ? "&sync=" + encodeURIComponent(localStorage.getItem("mw_sync_url").trim()) : ""),
       keepStock: keep("stock"), dispStock: disp("stock"),
       keepRetPhoto: keep("retphoto") && retOk, dispRetPhoto: disp("retphoto")
     };
@@ -3870,11 +3894,14 @@ class Component extends DCLogic {
         const b = this.rowBox(it);
         let hint = "", hintColor = "#6B7280";
         if (manual) { hint = "정성가득·풍미가득 — BOX 수량을 직접 입력해 주세요"; hintColor = "#8A6D00"; }
+        else if (hit && !it.split) { hint = "✓ " + hit.n + " | 입수: " + hit.i + "개 · 낱개 수량 (BOX 나누기 체크하면 수량 ÷ 입수로 BOX 계산)"; hintColor = "#6B7280"; }
         else if (hit) { hint = "✓ " + hit.n + " | 입수: " + hit.i + "개 | " + hit.t + " | " + hit.w + "kg"; hintColor = "#2563EB"; }
         else if (normItem(it.name).length >= 2) { hint = "품목현황에서 찾지 못했습니다 — BOX는 수기 확인 필요"; hintColor = "#B5610B"; }
         const upd = k => e => this.setState(p => { const a = p.items.slice(); a[i] = { ...a[i], [k]: e.target.value }; return { items: a, saved: false }; });
         return {
           name: it.name, qty: it.qty, box: it.box || "",
+          split: !!it.split, showSplit: !manual,
+          onSplit: e => { const v = e.target.checked; this.setState(p => { const a = p.items.slice(); a[i] = { ...a[i], split: v }; return { items: a, saved: false }; }); },
           manual, autoBox: !manual && b > 0, noBox: !manual && b <= 0, boxLabel: b + " BOX",
           hint, hintColor,
           ...(() => {
