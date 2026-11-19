@@ -1199,6 +1199,7 @@
             <input type="file" accept=".xlsx" onChange="{{ onExpFile }}" style="display:none">
           </label>
           <sc-if value="{{ hasUpload }}">
+            <button onClick="{{ downloadExpFile }}" style="height:40px;padding:0 14px;border:1px solid #BFD3FB;border-radius:9px;background:#fff;color:#1D4ED8;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#2563EB;background:#EFF4FF">{{ expDlLabel }}</button>
             <button onClick="{{ clearExp }}" style="height:40px;padding:0 14px;border:1px solid #D1D5DB;border-radius:9px;background:#fff;color:#4B5563;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#B3261E;color:#B3261E">데이터 삭제</button>
           </sc-if>
         </div>
@@ -1853,6 +1854,15 @@ const parseWeightKg = name => {
   return 0;
 };
 const EXP_STORE = "mw_expiry_v1";
+const expIdb = (mode, fn) => new Promise((ok, no) => {
+  const q = indexedDB.open("mw_expiry_files", 1);
+  q.onupgradeneeded = () => q.result.createObjectStore("f");
+  q.onerror = () => no(q.error);
+  q.onsuccess = () => { const t = q.result.transaction("f", mode), st = t.objectStore("f"); const r = fn(st); t.oncomplete = () => ok(r && r.result); t.onerror = () => no(t.error); };
+});
+const expFilePut = (k, v) => expIdb("readwrite", st => st.put(v, k)).catch(() => {});
+const expFileGet = k => expIdb("readonly", st => st.get(k)).catch(() => null);
+const expFileDel = k => expIdb("readwrite", st => k == null ? st.clear() : st.delete(k)).catch(() => {});
 const EXP_VER = 4;
 const EXP_ROWS_UNUSED = [
   {code:"201978000015", name:"[M냉장]주부9단비엔나250g*2(F2)**", cat1:"냉장D", cat2:4, cat3:1, expiry:"2026-09-20", qty:4, avail:4},
@@ -2691,6 +2701,7 @@ class Component extends DCLogic {
       const fn = file.name.match(/(\d{2})(\d{2})(\d{2})(?!.*\d{6})/);
       const key = fn ? "20" + fn[1] + "-" + fn[2] + "-" + fn[3] : todayStr();
       const meta = { v: EXP_VER, fileName: file.name, uploadedAt: new Date().toISOString(), scanned, excluded, sheet: sheet.name, date: key };
+      expFilePut(key, { name: file.name, blob: new Blob([await file.arrayBuffer()], { type: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }) });
       this.setState(p => {
         const files = { ...p.expFiles, [key]: { meta, rows, adj } };
         try { localStorage.setItem(EXP_STORE, JSON.stringify({ files, active: key })); } catch (e) {}
@@ -2728,7 +2739,15 @@ class Component extends DCLogic {
       expDays: s.expDays,
       onExpDays: this.set("expDays"),
       onExpFile: e => { const f = e.target.files && e.target.files[0]; e.target.value = ""; this.handleExpFile(f); },
-      clearExp: () => { try { localStorage.removeItem(EXP_STORE); } catch (err) {} this.setState({ expFiles: {}, expActive: "", expError: "" }); },
+      clearExp: () => { try { localStorage.removeItem(EXP_STORE); } catch (err) {} expFileDel(null); this.setState({ expFiles: {}, expActive: "", expError: "" }); },
+      downloadExpFile: async () => {
+        const k = s.expActive, o = k ? await expFileGet(k) : null;
+        if (!o || !o.blob) { this.setState({ expError: "이 일자의 원본 파일이 보관돼 있지 않습니다. 같은 파일을 다시 올리면 받을 수 있어요." }); return; }
+        const url = URL.createObjectURL(o.blob), a = document.createElement("a");
+        a.href = url; a.download = o.name || ("재고조정_실사_현황-" + k.slice(2).replace(/-/g, "") + ".xlsx");
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+      },
+      expDlLabel: "원본 다운로드" + (s.expActive ? " (" + s.expActive.slice(2).replace(/-/g, ".") + ")" : ""),
       hasUpload: !!meta,
       expDates: dates.map(k => ({
         label: k.slice(2).replace(/-/g, "."),
@@ -2739,7 +2758,7 @@ class Component extends DCLogic {
           e.stopPropagation();
           this.setState(p => {
             const files = { ...p.expFiles };
-            delete files[k];
+            delete files[k]; expFileDel(k);
             persist(files);
             return { expFiles: files, expActive: p.expActive === k ? (Object.keys(files).sort().pop() || "") : p.expActive };
           });
